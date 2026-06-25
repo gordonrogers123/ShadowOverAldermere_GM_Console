@@ -1229,10 +1229,43 @@ export function mountGm(root) {
   // ============================================================
   //  Scene list + Rescan
   // ============================================================
+  // Session "pins": scene ids the GM has starred to the top of the list, so the
+  // scenes in play this session stay one glance away. Persisted in localStorage
+  // (survives a reload), kept separate from the scenes themselves.
+  const PINS_KEY = 'aldermere.gm.pinnedScenes.v1';
+  function loadPins() {
+    try { const a = JSON.parse(localStorage.getItem(PINS_KEY)); return new Set(Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []); }
+    catch (e) { return new Set(); }
+  }
+  function savePins() { try { localStorage.setItem(PINS_KEY, JSON.stringify([...pinned])); } catch (e) {} }
+  let pinned = loadPins();
+  function togglePin(id) {
+    if (pinned.has(id)) pinned.delete(id); else pinned.add(id);
+    savePins();
+    rebuildSceneList();
+  }
+
   function rebuildSceneList() {
     els.sceneList.innerHTML = '';
-    for (const scene of allScenes()) {
+    // Pinned scenes float to the top; order is otherwise preserved within each
+    // group (a stable partition), so unpinning drops a scene back into place.
+    const all = allScenes();
+    const ordered = [...all.filter((s) => pinned.has(s.id)), ...all.filter((s) => !pinned.has(s.id))];
+    for (const scene of ordered) {
       const li = document.createElement('li');
+      const isPinned = pinned.has(scene.id);
+      if (isPinned) li.classList.add('is-pinned');
+
+      const pin = document.createElement('button');
+      pin.className = 'scene-pin' + (isPinned ? ' is-pinned' : '');
+      pin.type = 'button';
+      pin.textContent = isPinned ? '★' : '☆';   // filled vs hollow star
+      pin.title = isPinned ? 'Unpin from the top' : 'Pin to the top for this session';
+      pin.setAttribute('aria-label', pin.title);
+      pin.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
+      pin.addEventListener('click', (e) => { e.stopPropagation(); togglePin(scene.id); });
+      li.appendChild(pin);
+
       const btn = document.createElement('button');
       btn.className = 'scene-button';
       btn.type = 'button';

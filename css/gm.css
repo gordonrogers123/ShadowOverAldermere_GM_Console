@@ -155,7 +155,10 @@ body.view-gm {
 .view-gm .u-label,
 .view-gm .roster-group-label,
 .view-gm .audio-pick-label { font-size: var(--fs-300); letter-spacing: 0.03em; }
-.view-gm .scene-list { list-style: none; margin: 0; padding: 0; }
+/* Height-capped + scrollable so the live controls beneath the list never get
+   pushed down as scenes accumulate; pinned scenes float to the top (see below)
+   so the ones in play this session stay in view without scrolling. */
+.view-gm .scene-list { list-style: none; margin: 0; padding: 0; max-height: 21rem; overflow-y: auto; }
 .view-gm .scene-list li { margin: 0 0 0.6rem; }
 .view-gm .scene-button {
   width: 100%;
@@ -296,7 +299,18 @@ body.view-gm {
 .view-gm .gm-scenes-head .gm-h2 { margin: 0; }
 .view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
 .view-gm .scene-list li { position: relative; }
-.view-gm .scene-button { padding-right: 3.5rem; }
+.view-gm .scene-button { padding-left: 2.6rem; padding-right: 3.5rem; }
+/* Pin/star toggle on the left: hollow when idle, a warm gold star when pinned.
+   Sits over the scene button's padding so the row stays one clickable surface. */
+.view-gm .scene-pin {
+  position: absolute; left: 0.35rem; top: 50%; transform: translateY(-50%); z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; padding: 0; line-height: 1;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--neutral); opacity: 0.5; font-size: 1.25rem;
+}
+.view-gm .scene-pin:hover { opacity: 0.9; }
+.view-gm .scene-pin.is-pinned { color: #b07d2b; opacity: 1; }   /* pin gold (parchment-warm) */
 .view-gm .scene-tag {
   margin-left: 0.5rem; font-size: var(--fs-100); letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--neutral); opacity: 0.7; font-weight: 400;
