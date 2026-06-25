@@ -37,10 +37,13 @@ export function mountGm(root) {
 
   root.innerHTML = `
     <header class="gm-header">
-      <h1 class="gm-title">Aldermere GM Console</h1>
+      <div class="gm-title-wrap">
+        <h1 class="gm-title">Aldermere GM Console</h1>
+        <span class="gm-mode-chip" role="status" aria-live="polite" hidden></span>
+      </div>
       <div class="gm-header-actions">
-        <button class="gm-button rescan" type="button">Rescan assets</button>
-        <a class="gm-button gm-open" href="?view=player" target="aldermere-player" rel="noopener">Open Player window</a>
+        <a class="gm-button btn--primary gm-open" href="?view=player" target="aldermere-player" rel="noopener">Open Player window</a>
+        <button class="gm-button btn--quiet rescan" type="button">Rescan assets</button>
       </div>
     </header>
 
@@ -165,6 +168,7 @@ export function mountGm(root) {
           </div>
           <p class="b-export-hint" hidden>Copy this into the SCENES array in data/scenes.js to commit or share it.</p>
           <textarea class="b-export-out" hidden readonly rows="8"></textarea>
+          <button class="gm-button btn--quiet b-copy" type="button" hidden>Copy to clipboard</button>
         </div>
 
         <div class="gm-mapmode" hidden>
@@ -233,6 +237,8 @@ export function mountGm(root) {
     bCancel:      root.querySelector('.b-cancel'),
     bExportHint:  root.querySelector('.b-export-hint'),
     bExportOut:   root.querySelector('.b-export-out'),
+    bCopy:        root.querySelector('.b-copy'),
+    modeChip:     root.querySelector('.gm-mode-chip'),
     mapModeBtn:   root.querySelector('.map-mode-btn'),
     mapmode:      root.querySelector('.gm-mapmode'),
     mapboard:     root.querySelector('.mapmode-board'),
@@ -551,6 +557,22 @@ export function mountGm(root) {
     els.audioBody.append(saveRow);
   }
 
+  // Empty-state shown in the Audio panel when a scene carries no audio yet, so
+  // the feature is discoverable instead of the whole panel simply being absent.
+  function buildAudioEmpty(scene) {
+    els.audioBody.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = 'audio-empty';
+    p.textContent = 'No music, ambience, or SFX set for this scene yet. ';
+    const cta = document.createElement('button');
+    cta.className = 'gm-button btn--quiet audio-empty-cta';
+    cta.type = 'button';
+    cta.textContent = 'Add audio in the builder';
+    cta.addEventListener('click', () => openBuilder(scene));
+    p.append(cta);
+    els.audioBody.append(p);
+  }
+
   function buildTrackBlock(key, label, cfg) {
     ensureAudio();
     if (!state.audio.tracks[key]) state.audio.tracks[key] = trackFromCfg(cfg);
@@ -631,7 +653,7 @@ export function mountGm(root) {
   // ---- Builder audio picker (which tracks the scene carries) ----
   function buildAudioChecks(container, list, isOn, toggle) {
     container.innerHTML = '';
-    if (!list.length) { const p = document.createElement('span'); p.className = 'audio-pick-empty'; p.textContent = '(none scanned)'; container.append(p); return; }
+    if (!list.length) { const p = document.createElement('span'); p.className = 'audio-pick-empty'; p.textContent = '(none found -- add files under assets/audio, then Rescan)'; container.append(p); return; }
     for (const item of list) {
       const lab = document.createElement('label'); lab.className = 'roster-item';
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isOn(item);
@@ -1050,6 +1072,7 @@ export function mountGm(root) {
     renderAudioPick();
     els.bExportOut.hidden = true;
     els.bExportHint.hidden = true;
+    els.bCopy.hidden = true;
   }
 
   // Roster checkboxes from CAST; toggling one edits draft.roster in place.
@@ -1150,8 +1173,21 @@ export function mountGm(root) {
     els.bExportOut.value = JSON.stringify(scene, null, 2);
     els.bExportOut.hidden = false;
     els.bExportHint.hidden = false;
+    els.bCopy.hidden = false;
     els.bExportOut.focus();
     els.bExportOut.select();
+  });
+
+  // Copy the export to the clipboard; fall back to selecting the textarea so the
+  // GM can still Ctrl/Cmd-C if the Clipboard API is unavailable (no HTTPS / denied).
+  els.bCopy.addEventListener('click', () => {
+    const text = els.bExportOut.value;
+    const fallback = () => { els.bExportOut.focus(); els.bExportOut.select(); setStatus('Selected the scene JSON — press Ctrl/Cmd-C to copy.'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => setStatus('Copied the scene JSON to the clipboard.'), fallback);
+    } else {
+      fallback();
+    }
   });
 
   // ============================================================
@@ -1179,7 +1215,12 @@ export function mountGm(root) {
         del.textContent = '×';
         del.title = 'Delete this saved scene';
         del.setAttribute('aria-label', 'Delete this saved scene');
-        del.addEventListener('click', (e) => { e.stopPropagation(); deleteScene(scene.id); });
+        del.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // Deleting a saved scene is destructive and irreversible -- confirm first.
+          if (!window.confirm('Delete the saved scene "' + scene.name + '"? This cannot be undone.')) return;
+          deleteScene(scene.id);
+        });
         li.appendChild(del);
       }
       els.sceneList.appendChild(li);
@@ -1250,9 +1291,17 @@ export function mountGm(root) {
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
 
-    const showAudio = !inMap && !building && !!scene && !!scene.audio;
+    // Surface audio for every selected scene: the full panel when the scene
+    // carries audio, otherwise a discoverable empty-state pointing at the builder.
+    const showAudio = !inMap && !building && !!scene;
     els.audio.hidden = !showAudio;
-    if (showAudio && builtAudioSceneId !== scene.id) { buildAudioPanel(scene); builtAudioSceneId = scene.id; }
+    if (showAudio) {
+      const audioKey = (scene.audio ? 'full:' : 'empty:') + scene.id;
+      if (builtAudioSceneId !== audioKey) {
+        if (scene.audio) buildAudioPanel(scene); else buildAudioEmpty(scene);
+        builtAudioSceneId = audioKey;
+      }
+    }
 
     if (inMap) renderMapMode(scene);
     else if (building) renderBuilderPreview();
@@ -1260,6 +1309,11 @@ export function mountGm(root) {
 
     // The Map mode entry button only makes sense for a scene with a map.
     els.mapModeBtn.hidden = !(scene && sceneHasMap(scene));
+    // A mode chip in the header names the surface that is live right now.
+    const mode = building ? 'Editing' : inMap ? 'Map' : scene ? 'Live' : '';
+    els.modeChip.hidden = !mode;
+    els.modeChip.textContent = mode;
+    els.modeChip.className = 'gm-mode-chip' + (mode ? ' is-' + mode.toLowerCase() : '');
     // Keep the GM's local audio monitor in step with the latest state.
     audioEngine.sync(state, scene);
   }

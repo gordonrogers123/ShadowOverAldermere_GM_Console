@@ -31,6 +31,17 @@ body.view-gm {
   font-size: clamp(1.3rem, 2.5vw, 1.9rem);
   margin: 0;
 }
+/* Title + current-mode chip travel together on the left of the header. */
+.view-gm .gm-title-wrap { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.view-gm .gm-mode-chip {
+  font-family: var(--font-display); font-size: var(--fs-100); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--paper);
+  background: var(--neutral); border: 1px solid var(--rule);
+  border-radius: var(--radius-pill); padding: 0.15rem 0.7rem;
+}
+.view-gm .gm-mode-chip.is-live    { background: var(--support); border-color: var(--support); }
+.view-gm .gm-mode-chip.is-editing { background: var(--control); border-color: var(--control); }
+.view-gm .gm-mode-chip.is-map     { background: var(--neutral); border-color: var(--rule); }
 
 /* Buttons (shared look). Big, calm, clearly clickable. */
 .view-gm .gm-button {
@@ -47,7 +58,7 @@ body.view-gm {
   display: inline-block;
 }
 .view-gm .gm-button:hover { background: var(--paper); }
-.view-gm .gm-open { background: var(--fill); }
+/* .gm-open (Open Player) is the primary CTA now -- its colour is the .btn--primary role. */
 
 /* ============================================================
    Shared refinement foundation (Phase 5) -- all scoped .view-gm.
@@ -78,10 +89,13 @@ body.view-gm {
    groups (background variants, audio outputs) already toggle -- both light up. */
 .view-gm .btn--toggle.is-on,
 .view-gm .btn--toggle.active { background: var(--control); color: var(--paper); border-color: var(--control); }
-.view-gm .btn--primary:hover,
-.view-gm .btn--save:hover,
+/* Each coloured role restates its own background on hover: the base
+   .gm-button:hover (background: paper) outranks the role's resting colour, so
+   without this a primary/save/toggle button would flash white on hover. */
+.view-gm .btn--primary:hover       { background: var(--control); filter: brightness(1.07); }
+.view-gm .btn--save:hover          { background: var(--support); filter: brightness(1.07); }
 .view-gm .btn--toggle.is-on:hover,
-.view-gm .btn--toggle.active:hover { filter: brightness(1.07); }
+.view-gm .btn--toggle.active:hover { background: var(--control); filter: brightness(1.07); }
 
 /* Panel -- a card with an accent strip; the modifier picks the accent. */
 .view-gm .u-panel {
@@ -329,6 +343,7 @@ body.view-gm {
 /* .b-save colour now comes from the .btn--save role. */
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
 .view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }
+.view-gm .b-copy { margin-top: var(--space-2); font-size: var(--fs-200); }
 
 /* ---- Roster picker (builder) ---- */
 .view-gm .roster-pick { display: flex; gap: 1.5rem; flex-wrap: wrap; }
@@ -410,6 +425,9 @@ body.view-gm {
   padding: var(--space-4) var(--space-5); margin: 0 0 var(--space-5);
 }
 .view-gm .gm-audio .gm-h3 { margin: 0 0 var(--space-3); }
+/* Discoverable empty-state shown when a scene carries no audio yet. */
+.view-gm .audio-empty { margin: 0; color: var(--neutral); font-size: var(--fs-200); }
+.view-gm .audio-empty-cta { margin-left: var(--space-2); font-size: var(--fs-100); }
 .view-gm .audio-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
 /* The master + output row leads the panel; a divider sets it off from tracks. */
 .view-gm .audio-body > .audio-row:first-child {
