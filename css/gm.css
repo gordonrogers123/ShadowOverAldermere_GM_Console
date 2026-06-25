@@ -105,6 +105,7 @@ body.view-gm {
 
 .view-gm .gm-preview { margin: 0 0 1rem; }
 .view-gm .preview-frame {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   background: var(--stage);
@@ -115,6 +116,8 @@ body.view-gm {
   align-items: center;
   justify-content: center;
 }
+/* The shared compositor fills the preview frame, so it matches the TV. */
+.view-gm .preview-frame .stage { position: absolute; inset: 0; }
 .view-gm .preview-img {
   width: 100%;
   height: 100%;
@@ -169,6 +172,91 @@ body.view-gm {
   padding: 1rem 1.2rem;
 }
 .view-gm .notes-body { margin: 0; font-size: 1.1rem; }
+
+/* ---- Header actions ---- */
+.view-gm .gm-header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+/* ---- Form controls (builder + live swaps) ---- */
+.view-gm select,
+.view-gm input[type="text"],
+.view-gm textarea {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+.view-gm textarea { width: 100%; resize: vertical; }
+
+/* ---- Scene list: New scene, saved tag, delete ---- */
+.view-gm .gm-scenes-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.6rem; margin-bottom: 0.8rem;
+}
+.view-gm .gm-scenes-head .gm-h2 { margin: 0; }
+.view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
+.view-gm .scene-list li { position: relative; }
+.view-gm .scene-button { padding-right: 2.8rem; }
+.view-gm .scene-tag {
+  margin-left: 0.5rem; font-size: 0.7rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--neutral); opacity: 0.7; font-weight: 400;
+}
+.view-gm .scene-del {
+  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+  width: 2rem; height: 2rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: 8px;
+  background: var(--gm-panel); color: var(--offense); font-size: 1.1rem; cursor: pointer;
+}
+.view-gm .scene-del:hover { background: var(--paper); }
+.view-gm .rescan-status {
+  margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--neutral);
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 0.5rem 0.7rem;
+}
+
+/* ---- Live controls ---- */
+.view-gm .control-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  flex-wrap: wrap; margin-bottom: 0.7rem;
+}
+.view-gm .control-label { min-width: 5rem; font-family: var(--font-display); font-weight: 700; }
+.view-gm .vis-toggle { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .vis-toggle:hover { filter: brightness(1.08); background: var(--control); }
+.view-gm .variant-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.view-gm .variant-button { font-size: 0.95rem; padding: 0.45rem 0.8rem; }
+.view-gm .variant-button.active { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .char-row.row-disabled { opacity: 0.5; }
+.view-gm .char-toggle[disabled],
+.view-gm .char-reset[disabled] { cursor: default; opacity: 0.6; }
+.view-gm .char-swap { max-width: 12rem; }
+
+/* ---- Scene builder ---- */
+.view-gm .gm-builder {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 6px solid var(--control); border-radius: 8px; padding: 1rem 1.2rem;
+}
+.view-gm .field { display: block; margin-bottom: 0.9rem; }
+.view-gm .field > span { display: block; font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem; }
+.view-gm .field > span small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
+.view-gm .b-name { width: 100%; }
+.view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
+.view-gm .variant-edit { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.view-gm .v-key { width: 9rem; }
+.view-gm .v-tag { font-size: 0.8rem; color: var(--neutral); opacity: 0.7; min-width: 5rem; }
+.view-gm .v-remove,
+.view-gm .add-variant { font-size: 0.85rem; padding: 0.4rem 0.7rem; }
+.view-gm .v-remove {
+  background: var(--fill); border: 1px solid var(--rule);
+  border-radius: 8px; cursor: pointer; color: var(--ink);
+}
+.view-gm .v-remove[disabled] { opacity: 0.4; cursor: default; }
+.view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.view-gm .b-save { background: var(--support); color: var(--paper); border-color: var(--support); }
+.view-gm .b-save:hover { filter: brightness(1.06); background: var(--support); }
+.view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
+.view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }
 
 /* ---- Narrow screens: stack the columns ---- */
 @media (max-width: 760px) {

@@ -8,3 +8,7 @@ Thumbs.db
 _check/
 *.tmp
 *.tmp.png
+
+# Python
+__pycache__/
+*.pyc

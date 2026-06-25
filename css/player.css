@@ -1,25 +1,25 @@
 /* ============================================================
-   player.css  --  the TV output
+   player.css  --  the TV output, plus the shared stage compositor
    ------------------------------------------------------------
-   A full screen, near-black letterbox stage. Two stacked map
-   layers cross-fade on every change. No chrome, no text beyond
-   the scene plate and the idle title. Scoped under .view-player.
+   The .stage block (background layers, characters, curtain, idle,
+   plates) is SHARED: the same DOM and CSS render the Player TV and
+   the GM builder preview, so the preview matches the TV exactly. It
+   is scoped under .stage, not under a view, so both can use it.
+   View specific bits (fullscreen letterbox, cursor hide) stay under
+   .view-player; the GM preview frames a .stage in gm.css.
    ============================================================ */
 
-body.view-player {
-  background: var(--stage);
+/* ---------- Shared stage compositor ---------- */
+.stage {
+  position: relative;
   overflow: hidden;
+  background: var(--stage);
 }
+/* Apply a posture with no animation (cold load restore). */
+.stage.no-anim * { transition: none !important; }
 
-.view-player #app,
-.view-player .stage {
-  position: fixed;
-  inset: 0;
-}
-.view-player .stage { background: var(--stage); }
-
-/* The two cross-fading layers. */
-.view-player .map-layer {
+/* Two cross-fading background layers. */
+.stage .map-layer {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -28,18 +28,17 @@ body.view-player {
   align-items: center;
   justify-content: center;
 }
-
-/* Maps are letterboxed: full bleed, aspect preserved, centered. */
-.view-player .map-img {
+/* Backgrounds are letterboxed: full bleed, aspect preserved, centered. */
+.stage .map-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
 
-/* Neutral plate shown for a scene whose current map file is not
-   present yet. Atmospheric, never spoilery. */
-.view-player .unrevealed {
+/* Neutral plate for a background whose current variant file is not present
+   yet. Atmospheric, never spoilery. */
+.stage .unrevealed {
   width: 100%;
   height: 100%;
   display: flex;
@@ -47,11 +46,10 @@ body.view-player {
   align-items: center;
   justify-content: center;
   text-align: center;
-  background:
-    radial-gradient(120% 90% at 50% 30%, #14140f 0%, #0a0a0c 70%);
+  background: radial-gradient(120% 90% at 50% 30%, #14140f 0%, #0a0a0c 70%);
   border: 1px solid rgba(203, 191, 168, 0.12);
 }
-.view-player .unrevealed-mark {
+.stage .unrevealed-mark {
   font-family: var(--font-display);
   font-size: clamp(1rem, 2.4vw, 1.6rem);
   letter-spacing: 0.5em;
@@ -59,7 +57,7 @@ body.view-player {
   color: rgba(203, 191, 168, 0.45);
   margin-bottom: 1rem;
 }
-.view-player .unrevealed-name {
+.stage .unrevealed-name {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(2rem, 6vw, 4.5rem);
@@ -67,8 +65,42 @@ body.view-player {
   color: var(--rule);
 }
 
+/* Character cutouts: anchored to their side, grounded at the bottom, height
+   driven so portrait cutouts stay proportional. max-width keeps one from
+   covering the center of the stage. */
+.stage .char-layer {
+  position: absolute;
+  bottom: 0;
+  height: 88%;
+  width: auto;
+  max-width: 38%;
+  object-fit: contain;
+  object-position: bottom;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--char-fade) ease, transform var(--char-slide) ease;
+  will-change: opacity, transform;
+}
+.stage .char-left  { left: 0;  transform: translateX(-130%); }   /* offstage left */
+.stage .char-right { right: 0; transform: translateX(130%); }    /* offstage right */
+/* A fade-in character does not slide: it sits in place and only opacity moves. */
+.stage .char-layer.enter-fade { transform: translateX(0); }
+/* On stage. */
+.stage .char-layer.is-shown { opacity: 1; transform: translateX(0); }
+
+/* Black curtain over the whole stage (scene show/hide). */
+.stage .curtain {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  transition: opacity var(--curtain-fade) ease;
+  pointer-events: none;
+}
+.stage .curtain.is-down { opacity: 1; }
+
 /* Idle title, shown before any scene is chosen. */
-.view-player .idle {
+.stage .idle {
   position: absolute;
   inset: 0;
   display: flex;
@@ -79,14 +111,25 @@ body.view-player {
   transition: opacity var(--crossfade) ease;
   pointer-events: none;
 }
-.view-player .idle.show { opacity: 1; }
-.view-player .idle-title {
+.stage .idle.show { opacity: 1; }
+.stage .idle-title {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(2rem, 6vw, 5rem);
   letter-spacing: 0.05em;
   color: var(--rule);
   padding: 0 2rem;
+}
+
+/* ---------- Player view: fullscreen letterbox ---------- */
+body.view-player {
+  background: var(--stage);
+  overflow: hidden;
+}
+.view-player #app,
+.view-player .stage {
+  position: fixed;
+  inset: 0;
 }
 
 /* Hide the cursor after idle (class toggled on the body by player.js). */

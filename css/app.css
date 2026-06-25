@@ -44,7 +44,10 @@
   --gm-bg: #e9e3d6;     /* GM control surface background */
   --gm-panel: #faf7f0;  /* GM cards */
 
-  --crossfade: 350ms;   /* keep in step with CURSOR/crossfade timing in JS */
+  --crossfade: 350ms;      /* background cross-fade between variants */
+  --curtain-fade: 700ms;   /* whole-scene show/hide (the black curtain) */
+  --char-fade: 500ms;      /* character fade in and out */
+  --char-slide: 520ms;     /* character enter from / exit to a side */
 
   --font-display: 'Cinzel', Georgia, serif;
   --font-body: 'Atkinson Hyperlegible', system-ui, 'Segoe UI', Arial, sans-serif;

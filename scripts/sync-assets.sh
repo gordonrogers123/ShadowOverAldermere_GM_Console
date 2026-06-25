@@ -2,9 +2,11 @@
 #
 # sync-assets.sh
 # -------------------------------------------------------------------
-# Copies the SHARED, already public assets (maps and fonts) from the
-# reference site repo into this project, so the GM Console carries its
-# own self-contained copy and works offline.
+# Copies the SHARED, already public assets (maps, fonts, and optional sample
+# character cutouts) from the reference site repo into this project, so the GM
+# Console carries its own self-contained copy and works offline. It then scans
+# the asset folders and regenerates data/manifest.js (the scene builder's pick
+# lists).
 #
 # Single source of truth: the reference repo. Self-contained output:
 # this repo. Run this before a local session and before deploying.
@@ -51,6 +53,20 @@ FONTS=(
   atkinson-italic.woff2
 )
 
+# Public hero cutouts (transparent PNGs) seeded as SAMPLE characters when
+# SEED_SAMPLES=1. They already exist on the public reference site, so copying
+# them here is not a spoiler. Drop your own character PNGs into
+# assets/characters at any time; the manifest scan picks them up.
+HEROES=(
+  lysander.png
+  telstar.png
+  thraka.png
+  khaleesi.png
+  sai.png
+  samsara.png
+  truf.png
+)
+
 copy_set () {
   local label="$1" src_dir="$2" dst_dir="$3"; shift 3
   local names=("$@")
@@ -70,5 +86,23 @@ copy_set () {
 copy_set "Maps"  "$REF_DIR/maps"  "$PROJECT_ROOT/assets/maps"  "${MAPS[@]}"
 copy_set "Fonts" "$REF_DIR/fonts" "$PROJECT_ROOT/assets/fonts" "${FONTS[@]}"
 
+# Optional: seed sample character cutouts so the scene builder has transparent
+# characters to pick on a fresh checkout. Off by default so a routine asset
+# refresh does not recopy them. Enable with:
+#   SEED_SAMPLES=1 ./scripts/sync-assets.sh
+if [ "${SEED_SAMPLES:-0}" = "1" ]; then
+  copy_set "Characters (samples)" "$REF_DIR/art" "$PROJECT_ROOT/assets/characters" "${HEROES[@]}"
+fi
+
+# Always regenerate the asset manifest the scene builder reads, scanning
+# whatever is now in assets/maps, assets/backgrounds, and assets/characters.
 echo
-echo "Done. Hidden map variants are GM-only and are not synced; add them by hand."
+if command -v python3 >/dev/null 2>&1; then
+  echo "Manifest  (scanning assets -> data/manifest.js)"
+  python3 "$SCRIPT_DIR/scan_assets.py"
+else
+  echo "WARNING: python3 not found; data/manifest.js was not regenerated." >&2
+fi
+
+echo
+echo "Done. Hidden map and background variants are GM-only and are not synced; add them by hand."
