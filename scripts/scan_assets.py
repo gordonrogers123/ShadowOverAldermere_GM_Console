@@ -30,7 +30,7 @@ def _humanize(stem: str) -> str:
     return " ".join(w[:1].upper() + w[1:] for w in words) if words else stem
 
 
-def _list(folder: str, exts, *, skip_hidden: bool):
+def _list(folder: str, exts, *, skip_hidden: bool, category=None):
     out = []
     directory = os.path.join(ASSETS, folder)
     if not os.path.isdir(directory):
@@ -44,7 +44,11 @@ def _list(folder: str, exts, *, skip_hidden: bool):
         # A *_hidden file is a GM-only reveal variant, never a standalone pick.
         if skip_hidden and stem.endswith("_hidden"):
             continue
-        out.append({"id": stem, "name": _humanize(stem), "src": f"assets/{folder}/{name}"})
+        entry = {"id": stem, "name": _humanize(stem), "src": f"assets/{folder}/{name}"}
+        # Characters carry a category so the builder can group the pickers.
+        if category is not None:
+            entry["category"] = category
+        out.append(entry)
     return out
 
 
@@ -55,8 +59,17 @@ def scan():
         + _list("backgrounds", IMAGE_EXTS, skip_hidden=True)
     )
     backgrounds.sort(key=lambda e: e["src"])
-    characters = _list("characters", CHARACTER_EXTS, skip_hidden=False)
-    characters.sort(key=lambda e: e["src"])
+    # Character cutouts are split into category subfolders; each entry is tagged
+    # so the builder can group the left/right pickers. Loose files left directly
+    # in assets/characters still work and default to the hero category.
+    characters = (
+        _list("characters/heroes", CHARACTER_EXTS, skip_hidden=False, category="hero")
+        + _list("characters/npcs", CHARACTER_EXTS, skip_hidden=False, category="npc")
+        + _list("characters/enemies", CHARACTER_EXTS, skip_hidden=False, category="enemy")
+        + _list("characters", CHARACTER_EXTS, skip_hidden=False, category="hero")
+    )
+    category_rank = {"hero": 0, "npc": 1, "enemy": 2}
+    characters.sort(key=lambda e: (category_rank.get(e.get("category"), 9), e["src"]))
 
     def audio(sub):
         items = _list(f"audio/{sub}", AUDIO_EXTS, skip_hidden=False)
@@ -73,12 +86,15 @@ def scan():
 
 
 def _emit(entries) -> str:
-    rows = [
-        "  {{ id: {0}, name: {1}, src: {2} }}".format(
+    rows = []
+    for e in entries:
+        fields = "id: {0}, name: {1}, src: {2}".format(
             json.dumps(e["id"]), json.dumps(e["name"]), json.dumps(e["src"])
         )
-        for e in entries
-    ]
+        # Characters also carry a category; backgrounds and audio do not.
+        if e.get("category"):
+            fields += ", category: {0}".format(json.dumps(e["category"]))
+        rows.append("  {{ {0} }}".format(fields))
     return ",\n".join(rows)
 
 
@@ -92,7 +108,8 @@ def write_manifest():
         "//\n"
         "//  The scene builder reads these. BACKGROUNDS come from\n"
         "//  assets/maps and assets/backgrounds (files ending in _hidden are\n"
-        "//  GM-only and excluded). CHARACTERS come from assets/characters.\n"
+        "//  GM-only and excluded). CHARACTERS come from\n"
+        "//  assets/characters/{heroes,npcs,enemies} (each tagged with a category).\n"
         "//  MUSIC / AMBIENCE / SFX come from assets/audio/{music,ambience,sfx}.\n"
         "// ============================================================\n\n"
         "export const BACKGROUNDS = [\n"

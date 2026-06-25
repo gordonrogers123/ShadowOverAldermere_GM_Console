@@ -57,7 +57,8 @@ FONTS=(
 # Public hero cutouts (transparent PNGs) seeded as SAMPLE characters when
 # SEED_SAMPLES=1. They already exist on the public reference site, so copying
 # them here is not a spoiler. Drop your own character PNGs into
-# assets/characters at any time; the manifest scan picks them up.
+# assets/characters/{heroes,npcs,enemies} at any time; the manifest scan
+# tags each by its subfolder and picks them up.
 HEROES=(
   lysander.png
   telstar.png
@@ -106,7 +107,7 @@ copy_set "Fonts" "$REF_DIR/fonts" "$PROJECT_ROOT/assets/fonts" "${FONTS[@]}"
 # refresh does not recopy them. Enable with:
 #   SEED_SAMPLES=1 ./scripts/sync-assets.sh
 if [ "${SEED_SAMPLES:-0}" = "1" ]; then
-  copy_set "Characters (samples)" "$REF_DIR/art" "$PROJECT_ROOT/assets/characters" "${HEROES[@]}"
+  copy_set "Characters (hero samples)" "$REF_DIR/art" "$PROJECT_ROOT/assets/characters/heroes" "${HEROES[@]}"
 fi
 
 # Optional: seed sample round token art (heroes + the sample brigands enemy) so

@@ -146,7 +146,8 @@ repo: drop your own files into `assets/audio/**` and **Rescan**.
 The builder offers whatever art is in the asset folders:
 
 - backgrounds: `assets/backgrounds/` (cinematic art) and `assets/maps/` (maps),
-- characters: `assets/characters/` (transparent PNG cutouts).
+- characters: `assets/characters/{heroes,npcs,enemies}` (transparent PNG cutouts,
+  grouped by category in the left/right pickers).
 
 Drop your files into those folders, then make them appear as pickable options
 one of two ways:
@@ -166,7 +167,8 @@ SEED_SAMPLES=1 ./scripts/sync-assets.sh
 
 Note: those samples are full character illustrations, so they fill their
 rectangle rather than standing as cutouts. Drop your own transparent PNGs (a
-figure on a transparent background) into `assets/characters/` for the intended
+figure on a transparent background) into `assets/characters/heroes` (or `npcs` /
+`enemies`) for the intended
 "character on the stage" look.
 
 ### Token art
@@ -201,8 +203,8 @@ unique `id`, and save. It appears in the GM list on the next reload.
   },
   defaultMapState: "hidden",
   characters: {                            // optional, each side independent
-    left:  { id: "wren", src: "assets/characters/wren.png", enter: "slide" },
-    right: { id: "wick", src: "assets/characters/wick.png", enter: "fade" }
+    left:  { id: "wren", src: "assets/characters/npcs/wren.png", enter: "slide" },
+    right: { id: "wick", src: "assets/characters/npcs/wick.png", enter: "fade" }
   },
   defaults: { visible: true, leftShown: true, rightShown: true },  // opening posture
   tokens:   { heroes: ["lysander"], enemies: ["brigands"] },  // map roster, or null
@@ -272,7 +274,7 @@ data/                 scenes.js (content), manifest.js (generated pick lists),
                       userScenes.json (your saved scenes, written by the server)
 assets/maps/          maps (shared, committed); hidden maps (GM only)
 assets/backgrounds/   your cinematic backgrounds (drop files in)
-assets/characters/    your transparent character PNGs (drop files in)
+assets/characters/    cutouts in heroes/, npcs/, enemies/ (drop files in)
 assets/tokens/        round token art: heroes/ and enemies/ (named in cast.js)
 assets/audio/         music/, ambience/, sfx/ (drop files in)
 assets/fonts/         Cinzel and Atkinson Hyperlegible (offline)

@@ -352,6 +352,18 @@ body.view-gm {
   display: block; font-family: var(--font-display); font-weight: 700;
   font-size: 0.9rem; margin-bottom: 0.3rem; opacity: 0.85;
 }
+/* Group heading + a "Select all" / "Clear" toggle on one row. */
+.view-gm .roster-group-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-2); margin-bottom: var(--space-1);
+}
+.view-gm .roster-group-head .roster-group-label { margin-bottom: 0; }
+.view-gm .roster-all {
+  font-family: var(--font-body); font-size: var(--fs-100); color: var(--control);
+  background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline;
+}
+.view-gm .roster-all:hover { filter: brightness(1.15); }
+.view-gm .roster-all[disabled] { color: var(--neutral); opacity: 0.5; cursor: not-allowed; text-decoration: none; }
 .view-gm .roster-item {
   display: flex; align-items: center; gap: 0.5rem;
   font-family: var(--font-body); font-size: 1rem; margin-bottom: 0.3rem; cursor: pointer;
