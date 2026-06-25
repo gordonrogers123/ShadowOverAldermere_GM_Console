@@ -558,6 +558,13 @@ export function mountGm(root) {
     r.value = (val == null ? min : val);
     return r;
   }
+  // A slider paired with its short unit label hugging its right edge, so the
+  // label reads as belonging to that slider.
+  function aKnob(labelText, rangeEl) {
+    const w = document.createElement('div'); w.className = 'audio-knob';
+    w.append(rangeEl, aSub(labelText));
+    return w;
+  }
 
   function buildAudioPanel(scene) {
     ensureAudio();
@@ -642,7 +649,7 @@ export function mountGm(root) {
     vol.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].volume = +vol.value; commitAudio(); });
     const pan = aRange('audio-pan', -1, 1, t.pan);
     pan.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].pan = +pan.value; commitAudio(); });
-    head.append(aSub('Vol'), vol, aSub('Pan'), pan);
+    head.append(aKnob('Vol', vol), aKnob('Pan', pan));
     block.append(head, buildFxControls(key));
     return block;
   }
@@ -680,7 +687,7 @@ export function mountGm(root) {
             ensureFx(key, fx.id); cb.checked = true;
             state.audio.tracks[key].effects[fx.id][pname] = +r.value; commitAudio();
           });
-          params.append(aSub(pname), r);
+          params.append(r, aSub(pname));
         } else {
           const sel = document.createElement('select'); sel.className = 'audio-fx-param'; sel.dataset.fx = fx.id; sel.dataset.param = pname;
           for (const opt of spec.options) { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.append(o); }
@@ -689,7 +696,7 @@ export function mountGm(root) {
             ensureFx(key, fx.id); cb.checked = true;
             state.audio.tracks[key].effects[fx.id][pname] = sel.value; commitAudio();
           });
-          params.append(aSub(pname), sel);
+          params.append(sel, aSub(pname));
         }
       }
       row.append(params);
