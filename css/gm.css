@@ -456,19 +456,20 @@ body.view-gm {
    align with each other. */
 .view-gm .audio-track > .audio-row {
   display: grid;
-  grid-template-columns: 6rem 5rem 1fr 1fr;   /* name | transport | Vol knob | Pan knob */
+  grid-template-columns: 6rem 5rem auto auto;   /* name | transport | Vol knob | Pan knob; trailing space left intentionally */
   align-items: center; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-2);
 }
-/* A slider paired with its unit label, the label hugging the slider's right edge. */
-.view-gm .audio-knob { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.view-gm .audio-knob input[type="range"] { flex: 1 1 auto; width: auto; min-width: 3rem; max-width: none; }
+/* Label on the left, then a compact fixed-width slider. The fixed width keeps
+   every slider the same size and leaves visual space to the right of the row. */
+.view-gm .audio-knob { display: inline-flex; align-items: center; gap: var(--space-1); }
+.view-gm .audio-knob input[type="range"] { flex: 0 0 auto; width: 6rem; max-width: 6rem; }
 .view-gm .audio-knob .audio-sub-label { flex: 0 0 auto; }
 .view-gm .audio-sub-label { font-size: var(--fs-100); color: var(--neutral); letter-spacing: 0.02em; }
 .view-gm input[type="range"] {
   -webkit-appearance: none; appearance: none; height: 8px;
   background: var(--rule); border-radius: var(--radius-pill); cursor: pointer; vertical-align: middle;
 }
-.view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 8rem; max-width: 34vw; }
+.view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 6rem; max-width: 34vw; }
 /* (Track Vol/Pan sliders now live inside .audio-knob, which sizes them; see above.) */
 .view-gm .audio-fx-param { width: 6rem; }
 .view-gm input[type="range"]::-webkit-slider-thumb {
@@ -531,5 +532,4 @@ body.view-gm {
 @media (max-width: 480px) {
   .view-gm .gm-main { padding: var(--space-3); gap: var(--space-4); }
   .view-gm .audio-track > .audio-row { display: flex; flex-wrap: wrap; }
-  .view-gm .audio-knob { flex: 1 1 8rem; }
 }

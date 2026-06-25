@@ -558,11 +558,11 @@ export function mountGm(root) {
     r.value = (val == null ? min : val);
     return r;
   }
-  // A slider paired with its short unit label hugging its right edge, so the
-  // label reads as belonging to that slider.
+  // A short unit label paired with its slider (label on the left), kept compact
+  // so the row leaves visual space rather than stretching edge to edge.
   function aKnob(labelText, rangeEl) {
     const w = document.createElement('div'); w.className = 'audio-knob';
-    w.append(rangeEl, aSub(labelText));
+    w.append(aSub(labelText), rangeEl);
     return w;
   }
 
@@ -687,7 +687,7 @@ export function mountGm(root) {
             ensureFx(key, fx.id); cb.checked = true;
             state.audio.tracks[key].effects[fx.id][pname] = +r.value; commitAudio();
           });
-          params.append(r, aSub(pname));
+          params.append(aSub(pname), r);
         } else {
           const sel = document.createElement('select'); sel.className = 'audio-fx-param'; sel.dataset.fx = fx.id; sel.dataset.param = pname;
           for (const opt of spec.options) { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.append(o); }
@@ -696,7 +696,7 @@ export function mountGm(root) {
             ensureFx(key, fx.id); cb.checked = true;
             state.audio.tracks[key].effects[fx.id][pname] = sel.value; commitAudio();
           });
-          params.append(sel, aSub(pname));
+          params.append(aSub(pname), sel);
         }
       }
       row.append(params);
