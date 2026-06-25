@@ -92,15 +92,17 @@
   object-position: bottom;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--char-fade) ease, transform var(--char-slide) ease;
-  will-change: opacity, transform;
+  transition: opacity var(--char-fade) ease, transform var(--char-slide) ease, filter var(--char-fade) ease;
+  will-change: opacity, transform, filter;
 }
 .stage .char-left  { left: 0;  transform: translateX(-130%); }   /* offstage left */
 .stage .char-right { right: 0; transform: translateX(130%); }    /* offstage right */
-/* A fade-in character does not slide: it sits in place and only opacity moves. */
-.stage .char-layer.enter-fade { transform: translateX(0); }
-/* On stage. */
-.stage .char-layer.is-shown { opacity: 1; transform: translateX(0); }
+/* Fade-in-from-blur: the character does not slide -- it resolves in place from a
+   soft, slightly enlarged blur to sharp (a focus pull), and blurs back out. */
+.stage .char-layer.enter-fade { transform: scale(1.06); filter: blur(12px); }
+/* On stage. (A slide character carries no blur; filter: blur(0) is a no-op for it.) */
+.stage .char-layer.is-shown { opacity: 1; transform: translateX(0); filter: blur(0); }
+.stage .char-layer.enter-fade.is-shown { transform: scale(1); }
 
 /* Black curtain over the whole stage (scene show/hide). */
 .stage .curtain {
