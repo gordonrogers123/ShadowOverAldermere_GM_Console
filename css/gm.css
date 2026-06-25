@@ -435,35 +435,37 @@ body.view-gm {
   overflow: hidden; margin-bottom: 1rem;
 }
 .view-gm .mapmode-board .stage { position: absolute; inset: 0; }
-.view-gm .mapmode-cols { display: flex; gap: 1.2rem; flex-wrap: wrap; }
-.view-gm .mapmode-tray,
-.view-gm .mapmode-onboard { flex: 1 1 16rem; min-width: 0; }
-.view-gm .mapmode-h4 {
-  font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin: 0 0 0.5rem;
+/* Map-mode roster: one compact place per entity (no roster + on-board
+   duplication). Two category columns; each member's controls live on its own
+   row -- Add until placed, then Hide/Reveal + remove. Enemy copies indent
+   under a type row that adds more. Collapses to one column on a narrow rail. */
+.view-gm .mapmode-roster { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
+.view-gm .mmr-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  margin-bottom: var(--space-2); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
 }
-.view-gm .tray-group { margin-bottom: 0.7rem; }
-.view-gm .tray-label {
-  display: block; font-size: var(--fs-100); letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--neutral); opacity: 0.8; margin-bottom: 0.3rem;
+.view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
+.view-gm .mmr-addall { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-list { display: flex; flex-direction: column; gap: var(--space-1); }
+.view-gm .mmr-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center; gap: var(--space-2);
 }
-.view-gm .tray-item,
-.view-gm .onboard-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
-.view-gm .tray-name,
-.view-gm .onboard-name { flex: 1 1 auto; }
-.view-gm .onboard-name.is-hidden-name { opacity: 0.55; font-style: italic; }
-.view-gm .tray-add,
-.view-gm .onboard-vis { font-size: 0.85rem; padding: 0.35rem 0.7rem; }
-.view-gm .tray-add[disabled] { opacity: 0.5; cursor: not-allowed; }
-.view-gm .onboard-list { list-style: none; margin: 0; padding: 0; }
-.view-gm .onboard-del {
+.view-gm .mmr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-gm .mmr-name.is-hidden-name { opacity: 0.55; font-style: italic; }   /* staged, not yet revealed */
+.view-gm .mmr-copy { margin-left: var(--space-4); }                        /* numbered copies under their type */
+.view-gm .mmr-copy .mmr-name { font-style: italic; }
+.view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-vis.is-hidden { background: var(--support); color: var(--paper); border-color: var(--support); }  /* Reveal stands out */
+.view-gm .mmr-del {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 2.75rem; height: 2.75rem; padding: 0; line-height: 1;
+  width: 1.9rem; height: 1.9rem; padding: 0; line-height: 1;
   border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--gm-panel); color: var(--offense); font-size: 1.2rem; cursor: pointer;
+  background: var(--gm-panel); color: var(--offense); font-size: 1.05rem; cursor: pointer;
 }
-.view-gm .onboard-del:hover { background: var(--paper); }
-.view-gm .tray-empty,
-.view-gm .onboard-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.3rem 0; }
+.view-gm .mmr-del:hover { background: var(--paper); }
+.view-gm .mmr-empty { grid-column: 1 / -1; font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.3rem 0; }
+@media (max-width: 900px) { .view-gm .mapmode-roster { grid-template-columns: 1fr; } }
 
 /* Interactive board: tokens are grabbable; a hidden token shows as a ghost so
    the GM sees what the Player does not (the Player keeps it fully hidden). */
