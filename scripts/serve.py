@@ -7,6 +7,12 @@ folders, regenerates data/manifest.js, and returns the fresh lists as JSON.
 That is what the "Rescan assets" button in the GM window calls, so dropping a
 file into assets/ and clicking the button refreshes the builder's pick lists.
 
+It also handles POST /save-scenes, which writes the GM's saved scenes to
+data/userScenes.json (atomically) so day-before setups survive between sessions;
+the app loads that file at startup. Both endpoints degrade gracefully when the
+server is absent (the static deploy keeps using localStorage / the committed
+manifest).
+
 Offline, standard library only. On the static deploy there is no server, so the
 button is simply absent and the committed manifest is used as-is.
 
@@ -37,6 +43,28 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 data = scan_assets.write_manifest()
                 self._json(200, {"ok": True, **data})
+            except Exception as err:  # noqa: BLE001 -- report any failure to the UI
+                self._json(500, {"ok": False, "error": str(err)})
+            return
+        if self.path.rstrip("/") == "/save-scenes":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                scenes = json.loads(self.rfile.read(length).decode("utf-8")) if length else []
+                # The GM is the only writer; still, refuse anything that is not a
+                # list of scene objects with a string id, so a bad request can't
+                # corrupt the saved-scene file.
+                if not isinstance(scenes, list) or not all(
+                    isinstance(s, dict) and isinstance(s.get("id"), str) and s["id"]
+                    for s in scenes
+                ):
+                    self._json(400, {"ok": False, "error": "expected a JSON array of scenes, each with a string id"})
+                    return
+                out = os.path.join(ROOT, "data", "userScenes.json")
+                tmp = out + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as handle:
+                    json.dump(scenes, handle, indent=2)
+                os.replace(tmp, out)  # atomic swap, so a concurrent read never tears
+                self._json(200, {"ok": True, "count": len(scenes)})
             except Exception as err:  # noqa: BLE001 -- report any failure to the UI
                 self._json(500, {"ok": False, "error": str(err)})
             return
