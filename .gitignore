@@ -1,0 +1,14 @@
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Local scratch
+_check/
+*.tmp
+*.tmp.png
+
+# Python
+__pycache__/
+*.pyc

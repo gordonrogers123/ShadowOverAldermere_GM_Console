@@ -1,0 +1,72 @@
+// ============================================================
+//  player.js  --  the TV output (pure renderer)
+// ------------------------------------------------------------
+//  No controls, no GM notes, nothing that spoils. It mounts the
+//  shared stage compositor (stageView.js) and feeds it state. It
+//  reacts to messages from the GM window and, on load, restores the
+//  last known state from localStorage so a refresh recovers the
+//  session even before the GM window has said anything.
+//
+//  The first paint after a load is applied with no animation, so a
+//  restored scene appears already in place instead of sliding in.
+// ============================================================
+
+import { sceneById } from './scenesAll.js';
+import { loadState } from './state.js';
+import { createSync } from './sync.js';
+import { createStageView } from './stageView.js';
+
+const CURSOR_HIDE_MS = 3000;
+
+export function mountPlayer(root) {
+  const view = createStageView(root);
+  let firstPaint = true;
+
+  function paint(state) {
+    const scene = sceneById(state.sceneId);
+    view.render(state, scene, { instant: firstPaint });
+    firstPaint = false;
+    preloadAround(state, scene);
+  }
+
+  // Preload the other background variants and both character cutouts so a
+  // variant switch or a character entrance does not flash.
+  function preloadAround(state, scene) {
+    if (!scene) return;
+    if (scene.maps) {
+      for (const key of Object.keys(scene.maps)) {
+        if (key !== state.mapState && scene.maps[key]) {
+          const img = new Image();
+          img.src = scene.maps[key];
+        }
+      }
+    }
+    if (scene.characters) {
+      for (const side of ['left', 'right']) {
+        const c = scene.characters[side];
+        if (c && c.src) { const img = new Image(); img.src = c.src; }
+      }
+    }
+  }
+
+  // 1) Restore immediately from the last saved state (offline friendly).
+  paint(loadState());
+
+  // 2) React to live updates from the GM window.
+  const sync = createSync((msg) => {
+    if (msg && msg.type === 'state' && msg.state) paint(msg.state);
+  });
+
+  // 3) Ask an already-open GM window for the current state.
+  sync.post({ type: 'hello' });
+
+  // Hide the cursor after a short idle; bring it back on movement.
+  let cursorTimer = null;
+  function pokeCursor() {
+    document.body.classList.remove('cursor-hidden');
+    clearTimeout(cursorTimer);
+    cursorTimer = setTimeout(() => document.body.classList.add('cursor-hidden'), CURSOR_HIDE_MS);
+  }
+  window.addEventListener('mousemove', pokeCursor, { passive: true });
+  pokeCursor();
+}

@@ -1,0 +1,265 @@
+/* ============================================================
+   gm.css  --  the laptop control surface
+   ------------------------------------------------------------
+   Legible and uncluttered: large targets, plenty of contrast,
+   Cinzel for headings and Atkinson Hyperlegible for everything
+   else. All rules are scoped under .view-gm.
+   ============================================================ */
+
+body.view-gm {
+  background: var(--gm-bg);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.view-gm .gm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.5rem;
+  background: var(--neutral);
+  color: var(--fill);
+  border-bottom: 3px solid var(--rule);
+}
+.view-gm .gm-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-size: clamp(1.3rem, 2.5vw, 1.9rem);
+  margin: 0;
+}
+
+/* Buttons (shared look). Big, calm, clearly clickable. */
+.view-gm .gm-button {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: var(--fill);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0.7rem 1.2rem;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+}
+.view-gm .gm-button:hover { background: var(--paper); }
+.view-gm .gm-open { background: var(--fill); }
+
+.view-gm .gm-main {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ---- Scene list ---- */
+.view-gm .gm-scenes {
+  flex: 0 0 320px;
+}
+.view-gm .gm-h2,
+.view-gm .gm-h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.8rem;
+}
+.view-gm .scene-list { list-style: none; margin: 0; padding: 0; }
+.view-gm .scene-list li { margin: 0 0 0.6rem; }
+.view-gm .scene-button {
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  color: var(--ink);
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+}
+.view-gm .scene-button:hover { background: var(--paper); }
+.view-gm .scene-button.active {
+  border-left-color: var(--control);
+  background: var(--paper);
+  font-weight: 700;
+}
+
+/* ---- Stage (current scene) ---- */
+.view-gm .gm-stage { flex: 1 1 auto; min-width: 0; }
+.view-gm .gm-empty {
+  font-size: 1.2rem;
+  color: var(--neutral);
+  background: var(--gm-panel);
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.view-gm .gm-preview { margin: 0 0 1rem; }
+.view-gm .preview-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--stage);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* The shared compositor fills the preview frame, so it matches the TV. */
+.view-gm .preview-frame .stage { position: absolute; inset: 0; }
+.view-gm .preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.view-gm .preview-plate {
+  color: var(--rule);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 1rem;
+}
+.view-gm .preview-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+.view-gm .preview-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.view-gm .badge {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fill);
+  background: var(--neutral);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+}
+.view-gm .badge.badge-revealed { background: var(--support); }
+
+.view-gm .gm-controls { margin: 0 0 1.5rem; }
+.view-gm .toggle {
+  font-size: 1.2rem;
+  padding: 0.9rem 1.6rem;
+  background: var(--control);
+  color: var(--paper);
+  border-color: var(--control);
+}
+.view-gm .toggle:hover { filter: brightness(1.08); background: var(--control); }
+
+/* ---- GM notes (never leaves this window) ---- */
+.view-gm .gm-notes {
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--offense);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+}
+.view-gm .notes-body { margin: 0; font-size: 1.1rem; }
+
+/* ---- Header actions ---- */
+.view-gm .gm-header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+/* ---- Form controls (builder + live swaps) ---- */
+.view-gm select,
+.view-gm input[type="text"],
+.view-gm textarea {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+.view-gm textarea { width: 100%; resize: vertical; }
+
+/* ---- Scene list: New scene, saved tag, delete ---- */
+.view-gm .gm-scenes-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.6rem; margin-bottom: 0.8rem;
+}
+.view-gm .gm-scenes-head .gm-h2 { margin: 0; }
+.view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
+.view-gm .scene-list li { position: relative; }
+.view-gm .scene-button { padding-right: 2.8rem; }
+.view-gm .scene-tag {
+  margin-left: 0.5rem; font-size: 0.7rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--neutral); opacity: 0.7; font-weight: 400;
+}
+.view-gm .scene-del {
+  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+  width: 2rem; height: 2rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: 8px;
+  background: var(--gm-panel); color: var(--offense); font-size: 1.1rem; cursor: pointer;
+}
+.view-gm .scene-del:hover { background: var(--paper); }
+.view-gm .rescan-status {
+  margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--neutral);
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 0.5rem 0.7rem;
+}
+
+/* ---- Live controls ---- */
+.view-gm .control-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  flex-wrap: wrap; margin-bottom: 0.7rem;
+}
+.view-gm .control-label { min-width: 5rem; font-family: var(--font-display); font-weight: 700; }
+.view-gm .vis-toggle { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .vis-toggle:hover { filter: brightness(1.08); background: var(--control); }
+.view-gm .variant-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.view-gm .variant-button { font-size: 0.95rem; padding: 0.45rem 0.8rem; }
+.view-gm .variant-button.active { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .char-row.row-disabled { opacity: 0.5; }
+.view-gm .char-toggle[disabled],
+.view-gm .char-reset[disabled] { cursor: default; opacity: 0.6; }
+.view-gm .char-swap { max-width: 12rem; }
+
+/* ---- Scene builder ---- */
+.view-gm .gm-builder {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 6px solid var(--control); border-radius: 8px; padding: 1rem 1.2rem;
+}
+.view-gm .field { display: block; margin-bottom: 0.9rem; }
+.view-gm .field > span { display: block; font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem; }
+.view-gm .field > span small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
+.view-gm .b-name { width: 100%; }
+.view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
+.view-gm .variant-edit { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.view-gm .v-key { width: 9rem; }
+.view-gm .v-tag { font-size: 0.8rem; color: var(--neutral); opacity: 0.7; min-width: 5rem; }
+.view-gm .v-remove,
+.view-gm .add-variant { font-size: 0.85rem; padding: 0.4rem 0.7rem; }
+.view-gm .v-remove {
+  background: var(--fill); border: 1px solid var(--rule);
+  border-radius: 8px; cursor: pointer; color: var(--ink);
+}
+.view-gm .v-remove[disabled] { opacity: 0.4; cursor: default; }
+.view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.view-gm .b-save { background: var(--support); color: var(--paper); border-color: var(--support); }
+.view-gm .b-save:hover { filter: brightness(1.06); background: var(--support); }
+.view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
+.view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }
+
+/* ---- Narrow screens: stack the columns ---- */
+@media (max-width: 760px) {
+  .view-gm .gm-main { flex-direction: column; }
+  .view-gm .gm-scenes { flex-basis: auto; width: 100%; }
+}

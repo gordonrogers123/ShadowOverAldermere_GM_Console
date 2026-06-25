@@ -1,0 +1,136 @@
+// ============================================================
+//  scenes.js  --  the content of the GM Console
+// ------------------------------------------------------------
+//  A "scene" is a composition shown on the Player TV:
+//    a BACKGROUND (a tactical map or cinematic art) with one or
+//    more named reveal variants, plus an optional LEFT and RIGHT
+//    character (transparent PNG) shown over it with transitions,
+//    plus (later) tokens and audio.
+//
+//  TO ADD A SCENE BY HAND: copy a block below, give it a new unique
+//  `id`, set its name, background, and characters, and save. It shows
+//  up in the GM scene list on the next reload. No code change. You can
+//  also build and save scenes from the GM window itself; those live in
+//  the browser and can be exported back into this file to share.
+//
+//  Scene shape:
+//    {
+//      id:   "unique-id",
+//      name: "Display Name",
+//
+//      // BACKGROUND. Named, ordered reveal variants. Two variants read
+//      // as the familiar Hidden / Revealed toggle; three or more show a
+//      // variant picker. The first / default variant is the one players
+//      // see first, so keep spoilers in a later variant. A scene needs at
+//      // least one variant. The key is just a label; any name works.
+//      maps: { hidden: "assets/maps/<id>_hidden.jpg",
+//              revealed: "assets/maps/<file>.jpg" },
+//      defaultMapState: "hidden",     // which variant key shows on select
+//
+//      // CHARACTERS. Optional, independent left and right. Each points at a
+//      // transparent PNG in assets/characters and a default entrance:
+//      //   "slide" (in from its own side) or "fade".
+//      characters: {
+//        left:  { id: "lysander", src: "assets/characters/lysander.png", enter: "slide" },
+//        right: { id: "thraka",   src: "assets/characters/thraka.png",   enter: "fade" }
+//      },
+//
+//      // Optional opening posture when the scene is selected. If absent,
+//      // the curtain is up and each side shows only if it has a character.
+//      defaults: { visible: true, leftShown: true, rightShown: true },
+//
+//      tokens:   null,   // RESERVED (Phase 3): { enemies:[id...], heroes:[id...] }
+//      music:    null,   // RESERVED (Phase 4)
+//      ambience: [],     // RESERVED (Phase 4)
+//      audio:    null,   // RESERVED (Phase 4)
+//      gmNotes:  "GM only text."   // shown in the GM window only
+//    }
+//
+//  Hidden background variants are GM-only. They live only in THIS repo,
+//  never in the public reference repo. The shared maps below come from the
+//  shared assets (run scripts/sync-assets.sh to refresh). Drop your own
+//  hidden art at the paths named; until you do, the Player shows a neutral
+//  "not yet revealed" plate and the reveal still cross-fades. Character
+//  PNGs are dropped into assets/characters (SEED_SAMPLES seeds samples).
+// ============================================================
+
+export const SCENES = [
+  {
+    id: "city-gate",
+    name: "The City Gate",
+    maps: {
+      hidden: "assets/maps/city-gate_hidden.jpg",
+      revealed: "assets/maps/city-gate.jpg"
+    },
+    defaultMapState: "hidden",
+    tokens: null,
+    music: null,
+    ambience: [],
+    audio: null,
+    gmNotes: "The gate watch waves the party through without a second look. If anyone lingers, the captain mentions the road south has been quiet, too quiet, since the mill went dark."
+  },
+  {
+    id: "inn-first-floor",
+    name: "The Inn, Ground Floor",
+    maps: {
+      hidden: "assets/maps/inn-first-floor_hidden.jpg",
+      revealed: "assets/maps/inn-first-floor.jpg"
+    },
+    defaultMapState: "hidden",
+    tokens: null,
+    music: null,
+    ambience: [],
+    audio: null,
+    gmNotes: "Warm, low, and crowded. Hob clams up if pressed about the cellar. Vela may brush past the party on her way out; she lifts a coin purse if no one is watching."
+  },
+  {
+    id: "market",
+    name: "The Market Square",
+    maps: {
+      hidden: "assets/maps/market_hidden.jpg",
+      revealed: "assets/maps/market.jpg"
+    },
+    defaultMapState: "hidden",
+    tokens: null,
+    music: null,
+    ambience: [],
+    audio: null,
+    gmNotes: "Half the stalls are shuttered. Granny Edna sells charms against the shadow at twice the fair price, and she is not entirely wrong to."
+  },
+  {
+    id: "town-center",
+    name: "Aldermere Town Center",
+    maps: {
+      hidden: "assets/maps/town-center_hidden.jpg",
+      revealed: "assets/maps/town-center.jpg"
+    },
+    defaultMapState: "hidden",
+    tokens: null,
+    music: null,
+    ambience: [],
+    audio: null,
+    gmNotes: "The old well at the center is the heart of the trouble. Reveal the map only once the party has reason to look closely; the carvings on the rim match the ones in Wick's journal."
+  },
+
+  // A cinematic dialogue scene: one background, two characters who enter
+  // from their sides. A sample of the Phase 2 compositor. It uses the
+  // seeded sample character cutouts (run SEED_SAMPLES=1 ./scripts/sync-assets.sh).
+  {
+    id: "gate-parley",
+    name: "A Word at the Gate",
+    maps: {
+      revealed: "assets/maps/city-gate.jpg"
+    },
+    defaultMapState: "revealed",
+    characters: {
+      left:  { id: "lysander", src: "assets/characters/lysander.png", enter: "slide" },
+      right: { id: "thraka",   src: "assets/characters/thraka.png",   enter: "slide" }
+    },
+    defaults: { visible: true, leftShown: true, rightShown: true },
+    tokens: null,
+    music: null,
+    ambience: [],
+    audio: null,
+    gmNotes: "A staged parley at the gate. Bring Lysander in from the left first, then let Thraka arrive from the right as the threat lands. Hide the scene to cut to black."
+  }
+];
