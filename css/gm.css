@@ -241,6 +241,15 @@ body.view-gm {
 .view-gm .badge.badge-revealed { background: var(--support); }
 
 .view-gm .gm-controls { margin: 0 0 var(--space-5); }
+/* The live controls sit in the rail beneath the scene list. A divider sets them
+   off, and the nav row (Black out + Map<->Exit) stays put in both modes. */
+.view-gm .gm-scenes .gm-controls {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--rule);
+}
+.view-gm .controls-nav { gap: var(--space-2); margin-bottom: var(--space-3); }
+.view-gm .controls-map { margin-top: var(--space-2); }
 /* (PR 2 removed the standalone .toggle rule -- it was dead, never in the markup.
    The show/hide button now carries the .btn--toggle role for its colour.) */
 

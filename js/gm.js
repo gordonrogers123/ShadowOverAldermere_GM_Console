@@ -65,6 +65,43 @@ export function mountGm(root) {
         </div>
         <ul class="scene-list"></ul>
         <p class="rescan-status" role="status" aria-live="polite" hidden></p>
+
+        <!-- Live controls live in the rail so they stay put (and visible) whether
+             you are directing the scene or in map mode: nothing jumps. The nav
+             row (Hide/Show + Map<->Exit) is shown in BOTH modes at one fixed spot. -->
+        <div class="gm-controls" hidden>
+          <div class="control-row controls-nav">
+            <button class="gm-button btn--toggle vis-toggle" type="button">Hide scene</button>
+            <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
+          </div>
+          <div class="control-row variant-row">
+            <span class="control-label">Background</span>
+            <div class="variant-buttons"></div>
+          </div>
+          <div class="controls-live">
+            <div class="control-row char-row" data-side="left">
+              <span class="control-label">Left</span>
+              <button class="gm-button char-toggle" data-side="left" type="button">Enter</button>
+              <select class="char-swap" data-side="left" aria-label="Left character"></select>
+              <button class="gm-button char-reset" data-side="left" type="button">Reset</button>
+            </div>
+            <div class="control-row char-row" data-side="right">
+              <span class="control-label">Right</span>
+              <button class="gm-button char-toggle" data-side="right" type="button">Enter</button>
+              <select class="char-swap" data-side="right" aria-label="Right character"></select>
+              <button class="gm-button char-reset" data-side="right" type="button">Reset</button>
+            </div>
+            <div class="control-row">
+              <button class="gm-button btn--quiet edit-scene" type="button">Edit in builder</button>
+            </div>
+          </div>
+          <div class="controls-map" hidden>
+            <div class="control-row">
+              <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
+              <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
+            </div>
+          </div>
+        </div>
       </aside>
 
       <section class="gm-stage">
@@ -78,29 +115,7 @@ export function mountGm(root) {
           </figcaption>
         </figure>
 
-        <div class="gm-controls" hidden>
-          <div class="control-row">
-            <button class="gm-button btn--toggle vis-toggle" type="button">Hide scene</button>
-            <button class="gm-button btn--quiet map-mode-btn" type="button">Map mode</button>
-            <button class="gm-button btn--quiet edit-scene" type="button">Edit in builder</button>
-          </div>
-          <div class="control-row variant-row">
-            <span class="control-label">Background</span>
-            <div class="variant-buttons"></div>
-          </div>
-          <div class="control-row char-row" data-side="left">
-            <span class="control-label">Left</span>
-            <button class="gm-button char-toggle" data-side="left" type="button">Enter</button>
-            <select class="char-swap" data-side="left" aria-label="Left character"></select>
-            <button class="gm-button char-reset" data-side="left" type="button">Reset</button>
-          </div>
-          <div class="control-row char-row" data-side="right">
-            <span class="control-label">Right</span>
-            <button class="gm-button char-toggle" data-side="right" type="button">Enter</button>
-            <select class="char-swap" data-side="right" aria-label="Right character"></select>
-            <button class="gm-button char-reset" data-side="right" type="button">Reset</button>
-          </div>
-        </div>
+        <!-- (Live controls moved into the rail; see .gm-controls in .gm-scenes above.) -->
 
         <div class="gm-notes" hidden>
           <h3 class="gm-h3">GM notes</h3>
@@ -190,18 +205,8 @@ export function mountGm(root) {
         <div class="gm-mapmode" hidden>
           <div class="mapmode-head">
             <h3 class="gm-h3 mapmode-title"></h3>
-            <div class="mapmode-head-actions">
-              <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
-              <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
-              <button class="gm-button btn--toggle mm-vis" type="button">Hide scene</button>
-              <button class="gm-button btn--quiet mm-exit" type="button">Exit map mode</button>
-            </div>
           </div>
-          <p class="mapmode-intro">Place and move tokens on the map. Tokens show on the TV <strong>only while you are in map mode</strong> &mdash; Exit map mode returns to the scene controls and clears them from the TV.</p>
-          <div class="control-row mapmode-variant-row" hidden>
-            <span class="control-label">Background</span>
-            <div class="mapmode-variants variant-buttons"></div>
-          </div>
+          <p class="mapmode-intro">Place and move tokens on the map; they show on the TV <strong>only while you are in map mode</strong>. The rail keeps <strong>Background</strong> (reveal the map), <strong>Save layout</strong>, and <strong>Exit map mode</strong> right where they were &mdash; nothing jumps.</p>
           <div class="mapmode-board"></div>
           <div class="mapmode-cols">
             <div class="mapmode-tray">
@@ -260,14 +265,12 @@ export function mountGm(root) {
     bExportOut:   root.querySelector('.b-export-out'),
     bCopy:        root.querySelector('.b-copy'),
     modeChip:     root.querySelector('.gm-mode-chip'),
-    mapModeBtn:   root.querySelector('.map-mode-btn'),
+    mapModeToggle: root.querySelector('.map-mode-toggle'),
+    controlsLive: root.querySelector('.controls-live'),
+    controlsMap:  root.querySelector('.controls-map'),
     mapmode:      root.querySelector('.gm-mapmode'),
     mapboard:     root.querySelector('.mapmode-board'),
     mapmodeTitle: root.querySelector('.mapmode-title'),
-    mapmodeVariants:   root.querySelector('.mapmode-variants'),
-    mapmodeVariantRow: root.querySelector('.mapmode-variant-row'),
-    mmVis:        root.querySelector('.mm-vis'),
-    mmExit:       root.querySelector('.mm-exit'),
     mmSaveLayout: root.querySelector('.mm-save-layout'),
     mmResetLayout: root.querySelector('.mm-reset-layout'),
     trayHeroes:   root.querySelector('.tray-heroes'),
@@ -362,6 +365,9 @@ export function mountGm(root) {
   function selectScene(id) {
     const scene = sceneById(id);
     if (!scene) return;
+    // A global black-out persists across scene changes, so the GM can cut to
+    // black, switch scenes, then reveal when ready.
+    const wasBlackedOut = !!(state.stage && state.stage.visible === false);
     draft = null;
     state.sceneId = id;
     const keys = scene.maps ? Object.keys(scene.maps) : [];
@@ -374,7 +380,7 @@ export function mountGm(root) {
     const hasLeft = !!(scene.characters && scene.characters.left);
     const hasRight = !!(scene.characters && scene.characters.right);
     state.stage = {
-      visible: d.visible !== false,
+      visible: wasBlackedOut ? false : (d.visible !== false),  // a global black-out carries across scene changes
       left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
       right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
       tokens: expandSavedLayout(scene),  // auto-place a saved layout, else empty
@@ -404,9 +410,7 @@ export function mountGm(root) {
 
   els.visToggle.addEventListener('click', toggleVisible);
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
-  els.mapModeBtn.addEventListener('click', enterMapMode);
-  els.mmExit.addEventListener('click', exitMapMode);
-  els.mmVis.addEventListener('click', toggleVisible);
+  els.mapModeToggle.addEventListener('click', () => { if (mapMode) exitMapMode(); else enterMapMode(); });
   els.mmSaveLayout.addEventListener('click', saveLayout);
   els.mmResetLayout.addEventListener('click', resetLayout);
   for (const side of ['left', 'right']) {
@@ -424,7 +428,7 @@ export function mountGm(root) {
       const btn = document.createElement('button');
       btn.className = 'gm-button btn--toggle variant-button';  // segmented toggle; .active lights it
       btn.type = 'button';
-      btn.textContent = humanize(key);
+      btn.textContent = (scene.maps && scene.maps[key] === '') ? 'Title screen' : humanize(key);
       btn.classList.toggle('active', key === state.mapState);
       btn.addEventListener('click', () => setVariant(key));
       container.appendChild(btn);
@@ -469,12 +473,8 @@ export function mountGm(root) {
     els.previewName.textContent = scene.name;
 
     const keys = scene.maps ? Object.keys(scene.maps) : [];
-    els.badge.textContent = humanize(state.mapState);
+    els.badge.textContent = (scene.maps && scene.maps[state.mapState] === '') ? 'Title screen' : humanize(state.mapState);
     els.badge.classList.toggle('badge-revealed', keys.length > 1 && state.mapState !== keys[0]);
-
-    els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
-    els.visToggle.classList.toggle('is-on', state.stage.visible !== false);  // toggle lit while shown
-    renderVariantButtons(scene);
 
     for (const side of ['left', 'right']) {
       const hasChar = !!(scene.characters && scene.characters[side]) || !!state.stage[side].srcOverride;
@@ -932,12 +932,7 @@ export function mountGm(root) {
 
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
-    els.mmVis.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
-    els.mmVis.classList.toggle('is-on', state.stage.visible !== false);  // toggle lit while shown
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
-    // Background picker inside map mode: switch which variant the board (and TV)
-    // shows -- e.g. reveal the map from the title screen so tokens have ground to sit on.
-    els.mapmodeVariantRow.hidden = buildVariantButtons(els.mapmodeVariants, scene) <= 1;
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
     renderTray(scene);
@@ -1221,7 +1216,7 @@ export function mountGm(root) {
     };
     previewView.render(pstate, scene, { instant: previewFirstPaint }); previewFirstPaint = false;
     els.previewName.textContent = scene.name || 'New scene';
-    els.badge.textContent = humanize(firstKey);
+    els.badge.textContent = (scene.maps && scene.maps[firstKey] === '') ? 'Title screen' : humanize(firstKey);
     els.badge.classList.remove('badge-revealed');
   }
 
@@ -1377,10 +1372,24 @@ export function mountGm(root) {
 
     els.empty.hidden = building || !!scene || inMap;
     els.preview.hidden = inMap || !(building || scene);
-    els.controls.hidden = inMap || building || !scene;
+    // Controls live in the rail and stay in ONE place across live <-> map mode.
+    els.controls.hidden = building || !scene;     // shown in live AND map
+    els.controlsLive.hidden = inMap;              // character + edit rows: live only
+    els.controlsMap.hidden = !inMap;              // save/reset layout: map only
     els.notes.hidden = inMap || building || !scene;
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
+
+    // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
+    // so a quick transition never hunts for a button that moved.
+    if (scene && !building) {
+      els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
+      els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit while blacked out
+      els.mapModeToggle.hidden = !sceneHasMap(scene);
+      els.mapModeToggle.textContent = inMap ? 'Exit map mode' : 'Map mode';
+      els.mapModeToggle.classList.toggle('is-on', inMap);
+      renderVariantButtons(scene);
+    }
 
     // Surface audio for every selected scene: the full panel when the scene
     // carries audio, otherwise a discoverable empty-state pointing at the builder.
@@ -1398,8 +1407,6 @@ export function mountGm(root) {
     else if (building) renderBuilderPreview();
     else if (scene) renderLive(scene);
 
-    // The Map mode entry button only makes sense for a scene with a map.
-    els.mapModeBtn.hidden = !(scene && sceneHasMap(scene));
     // A mode chip in the header names the surface that is live right now.
     const mode = building ? 'Editing' : inMap ? 'Map' : scene ? 'Live' : '';
     els.modeChip.hidden = !mode;
