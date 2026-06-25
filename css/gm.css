@@ -482,7 +482,6 @@ body.view-gm {
 }
 .view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 6rem; max-width: 34vw; }
 /* (Track Vol/Pan sliders now live inside .audio-knob, which sizes them; see above.) */
-.view-gm .audio-fx-param { width: 6rem; }
 .view-gm input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
   border-radius: 50%; background: var(--control); cursor: pointer;
@@ -495,20 +494,6 @@ body.view-gm {
 .view-gm .audio-outputs { display: inline-flex; gap: var(--space-1); }
 .view-gm .audio-output, .view-gm .audio-sfx { font-size: var(--fs-100); padding: 0.35rem 0.7rem; }
 .view-gm .audio-save { font-size: var(--fs-200); margin-top: var(--space-2); }
-/* FX: a per-track details drawer; rows indent under the summary and align the
-   checkbox / name / params on a small grid of their own. */
-.view-gm .audio-fx-details { margin: var(--space-2) 0 0; border-top: 1px dashed var(--rule); padding-top: var(--space-2); }
-.view-gm .audio-fx-details summary {
-  cursor: pointer; font-size: var(--fs-100); color: var(--neutral);
-  font-family: var(--font-display); letter-spacing: 0.04em; padding: var(--space-1) 0;
-}
-.view-gm .audio-fx-row {
-  display: grid; grid-template-columns: auto 6rem 1fr; align-items: center;
-  gap: var(--space-2); margin: var(--space-1) 0 var(--space-1) var(--space-4); font-size: var(--fs-200);
-}
-.view-gm .audio-fx-label { min-width: 0; }
-.view-gm .audio-fx-params { display: inline-flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
-.view-gm .audio-fx-params select { font-size: var(--fs-100); padding: 0.2rem 0.3rem; }
 
 /* ---- Builder audio picker ---- */
 .view-gm .audio-pick { display: flex; flex-direction: column; gap: 0.5rem; }

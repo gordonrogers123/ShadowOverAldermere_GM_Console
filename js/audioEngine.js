@@ -14,15 +14,9 @@
 //                 (browsers block audio until a user gesture, per window).
 //
 //  Per-track graph (built once, tweaked live):
-//    BufferSource(loop, detune=pitch)
-//      -> lowpass -> highpass -> waveshaper(distortion)
-//      -> [ dry + delay-send(->delay+feedback) + reverb-send(->convolver) ] = sum
-//      -> stereo panner -> track gain -> master gain -> destination
-//  Reverb impulses are synthesised (decaying noise) per preset -- no asset.
+//    BufferSource(loop) -> stereo panner -> track gain -> master gain -> destination
 //  One-shot SFX are fired when state.audio.sfxTrigger[id] increases.
 // ============================================================
-
-import { REVERB_PRESETS } from './audioFx.js';
 
 const clamp01 = (n) => { n = +n; return !isFinite(n) ? 0 : n < 0 ? 0 : n > 1 ? 1 : n; };
 const clampPan = (n) => { n = +n; return !isFinite(n) ? 0 : n < -1 ? -1 : n > 1 ? 1 : n; };
@@ -39,18 +33,6 @@ function resolveTrackSrc(scene, key) {
   return null;
 }
 
-// Soft-clip waveshaper curve; drive 0 -> ~identity, 1 -> heavy.
-function distortionCurve(drive) {
-  const k = Math.max(0, drive) * 100;
-  const n = 256;
-  const curve = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * 2 - 1;
-    curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-  }
-  return curve;
-}
-
 export function createAudioEngine({ role, gestureTarget } = {}) {
   let ctx = null;
   let masterGain = null;
@@ -62,7 +44,6 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
   const starting = new Set();   // trackKeys mid-decode, to avoid double starts
   const buffers = new Map();    // src -> AudioBuffer | null (null = unavailable)
   const decoding = new Map();   // src -> Promise<AudioBuffer|null>
-  const irCache = new Map();    // reverb preset -> impulse AudioBuffer
   const lastSfx = new Map();    // sfxId -> last trigger count fired
 
   function ensureContext() {
@@ -76,20 +57,6 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
       masterGain.connect(ctx.destination);
     } catch (e) { ctx = null; }
     return ctx;
-  }
-
-  function reverbIR(preset) {
-    if (irCache.has(preset)) return irCache.get(preset);
-    const p = REVERB_PRESETS[preset] || REVERB_PRESETS.hall;
-    const rate = ctx.sampleRate;
-    const len = Math.max(1, Math.floor(rate * p.seconds));
-    const ir = ctx.createBuffer(2, len, rate);
-    for (let ch = 0; ch < 2; ch++) {
-      const data = ir.getChannelData(ch);
-      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, p.decay);
-    }
-    irCache.set(preset, ir);
-    return ir;
   }
 
   // Fetch + decode a source once; cache the buffer (or null if missing/garbage)
@@ -111,54 +78,23 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
     source.buffer = buffer;
     source.loop = t.loop !== false;
 
-    const lowpass = ctx.createBiquadFilter(); lowpass.type = 'lowpass'; lowpass.frequency.value = 20000;
-    const highpass = ctx.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 20;
-    const shaper = ctx.createWaveShaper();
-    const dry = ctx.createGain(); dry.gain.value = 1;
-    const delaySend = ctx.createGain(); delaySend.gain.value = 0;
-    const delay = ctx.createDelay(1.0); delay.delayTime.value = 0.3;
-    const feedback = ctx.createGain(); feedback.gain.value = 0;
-    const reverbSend = ctx.createGain(); reverbSend.gain.value = 0;
-    const convolver = ctx.createConvolver(); convolver.buffer = reverbIR('hall');
-    let currentPreset = 'hall';
-    const sum = ctx.createGain();
     const panner = ctx.createStereoPanner();
     const trackGain = ctx.createGain(); trackGain.gain.value = 0;   // ramp up from silence
 
-    source.connect(lowpass); lowpass.connect(highpass); highpass.connect(shaper);
-    shaper.connect(dry); dry.connect(sum);
-    shaper.connect(delaySend); delaySend.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(sum);
-    shaper.connect(reverbSend); reverbSend.connect(convolver); convolver.connect(sum);
-    sum.connect(panner); panner.connect(trackGain); trackGain.connect(masterGain);
+    source.connect(panner); panner.connect(trackGain); trackGain.connect(masterGain);
 
     let stopped = false;
     function update(tt) {
-      const fx = (tt && tt.effects) || {};
       const now = ctx.currentTime;
       trackGain.gain.setTargetAtTime(clamp01(tt.volume == null ? 0.8 : tt.volume), now, 0.03);
       panner.pan.setTargetAtTime(clampPan(tt.pan), now, 0.03);
       source.loop = tt.loop !== false;
-      source.detune.value = fx.pitch ? fx.pitch.semitones * 100 : 0;
-      lowpass.frequency.value = fx.lowpass ? fx.lowpass.freq : 20000;
-      highpass.frequency.value = fx.highpass ? fx.highpass.freq : 20;
-      shaper.curve = fx.distort ? distortionCurve(fx.distort.drive) : null;
-      if (fx.delay) {
-        delaySend.gain.value = fx.delay.mix;
-        delay.delayTime.value = fx.delay.time;
-        feedback.gain.value = fx.delay.feedback;
-      } else { delaySend.gain.value = 0; feedback.gain.value = 0; }
-      if (fx.reverb) {
-        reverbSend.gain.value = fx.reverb.mix;
-        if (fx.reverb.preset && fx.reverb.preset !== currentPreset) {
-          convolver.buffer = reverbIR(fx.reverb.preset); currentPreset = fx.reverb.preset;
-        }
-      } else { reverbSend.gain.value = 0; }
     }
     function stop() {
       if (stopped) return; stopped = true;
       try { trackGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03); } catch (e) {}
       try { source.stop(ctx.currentTime + 0.15); } catch (e) {}
-      setTimeout(() => { try { source.disconnect(); sum.disconnect(); trackGain.disconnect(); } catch (e) {} }, 250);
+      setTimeout(() => { try { source.disconnect(); panner.disconnect(); trackGain.disconnect(); } catch (e) {} }, 250);
     }
     return { source, update, stop };
   }
@@ -179,7 +115,7 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
       if (!buf) return;
       const stillOut = lastState && lastState.audio && lastState.audio.outputs && lastState.audio.outputs[role];
       if (!stillOut || !unlocked) return;
-      const t = { volume: cfg.volume == null ? 0.8 : cfg.volume, pan: cfg.pan || 0, loop: false, effects: cfg.effects || {} };
+      const t = { volume: cfg.volume == null ? 0.8 : cfg.volume, pan: cfg.pan || 0, loop: false };
       const handle = buildTrackGraph(buf, t);
       handle.update(t);
       handle.source.onended = () => handle.stop();
@@ -266,7 +202,7 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
         master: audio ? audio.master : null,
         tracks: [...live.keys()].map((k) => {
           const t = audio && audio.tracks && audio.tracks[k];
-          return { key: k, playing: true, volume: t ? t.volume : null, pan: t ? t.pan : null, effects: t ? t.effects : null };
+          return { key: k, playing: true, volume: t ? t.volume : null, pan: t ? t.pan : null };
         }),
         firedSfx: Object.fromEntries(lastSfx)
       };

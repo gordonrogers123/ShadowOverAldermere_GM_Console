@@ -30,7 +30,7 @@
 //        master: 0.8,                 //   master volume [0,1]
 //        outputs: { player, gm },     //   which windows actually SOUND (selectable)
 //        tracks: {                    //   keyed 'music' | 'amb:<i>'
-//          "<key>": { playing, volume, pan, loop, effects } },
+//          "<key>": { playing, volume, pan, loop } },
 //        sfxTrigger: { "<sfxId>": n } //   bump the counter to fire a one-shot
 //      }
 //    }
@@ -43,15 +43,13 @@
 //  board and the Player TV regardless of window size. Which cast members
 //  are ELIGIBLE on a scene is the SCENE's `tokens` roster (data/scenes.js);
 //  the array here is what is actually PLACED and live. state.audio is the LIVE
-//  audio (which tracks play, at what volume/pan/effects); a scene's `audio`
+//  audio (which tracks play, at what volume/pan); a scene's `audio`
 //  config (data/scenes.js) is the template it is seeded from on select.
 //
 //  Bump STATE_VERSION when the shape changes in a way old saved state
 //  cannot satisfy; migrate() upgrades older state in place where it can,
 //  rather than discarding it.
 // ============================================================
-
-import { normalizeEffects } from './audioFx.js';
 
 export const STORAGE_KEY = 'aldermere.gm.state.v1';
 export const STATE_VERSION = 4;
@@ -119,8 +117,7 @@ function normalizeTrack(t) {
     playing: !!t.playing,
     volume: clamp01(t.volume == null ? 0.8 : t.volume),
     pan: clampPan(t.pan),
-    loop: t.loop !== false,
-    effects: normalizeEffects(t.effects)
+    loop: t.loop !== false
   };
 }
 
