@@ -6,6 +6,7 @@
 //  The scene builder reads these. BACKGROUNDS come from
 //  assets/maps and assets/backgrounds (files ending in _hidden are
 //  GM-only and excluded). CHARACTERS come from assets/characters.
+//  MUSIC / AMBIENCE / SFX come from assets/audio/{music,ambience,sfx}.
 // ============================================================
 
 export const BACKGROUNDS = [
@@ -23,4 +24,13 @@ export const CHARACTERS = [
   { id: "telstar", name: "Telstar", src: "assets/characters/telstar.png" },
   { id: "thraka", name: "Thraka", src: "assets/characters/thraka.png" },
   { id: "truf", name: "Truf", src: "assets/characters/truf.png" }
+];
+
+export const MUSIC = [
+];
+
+export const AMBIENCE = [
+];
+
+export const SFX = [
 ];

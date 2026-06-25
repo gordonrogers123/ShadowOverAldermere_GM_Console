@@ -200,3 +200,23 @@ body.view-player {
 /* Hide the cursor after idle (class toggled on the body by player.js). */
 .view-player.cursor-hidden,
 .view-player.cursor-hidden * { cursor: none; }
+
+/* One-time "click to enable sound" hint (browsers block audio until a gesture).
+   Small and unobtrusive so it never blocks the scene; dismissed on first click. */
+.view-player .sound-gate {
+  position: fixed;
+  left: 50%;
+  bottom: 1.2rem;
+  transform: translateX(-50%);
+  z-index: 50;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: var(--paper, #efe7d4);
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+}
+.view-player .sound-gate.gone { display: none; }

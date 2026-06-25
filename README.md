@@ -115,6 +115,32 @@ round portrait. Until you vendor token art (below) a token shows the character's
 initials over the ring, so the board is fully usable right away. The whole-scene
 **Hide scene** curtain covers tokens too.
 
+## Audio
+
+A scene can carry sound: a looping **music** bed, any number of **ambience**
+loops (rain, crowd, wind), and one-shot **SFX** (door slam, sword clash). Pick
+them in the builder's **Audio** field from whatever is in `assets/audio/`
+(`music/`, `ambience/`, `sfx/`), then run it from the **Audio** panel on the
+scene's live controls:
+
+- **Play / Stop**, **volume**, **pan**, and **loop** per track, with a
+  **master** volume over everything.
+- **Effects** per track (under the Effects twirl-down): **reverb** (room / hall
+  / cave), **low/high-pass** filter (muffled / distant), **delay / echo**,
+  **distortion / lo-fi**, and **pitch** — which also changes speed, so lower is
+  slower and deeper.
+- **SFX** buttons fire a cue once.
+- **Output** picks which window actually makes sound: **TV** (the Player, on the
+  room speakers over HDMI) and/or **Laptop** (the GM, e.g. to monitor on
+  headphones). The TV is on by default.
+- **Save audio to scene** captures the current tuning (volumes, pans, effects)
+  back onto the scene so it recalls next session — the audio half of prepping
+  the day before.
+
+The first click in the Player window enables its sound (browsers block audio
+until a gesture); a small hint says so, then disappears. No audio ships with the
+repo: drop your own files into `assets/audio/**` and **Rescan**.
+
 ## Drop in backgrounds and characters
 
 The builder offers whatever art is in the asset folders:
@@ -180,9 +206,13 @@ unique `id`, and save. It appears in the GM list on the next reload.
   },
   defaults: { visible: true, leftShown: true, rightShown: true },  // opening posture
   tokens:   { heroes: ["lysander"], enemies: ["brigands"] },  // map roster, or null
-  music:    null,   // reserved (Phase 4)
-  ambience: [],     // reserved (Phase 4)
-  audio:    null,   // reserved (Phase 4)
+  music:    null,   // legacy, unused
+  ambience: [],     // legacy, unused
+  audio:    {       // music bed + ambience loops + one-shot SFX, or null
+    music: { src: "assets/audio/music/old-mill.ogg", volume: 0.6, loop: true, pan: 0, effects: {} },
+    ambience: [{ src: "assets/audio/ambience/river.ogg", volume: 0.4, loop: true, pan: 0, effects: {} }],
+    sfx: [{ id: "wheel-creak", src: "assets/audio/sfx/wheel-creak.ogg", volume: 0.8, pan: 0, effects: {} }]
+  },
   gmNotes:  "Only you see this."
 }
 ```
@@ -234,14 +264,17 @@ index.html            single entry; reads ?view=gm or ?view=player
 css/                  app.css (shared + stage timings), gm.css, player.css
 js/                   main.js (router), sync.js, state.js,
                       stageView.js (compositor), transitions.js,
-                      scenesAll.js + userScenes.js (scene resolution),
+                      audioEngine.js + audioFx.js (sound),
+                      scenesAll.js + userScenes.js + fileScenes.js (scenes),
                       gm.js (control surface + builder), player.js (TV)
 data/                 scenes.js (content), manifest.js (generated pick lists),
-                      cast.js (token markers + NPC portraits)
+                      cast.js (token markers + NPC portraits),
+                      userScenes.json (your saved scenes, written by the server)
 assets/maps/          maps (shared, committed); hidden maps (GM only)
 assets/backgrounds/   your cinematic backgrounds (drop files in)
 assets/characters/    your transparent character PNGs (drop files in)
 assets/tokens/        round token art: heroes/ and enemies/ (named in cast.js)
+assets/audio/         music/, ambience/, sfx/ (drop files in)
 assets/fonts/         Cinzel and Atkinson Hyperlegible (offline)
 scripts/              serve.py (local server + rescan), scan_assets.py,
                       sync-assets.sh
@@ -250,13 +283,14 @@ scripts/              serve.py (local server + rescan), scan_assets.py,
 ## Phase status
 
 Done: the two-window shell (Phase 1); the scene compositor (Phase 2) — layered
-background plus left and right characters, named background variants, the
-show/hide curtain and character transitions, the in-window scene builder with
-save and export, and the drop-files plus rescan asset pipeline; and tokens
-(Phase 3) — round hero and enemy markers placed, numbered, dragged, and revealed
-on a map in a dedicated map mode, with a per-scene roster.
+background, characters, named variants, the curtain, and the in-window builder;
+tokens (Phase 3) — round hero/enemy markers placed, numbered, dragged, and
+revealed on a map in a dedicated map mode, with a per-scene roster; and audio
+(Phase 4) — a state-driven Web Audio engine in both windows with per-track
+play/stop/loop/volume/pan, a reverb / filter / delay / distortion / pitch
+effects rack, one-shot SFX, and selectable TV / laptop output. Phase 4 also made
+setups durable: saved scenes persist to disk (`data/userScenes.json`) and recall
+their full configuration, including token placement.
 
-Reserved for later: audio with music, ambience, and volumes (Phase 4). The scene
-data model already carries the `audio` fields so it needs no reshape. The
-service worker for offline caching and the Cloudflare Pages plus Access
-deployment are also later steps.
+Reserved for later: the service worker for offline caching and the Cloudflare
+Pages plus Access deployment.

@@ -18,8 +18,10 @@ import { loadState, saveState } from './state.js';
 import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
-import { BACKGROUNDS, CHARACTERS } from '../data/manifest.js';
+import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
+import { createAudioEngine } from './audioEngine.js';
+import { AUDIO_FX, defaultEffectParams, normalizeEffects } from './audioFx.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -28,6 +30,10 @@ export function mountGm(root) {
   let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
+  let audioMusic = MUSIC.slice();          // audio pick lists, also Rescan-replaceable
+  let audioAmbience = AMBIENCE.slice();
+  let audioSfx = SFX.slice();
+  let builtAudioSceneId = null;            // which scene's audio panel is currently built
 
   root.innerHTML = `
     <header class="gm-header">
@@ -88,6 +94,11 @@ export function mountGm(root) {
           <p class="notes-body"></p>
         </div>
 
+        <div class="gm-audio" hidden>
+          <h3 class="gm-h3">Audio</h3>
+          <div class="audio-body"></div>
+        </div>
+
         <div class="gm-builder" hidden>
           <h3 class="gm-h3 builder-title">Build a scene</h3>
 
@@ -124,6 +135,15 @@ export function mountGm(root) {
                 <span class="roster-group-label">Enemies</span>
                 <div class="roster-enemies"></div>
               </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>Audio <small>(music bed, ambience loops, one-shot SFX)</small></span>
+            <div class="audio-pick">
+              <label class="audio-pick-row"><span class="audio-pick-label">Music</span><select class="b-music"></select></label>
+              <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
+              <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
             </div>
           </div>
 
@@ -222,6 +242,11 @@ export function mountGm(root) {
     onboardEmpty: root.querySelector('.onboard-empty'),
     rosterHeroes: root.querySelector('.roster-heroes'),
     rosterEnemies: root.querySelector('.roster-enemies'),
+    audio:        root.querySelector('.gm-audio'),
+    audioBody:    root.querySelector('.audio-body'),
+    bMusic:       root.querySelector('.b-music'),
+    bAmbience:    root.querySelector('.b-ambience'),
+    bSfx:         root.querySelector('.b-sfx'),
     charToggle: {
       left:  root.querySelector('.char-toggle[data-side="left"]'),
       right: root.querySelector('.char-toggle[data-side="right"]')
@@ -247,6 +272,11 @@ export function mountGm(root) {
   boardView.el.addEventListener('pointermove', onBoardPointerMove);
   boardView.el.addEventListener('pointerup', onBoardPointerUp);
   boardView.el.addEventListener('pointercancel', onBoardPointerUp);
+
+  // The GM can monitor audio locally (role 'gm', off by default); the first
+  // click anywhere unlocks its AudioContext (browser autoplay rule).
+  const audioEngine = createAudioEngine({ role: 'gm', gestureTarget: root });
+  window.__audio = audioEngine;   // debug / test hook
 
   // ---- Sync: broadcast state; reply to a Player hello with current state. ----
   const sync = createSync((msg) => {
@@ -309,6 +339,8 @@ export function mountGm(root) {
       right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
       tokens: expandSavedLayout(scene)  // auto-place a saved layout, else empty
     };
+    state.audio = seedAudioFromScene(scene, state.audio);
+    builtAudioSceneId = null;           // force the audio panel to rebuild on select
     mapMode = false;                   // start on the cinematic controls
     commit();
   }
@@ -393,6 +425,240 @@ export function mountGm(root) {
     }
 
     els.notesBody.textContent = scene.gmNotes || '';
+  }
+
+  // ============================================================
+  //  Audio: a state-driven control panel. The GM monitors locally; the Player
+  //  is the room output. Controls mutate state.audio then commitAudio() (save +
+  //  broadcast + engine.sync) -- NOT renderUI(), so sliders are never rebuilt
+  //  mid-drag. The panel is (re)built once per scene from buildAudioPanel().
+  // ============================================================
+  function ensureAudio() {
+    if (!state.audio) state.audio = { master: 0.8, outputs: { player: true, gm: false }, tracks: {}, sfxTrigger: {} };
+    if (!state.audio.outputs) state.audio.outputs = { player: true, gm: false };
+    if (!state.audio.tracks) state.audio.tracks = {};
+    if (!state.audio.sfxTrigger) state.audio.sfxTrigger = {};
+  }
+  function commitAudio() {
+    saveState(state);
+    broadcast();
+    audioEngine.sync(state, sceneById(state.sceneId));
+  }
+  function trackFromCfg(cfg) {
+    return {
+      playing: false,
+      volume: cfg.volume == null ? 0.8 : cfg.volume,
+      pan: cfg.pan || 0,
+      loop: cfg.loop !== false,
+      effects: normalizeEffects(cfg.effects)
+    };
+  }
+  // Seed live tracks from a scene's audio config, preserving the GM's session
+  // master/outputs. Music/ambience start NOT playing (cued deliberately).
+  function seedAudioFromScene(scene, prev) {
+    prev = prev || {};
+    const a = (scene && scene.audio) || {};
+    const tracks = {};
+    if (a.music && a.music.src) tracks.music = trackFromCfg(a.music);
+    (a.ambience || []).forEach((amb, i) => { if (amb && amb.src) tracks['amb:' + i] = trackFromCfg(amb); });
+    const sfxTrigger = {};
+    (a.sfx || []).forEach((s) => { if (s && s.id) sfxTrigger[s.id] = 0; });
+    return {
+      master: prev.master == null ? 0.8 : prev.master,
+      outputs: prev.outputs || { player: true, gm: false },
+      tracks,
+      sfxTrigger
+    };
+  }
+  // Capture live tuning (volume/pan/effects) back into the scene's audio config
+  // so it recalls next session. Persists to both tiers, like Save layout.
+  function saveAudioToScene() {
+    const scene = sceneById(state.sceneId);
+    if (!scene || !scene.audio) return;
+    const a = JSON.parse(JSON.stringify(scene.audio));
+    const tr = (state.audio && state.audio.tracks) || {};
+    const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false, effects: t.effects || {} });
+    if (a.music && tr.music) Object.assign(a.music, tune(tr.music));
+    (a.ambience || []).forEach((amb, i) => { const t = tr['amb:' + i]; if (t) Object.assign(amb, tune(t)); });
+    const updated = { ...scene, audio: a };
+    addUserScene(updated);
+    saveSceneToFile(updated);
+    rebuildSceneList();
+    setStatus('Saved audio for "' + scene.name + '".');
+  }
+
+  // ---- small DOM helpers for the audio panel ----
+  function aRow(cls) { const d = document.createElement('div'); d.className = cls || 'audio-row'; return d; }
+  function aLabel(text) { const s = document.createElement('span'); s.className = 'control-label'; s.textContent = text; return s; }
+  function aSub(text) { const s = document.createElement('span'); s.className = 'audio-sub-label'; s.textContent = text; return s; }
+  function aRange(cls, min, max, val) {
+    const r = document.createElement('input');
+    r.type = 'range'; r.className = cls; r.min = min; r.max = max; r.step = (max - min) / 100;
+    r.value = (val == null ? min : val);
+    return r;
+  }
+
+  function buildAudioPanel(scene) {
+    ensureAudio();
+    const a = scene.audio || {};
+    els.audioBody.innerHTML = '';
+
+    const top = aRow();
+    const master = aRange('audio-master', 0, 1, state.audio.master);
+    master.addEventListener('input', () => { ensureAudio(); state.audio.master = +master.value; commitAudio(); });
+    top.append(aLabel('Master'), master);
+    const outWrap = document.createElement('div'); outWrap.className = 'audio-outputs';
+    for (const [key, text] of [['player', 'TV'], ['gm', 'Laptop']]) {
+      const b = document.createElement('button');
+      b.className = 'gm-button audio-output'; b.type = 'button'; b.dataset.out = key; b.textContent = text;
+      const isOn = () => !!(state.audio.outputs && state.audio.outputs[key]);
+      b.classList.toggle('active', isOn());
+      b.addEventListener('click', () => { ensureAudio(); state.audio.outputs[key] = !isOn(); b.classList.toggle('active', isOn()); commitAudio(); });
+      outWrap.append(b);
+    }
+    top.append(aSub('Output'), outWrap);
+    els.audioBody.append(top);
+
+    if (a.music && a.music.src) els.audioBody.append(buildTrackBlock('music', 'Music', a.music));
+    (a.ambience || []).forEach((amb, i) => {
+      if (amb && amb.src) els.audioBody.append(buildTrackBlock('amb:' + i, 'Ambience ' + (i + 1), amb));
+    });
+
+    if ((a.sfx || []).length) {
+      const row = aRow('audio-row audio-sfx-row');
+      row.append(aLabel('SFX'));
+      for (const s of a.sfx) {
+        const b = document.createElement('button');
+        b.className = 'gm-button audio-sfx'; b.type = 'button'; b.dataset.sfx = s.id; b.textContent = humanize(s.id);
+        b.addEventListener('click', () => { ensureAudio(); state.audio.sfxTrigger[s.id] = (state.audio.sfxTrigger[s.id] || 0) + 1; commitAudio(); });
+        row.append(b);
+      }
+      els.audioBody.append(row);
+    }
+
+    const saveRow = aRow();
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'gm-button audio-save'; saveBtn.type = 'button'; saveBtn.textContent = 'Save audio to scene';
+    saveBtn.addEventListener('click', saveAudioToScene);
+    saveRow.append(saveBtn);
+    els.audioBody.append(saveRow);
+  }
+
+  function buildTrackBlock(key, label, cfg) {
+    ensureAudio();
+    if (!state.audio.tracks[key]) state.audio.tracks[key] = trackFromCfg(cfg);
+    const t = state.audio.tracks[key];
+    const block = document.createElement('div'); block.className = 'audio-track'; block.dataset.key = key;
+
+    const head = aRow();
+    head.append(aLabel(label));
+    const play = document.createElement('button');
+    play.className = 'gm-button audio-play'; play.type = 'button';
+    play.textContent = t.playing ? 'Stop' : 'Play';
+    play.classList.toggle('is-playing', !!t.playing);
+    play.addEventListener('click', () => {
+      ensureAudio(); const tt = state.audio.tracks[key]; tt.playing = !tt.playing;
+      play.textContent = tt.playing ? 'Stop' : 'Play'; play.classList.toggle('is-playing', !!tt.playing); commitAudio();
+    });
+    head.append(play);
+    const vol = aRange('audio-vol', 0, 1, t.volume);
+    vol.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].volume = +vol.value; commitAudio(); });
+    const pan = aRange('audio-pan', -1, 1, t.pan);
+    pan.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].pan = +pan.value; commitAudio(); });
+    head.append(aSub('Vol'), vol, aSub('Pan'), pan);
+    block.append(head, buildFxControls(key));
+    return block;
+  }
+
+  function ensureFx(key, fxId) {
+    ensureAudio();
+    const t = state.audio.tracks[key];
+    if (!t.effects) t.effects = {};
+    if (!t.effects[fxId]) t.effects[fxId] = defaultEffectParams(fxId);
+  }
+  function buildFxControls(key) {
+    const det = document.createElement('details'); det.className = 'audio-fx-details';
+    const sum = document.createElement('summary'); sum.textContent = 'Effects'; det.append(sum);
+    for (const fx of AUDIO_FX) {
+      const row = aRow('audio-fx-row'); row.dataset.fx = fx.id;
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'audio-fx'; cb.dataset.fx = fx.id;
+      const isOn = () => !!(state.audio.tracks[key].effects && state.audio.tracks[key].effects[fx.id]);
+      cb.checked = isOn();
+      cb.addEventListener('change', () => {
+        ensureAudio();
+        const eff = state.audio.tracks[key].effects || (state.audio.tracks[key].effects = {});
+        if (cb.checked) eff[fx.id] = defaultEffectParams(fx.id); else delete eff[fx.id];
+        commitAudio();
+      });
+      const lab = document.createElement('span'); lab.className = 'audio-fx-label'; lab.textContent = fx.label;
+      if (fx.note) lab.title = fx.note;
+      row.append(cb, lab);
+      const params = document.createElement('span'); params.className = 'audio-fx-params';
+      for (const [pname, spec] of Object.entries(fx.params)) {
+        if (Array.isArray(spec)) {
+          const [min, max, def] = spec;
+          const cur = (isOn() && state.audio.tracks[key].effects[fx.id][pname] != null) ? state.audio.tracks[key].effects[fx.id][pname] : def;
+          const r = aRange('audio-fx-param', min, max, cur); r.dataset.fx = fx.id; r.dataset.param = pname;
+          r.addEventListener('input', () => {
+            ensureFx(key, fx.id); cb.checked = true;
+            state.audio.tracks[key].effects[fx.id][pname] = +r.value; commitAudio();
+          });
+          params.append(aSub(pname), r);
+        } else {
+          const sel = document.createElement('select'); sel.className = 'audio-fx-param'; sel.dataset.fx = fx.id; sel.dataset.param = pname;
+          for (const opt of spec.options) { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.append(o); }
+          sel.value = (isOn() && state.audio.tracks[key].effects[fx.id][pname]) || spec.default;
+          sel.addEventListener('change', () => {
+            ensureFx(key, fx.id); cb.checked = true;
+            state.audio.tracks[key].effects[fx.id][pname] = sel.value; commitAudio();
+          });
+          params.append(aSub(pname), sel);
+        }
+      }
+      row.append(params);
+      det.append(row);
+    }
+    return det;
+  }
+
+  // ---- Builder audio picker (which tracks the scene carries) ----
+  function buildAudioChecks(container, list, isOn, toggle) {
+    container.innerHTML = '';
+    if (!list.length) { const p = document.createElement('span'); p.className = 'audio-pick-empty'; p.textContent = '(none scanned)'; container.append(p); return; }
+    for (const item of list) {
+      const lab = document.createElement('label'); lab.className = 'roster-item';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isOn(item);
+      cb.addEventListener('change', () => toggle(item, cb.checked));
+      const nm = document.createElement('span'); nm.textContent = item.name;
+      lab.append(cb, nm); container.append(lab);
+    }
+  }
+  function renderAudioPick() {
+    els.bMusic.innerHTML = '';
+    const none = document.createElement('option'); none.value = ''; none.textContent = 'None'; els.bMusic.append(none);
+    for (const m of audioMusic) { const o = document.createElement('option'); o.value = m.src; o.textContent = m.name; els.bMusic.append(o); }
+    els.bMusic.value = (draft.audio.music && draft.audio.music.src) || '';
+    buildAudioChecks(els.bAmbience, audioAmbience,
+      (item) => draft.audio.ambience.some((x) => x.src === item.src),
+      (item, on) => {
+        if (on) { if (!draft.audio.ambience.some((x) => x.src === item.src)) draft.audio.ambience.push({ src: item.src, volume: 0.8, pan: 0, loop: true, effects: {} }); }
+        else draft.audio.ambience = draft.audio.ambience.filter((x) => x.src !== item.src);
+      });
+    buildAudioChecks(els.bSfx, audioSfx,
+      (item) => draft.audio.sfx.some((x) => x.id === item.id),
+      (item, on) => {
+        if (on) { if (!draft.audio.sfx.some((x) => x.id === item.id)) draft.audio.sfx.push({ id: item.id, src: item.src, volume: 0.8, pan: 0, effects: {} }); }
+        else draft.audio.sfx = draft.audio.sfx.filter((x) => x.id !== item.id);
+      });
+  }
+  // Build a scene.audio object from the draft, or null when nothing is chosen.
+  function buildSceneAudio(da) {
+    da = da || {};
+    const music = (da.music && da.music.src) ? da.music : null;
+    const ambience = (da.ambience || []).filter((x) => x && x.src);
+    const sfx = (da.sfx || []).filter((x) => x && x.id && x.src);
+    if (!music && !ambience.length && !sfx.length) return null;
+    return { music, ambience, sfx };
   }
 
   // ============================================================
@@ -637,7 +903,8 @@ export function mountGm(root) {
       left:  { src: '', enter: DEFAULT_ENTER },
       right: { src: '', enter: DEFAULT_ENTER },
       roster: { heroes: [], enemies: [] },
-      savedLayout: []
+      savedLayout: [],
+      audio: { music: null, ambience: [], sfx: [] }
     };
   }
   function sceneToDraft(scene) {
@@ -657,7 +924,12 @@ export function mountGm(root) {
         enemies: Array.isArray(t.enemies) ? t.enemies.slice() : []
       },
       // Carried opaquely through the builder; positions are edited in map mode.
-      savedLayout: Array.isArray(scene.savedLayout) ? scene.savedLayout.slice() : []
+      savedLayout: Array.isArray(scene.savedLayout) ? scene.savedLayout.slice() : [],
+      audio: scene.audio
+        ? { music: scene.audio.music || null,
+            ambience: Array.isArray(scene.audio.ambience) ? JSON.parse(JSON.stringify(scene.audio.ambience)) : [],
+            sfx: Array.isArray(scene.audio.sfx) ? JSON.parse(JSON.stringify(scene.audio.sfx)) : [] }
+        : { music: null, ambience: [], sfx: [] }
     };
   }
 
@@ -684,7 +956,7 @@ export function mountGm(root) {
         : null,
       music: null,
       ambience: [],
-      audio: null,
+      audio: buildSceneAudio(d.audio),
       gmNotes: (d.gmNotes || '').trim()
     };
     if (Array.isArray(d.savedLayout) && d.savedLayout.length) {
@@ -766,6 +1038,7 @@ export function mountGm(root) {
     fillEnterSelect(els.bLeftEnter, draft.left.enter);
     fillEnterSelect(els.bRightEnter, draft.right.enter);
     renderRosterPick();
+    renderAudioPick();
     els.bExportOut.hidden = true;
     els.bExportHint.hidden = true;
   }
@@ -841,6 +1114,12 @@ export function mountGm(root) {
   els.bLeftEnter.addEventListener('change', () => { draft.left.enter = els.bLeftEnter.value; renderBuilderPreview(); });
   els.bRightSrc.addEventListener('change', () => { draft.right.src = els.bRightSrc.value; renderBuilderPreview(); });
   els.bRightEnter.addEventListener('change', () => { draft.right.enter = els.bRightEnter.value; renderBuilderPreview(); });
+  els.bMusic.addEventListener('change', () => {
+    const src = els.bMusic.value;
+    draft.audio.music = src
+      ? ((draft.audio.music && draft.audio.music.src === src) ? draft.audio.music : { src, volume: 0.8, pan: 0, loop: true, effects: {} })
+      : null;
+  });
   els.bCancel.addEventListener('click', closeBuilder);
   els.newScene.addEventListener('click', () => openBuilder(null));
 
@@ -931,10 +1210,14 @@ export function mountGm(root) {
       if (!data.ok) throw new Error(data.error || 'scan failed');
       backgrounds = Array.isArray(data.backgrounds) ? data.backgrounds : [];
       characters = Array.isArray(data.characters) ? data.characters : [];
+      if (Array.isArray(data.music)) audioMusic = data.music;
+      if (Array.isArray(data.ambience)) audioAmbience = data.ambience;
+      if (Array.isArray(data.sfx)) audioSfx = data.sfx;
       if (draft) renderBuilderInputs();
       const scene = sceneById(state.sceneId);
       if (scene && !draft) renderLive(scene);
-      setStatus('Rescanned: ' + backgrounds.length + ' backgrounds, ' + characters.length + ' characters.');
+      setStatus('Rescanned: ' + backgrounds.length + ' backgrounds, ' + characters.length + ' characters, '
+        + audioMusic.length + ' music, ' + audioAmbience.length + ' ambience, ' + audioSfx.length + ' sfx.');
     } catch (err) {
       setStatus('Rescan needs the local server (run: python3 scripts/serve.py). Or run scripts/sync-assets.sh and reload. (' + err.message + ')');
     }
@@ -957,12 +1240,18 @@ export function mountGm(root) {
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
 
+    const showAudio = !inMap && !building && !!scene && !!scene.audio;
+    els.audio.hidden = !showAudio;
+    if (showAudio && builtAudioSceneId !== scene.id) { buildAudioPanel(scene); builtAudioSceneId = scene.id; }
+
     if (inMap) renderMapMode(scene);
     else if (building) renderBuilderPreview();
     else if (scene) renderLive(scene);
 
     // The Map mode entry button only makes sense for a scene with a map.
     els.mapModeBtn.hidden = !(scene && sceneHasMap(scene));
+    // Keep the GM's local audio monitor in step with the latest state.
+    audioEngine.sync(state, scene);
   }
 
   // First paint, and a broadcast so a Player window already waiting updates.
