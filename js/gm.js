@@ -421,9 +421,18 @@ export function mountGm(root) {
 
   // Build the background-variant buttons into a container; shared by the live
   // controls and the map-mode panel. Returns the variant count.
+  // A variant can be flagged to show only in scene (cinematic) mode, only in
+  // map mode, or both. Absent variantModes -> shown in both (so existing scenes
+  // are unchanged). The rail offers only the variants that apply to the mode
+  // you are in, so map backdrops stay out of the cinematic picker and vice versa.
+  function variantInMode(scene, key, inMap) {
+    const vm = scene && scene.variantModes && scene.variantModes[key];
+    if (!vm) return true;
+    return inMap ? vm.map !== false : vm.scene !== false;
+  }
   function buildVariantButtons(container, scene) {
     container.innerHTML = '';
-    const keys = scene.maps ? Object.keys(scene.maps) : [];
+    const keys = (scene.maps ? Object.keys(scene.maps) : []).filter((k) => variantInMode(scene, k, mapMode));
     for (const key of keys) {
       const btn = document.createElement('button');
       btn.className = 'gm-button btn--toggle variant-button';  // segmented toggle; .active lights it
@@ -436,7 +445,10 @@ export function mountGm(root) {
     return keys.length;
   }
   function renderVariantButtons(scene) {
-    els.variantRow.hidden = buildVariantButtons(els.variantButtons, scene) <= 1;
+    // Show the picker whenever at least one variant applies to the current mode
+    // (a mode often has a single backdrop -- e.g. the one map in map mode -- that
+    // the GM still needs to activate/reveal), and hide it only when none do.
+    els.variantRow.hidden = buildVariantButtons(els.variantButtons, scene) < 1;
   }
 
   // Category label + order for the grouped left/right character pickers.
@@ -970,10 +982,11 @@ export function mountGm(root) {
       editingId: null,
       name: '',
       gmNotes: '',
-      // New scenes open on the Aldermere title screen, then reveal to a map.
+      // New scenes open on the Aldermere title screen (scene mode only), then
+      // reveal to a backdrop shown in both modes.
       variants: [
-        { key: 'hidden', src: TITLE_SRC },
-        { key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }
+        { key: 'hidden', src: TITLE_SRC, scene: true, map: false },
+        { key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '', scene: true, map: true }
       ],
       left:  { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
       right: { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
@@ -983,9 +996,17 @@ export function mountGm(root) {
     };
   }
   function sceneToDraft(scene) {
-    // An empty map src is a title-screen variant; surface it as such in the picker.
-    const variants = Object.entries(scene.maps || {}).map(([key, src]) => ({ key, src: src === '' ? TITLE_SRC : src }));
-    if (!variants.length) variants.push({ key: 'revealed', src: '' });
+    // An empty map src is a title-screen variant; surface it as such in the
+    // picker. Each variant carries its scene/map visibility; with no stored
+    // variantModes the default is both (title screens default to scene-only).
+    const variants = Object.entries(scene.maps || {}).map(([key, src]) => {
+      const isTitle = src === '';
+      const vm = scene.variantModes && scene.variantModes[key];
+      return { key, src: isTitle ? TITLE_SRC : src,
+        scene: vm ? vm.scene !== false : true,
+        map: vm ? vm.map !== false : !isTitle };
+    });
+    if (!variants.length) variants.push({ key: 'revealed', src: '', scene: true, map: true });
     const sideOf = (s) => (s
       ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER, scale: +s.scale > 0 ? +s.scale : 1, flip: !!s.flip, x: +s.x || 0, y: +s.y || 0 }
       : { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 });
@@ -1013,12 +1034,15 @@ export function mountGm(root) {
 
   function draftToScene(d) {
     const maps = {};
+    const variantModes = {};
     d.variants.forEach((v, i) => {
       if (!v.src) return;                              // unset variant -- skip
       let base = slug(v.key) || ('variant-' + (i + 1));
       let key = base; let n = 2;
       while (Object.prototype.hasOwnProperty.call(maps, key)) { key = base + '-' + n; n += 1; }
       maps[key] = v.src === TITLE_SRC ? '' : v.src;     // title screen saves as an empty src
+      // Which mode(s) this variant appears in; the rail picker filters by it.
+      variantModes[key] = { scene: v.scene !== false, map: v.map !== false };
     });
     const keys = Object.keys(maps);
     const id = d.editingId || slug(d.name);
@@ -1028,6 +1052,7 @@ export function mountGm(root) {
       id,
       name: (d.name || '').trim() || humanize(id),
       maps,
+      variantModes,
       defaultMapState: keys[0] || 'revealed',
       tokens: hasRoster
         ? { heroes: (roster.heroes || []).slice(), enemies: (roster.enemies || []).slice() }
@@ -1127,6 +1152,25 @@ export function mountGm(root) {
       tag.className = 'v-tag';
       tag.textContent = i === 0 ? 'shown first' : '';
 
+      // Per-variant visibility: which mode(s) this backdrop appears in. The rail
+      // picker filters by the current mode, so map backdrops stay out of the
+      // cinematic view and vice versa.
+      const modes = document.createElement('span');
+      modes.className = 'v-modes';
+      const modeBtn = (label, prop, title) => {
+        const btn = document.createElement('button');
+        btn.className = 'gm-button btn--toggle v-mode';
+        btn.type = 'button';
+        btn.textContent = label;
+        btn.title = title;
+        const sync = () => { const on = v[prop] !== false; btn.classList.toggle('is-on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+        sync();
+        btn.addEventListener('click', () => { v[prop] = (v[prop] === false); sync(); });
+        return btn;
+      };
+      modes.append(modeBtn('Scene', 'scene', 'Show this variant in scene (cinematic) mode'),
+                   modeBtn('Map', 'map', 'Show this variant in map mode'));
+
       const rm = document.createElement('button');
       rm.className = 'v-remove';
       rm.type = 'button';
@@ -1138,7 +1182,7 @@ export function mountGm(root) {
         renderBuilderPreview();
       });
 
-      row.append(keyInput, sel, tag, rm);
+      row.append(keyInput, sel, modes, tag, rm);
       els.variantList.appendChild(row);
     });
   }
@@ -1245,7 +1289,7 @@ export function mountGm(root) {
   els.bName.addEventListener('input', () => { draft.name = els.bName.value; renderBuilderPreview(); });
   els.bNotes.addEventListener('input', () => { draft.gmNotes = els.bNotes.value; });
   els.addVariant.addEventListener('click', () => {
-    draft.variants.push({ key: 'variant-' + (draft.variants.length + 1), src: (backgrounds[0] && backgrounds[0].src) || '' });
+    draft.variants.push({ key: 'variant-' + (draft.variants.length + 1), src: (backgrounds[0] && backgrounds[0].src) || '', scene: true, map: true });
     renderVariantRows();
     renderBuilderPreview();
   });

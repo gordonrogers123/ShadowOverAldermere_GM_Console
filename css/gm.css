@@ -377,7 +377,10 @@ body.view-gm {
 .view-gm .b-left-flip, .view-gm .b-right-flip { font-size: var(--fs-200); padding: 0.35rem 0.7rem; }
 .view-gm .variant-edit { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
 .view-gm .v-key { width: 9rem; }
-.view-gm .v-tag { font-size: 0.8rem; color: var(--neutral); opacity: 0.7; min-width: 5rem; }
+/* Per-variant Scene/Map visibility toggles (colour from the .btn--toggle role). */
+.view-gm .v-modes { display: inline-flex; gap: var(--space-1); }
+.view-gm .v-mode { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .v-tag { font-size: 0.8rem; color: var(--neutral); opacity: 0.7; min-width: 4rem; }
 .view-gm .v-remove,
 .view-gm .add-variant { font-size: 0.85rem; padding: 0.4rem 0.7rem; }
 .view-gm .v-remove {
