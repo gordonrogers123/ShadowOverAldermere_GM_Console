@@ -6,9 +6,9 @@
 //  it from localStorage on load so a refresh recovers the session,
 //  online or offline.
 //
-//  Phase 2 state:
+//  Phase 3 state:
 //    {
-//      version: 2,
+//      version: 3,
 //      sceneId: "city-gate" | null,   // currently selected scene
 //      mapState: "hidden",            // active BACKGROUND VARIANT key:
 //                                     //   any key in scene.maps, not just
@@ -16,15 +16,27 @@
 //      stage: {                       // the live cinematic stage
 //        visible: true,               // black curtain up (true) or down (false)
 //        left:  { shown, srcOverride },   // is the left character on stage?
-//        right: { shown, srcOverride }    // is the right character on stage?
+//        right: { shown, srcOverride },   // is the right character on stage?
+//        tokens: [                    // live tokens placed on the map (Phase 3)
+//          { instId,                  //   unique id per placed token
+//            castId,                  //   id into CAST.heroes / CAST.enemies
+//            kind,                    //   "hero" | "enemy"
+//            label,                   //   badge text, e.g. "Lysander", "Brigand 2"
+//            x, y,                    //   center, fractions [0,1] of the MAP IMAGE
+//            visible }                //   shown on the Player TV (the GM can hide)
+//        ]
 //      }
 //    }
 //
 //  srcOverride is an optional live character swap; null means "use the
 //  scene's own characters.<side>.src". A character's entrance transition
 //  is read from the scene, not stored here (it never varies per session).
-//  Token and audio fields live on the SCENE (data/scenes.js), reserved
-//  for Phase 3 and Phase 4.
+//  A token's x/y are fractions of the DISPLAYED map image (object-fit:
+//  contain), so the same numbers land on the same map pixel on the GM
+//  board and the Player TV regardless of window size. Which cast members
+//  are ELIGIBLE on a scene is the SCENE's `tokens` roster (data/scenes.js);
+//  the array here is what is actually PLACED and live. Audio fields stay
+//  reserved on the scene for Phase 4.
 //
 //  Bump STATE_VERSION when the shape changes in a way old saved state
 //  cannot satisfy; migrate() upgrades older state in place where it can,
@@ -32,21 +44,49 @@
 // ============================================================
 
 export const STORAGE_KEY = 'aldermere.gm.state.v1';
-export const STATE_VERSION = 2;
+export const STATE_VERSION = 3;
+
+function clamp01(n) {
+  n = +n;
+  if (!isFinite(n)) return 0;
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+// Validate one live token instance STRUCTURALLY -- never against the scene
+// roster. normalizeStage has no scene context, and a transient mismatch (a
+// scene not yet resolved on cold load, or a roster edited after placement)
+// must not silently delete the GM's board. Drop only entries that are
+// genuinely unusable (no castId); fix up the rest. instId is normally set by
+// the writer (gm.js); a fallback is minted only for legacy/malformed entries.
+function normalizeToken(t, i) {
+  if (!t || typeof t !== 'object') return null;
+  const castId = typeof t.castId === 'string' ? t.castId.trim() : '';
+  if (!castId) return null;
+  const kind = t.kind === 'hero' ? 'hero' : 'enemy';
+  const instId = (typeof t.instId === 'string' && t.instId) ? t.instId : ('t' + i + '_' + castId);
+  let label = castId;
+  if (t.label != null && String(t.label).trim()) label = String(t.label);
+  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false };
+}
 
 // Fill any missing piece of the nested stage block from defaults, so a
 // reader never trips over an absent sub-key. (The old shallow merge could
-// not do this: it replaced the whole stage object wholesale.)
+// not do this: it replaced the whole stage object wholesale.) tokens is
+// backfilled to [] for pre-Phase-3 saved state.
 function normalizeStage(s) {
   s = s || {};
   const side = (x) => ({
     shown: !!(x && x.shown),
     srcOverride: (x && x.srcOverride) || null
   });
+  const tokens = (Array.isArray(s.tokens) ? s.tokens : [])
+    .map((t, i) => normalizeToken(t, i))
+    .filter(Boolean);
   return {
     visible: s.visible !== false,   // default true
     left: side(s.left),
-    right: side(s.right)
+    right: side(s.right),
+    tokens
   };
 }
 
@@ -63,7 +103,7 @@ export function defaultState() {
 // throwing it away, so an upgrade keeps the GM's current scene and reveal.
 function migrate(parsed) {
   if (!parsed || typeof parsed !== 'object') return defaultState();
-  if (parsed.version === 1 || parsed.version === 2) {
+  if (parsed.version === 1 || parsed.version === 2 || parsed.version === 3) {
     return {
       version: STATE_VERSION,
       sceneId: parsed.sceneId != null ? parsed.sceneId : null,

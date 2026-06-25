@@ -20,6 +20,47 @@
 // ============================================================
 
 import { DEFAULT_ENTER } from './transitions.js';
+import { CAST } from '../data/cast.js';
+
+// Resolve a token's castId to its cast entry (ring color, portrait, name).
+// ids are unique across heroes and enemies, so a flat map is enough; the
+// token's `kind` only drives styling and numbering, not lookup.
+const CAST_BY_ID = (() => {
+  const m = {};
+  for (const h of (CAST.heroes || [])) m[h.id] = h;
+  for (const e of (CAST.enemies || [])) m[e.id] = e;
+  return m;
+})();
+
+// A token's diameter as a fraction of the shorter side of the displayed map.
+const TOKEN_FRAC = 0.07;
+
+function clampUnit(n) {
+  n = +n;
+  if (!isFinite(n)) return 0;
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+// object-fit: contain geometry -- the rect the map image actually occupies
+// inside a (possibly differently shaped) stage, so tokens pin to the image
+// itself, not the letterbox bars. Used for placement and, inverted, for drag.
+function computeContainRect(stageW, stageH, imgAspect) {
+  let w, h;
+  if (stageW / stageH > imgAspect) { h = stageH; w = h * imgAspect; }
+  else { w = stageW; h = w / imgAspect; }
+  return { left: (stageW - w) / 2, top: (stageH - h) / 2, w, h };
+}
+
+// Short badge text for the no-art fallback: "Brigand 2" -> "B2",
+// "Granny Edna" -> "GE", "Lysander" -> "L".
+function initials(label) {
+  const s = String(label || '').trim();
+  const numbered = s.match(/^(\S)\S*\s+(\d+)$/);
+  if (numbered) return numbered[1].toUpperCase() + numbered[2];
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return (s[0] || '?').toUpperCase();
+}
 
 export function createStageView(root) {
   root.innerHTML = `
@@ -28,6 +69,7 @@ export function createStageView(root) {
       <div class="map-layer" data-layer="1"></div>
       <img class="char-layer char-left" alt="" data-side="left">
       <img class="char-layer char-right" alt="" data-side="right">
+      <div class="token-layer"></div>
       <div class="curtain"></div>
       <div class="idle"><div class="idle-title">The Shadow Over Aldermere</div></div>
     </div>
@@ -41,6 +83,7 @@ export function createStageView(root) {
   };
   const curtain = root.querySelector('.curtain');
   const idle = root.querySelector('.idle');
+  const tokenLayer = root.querySelector('.token-layer');
 
   let activeIndex = 0;       // which background layer is currently visible
   let currentBgKey = null;   // what background is on screen, to skip redundant work
@@ -108,7 +151,9 @@ export function createStageView(root) {
     img.className = 'map-img';
     img.alt = '';
     let settled = false;
-    const settle = () => { if (!settled) { settled = true; reveal(); } };
+    // Re-pin tokens once the map's intrinsic size is known (naturalWidth was
+    // 0 while loading, so the first render could not lay them out yet).
+    const settle = () => { if (!settled) { settled = true; reveal(); layoutTokens(); } };
     img.onload = settle;
     img.onerror = () => {
       // A variant file not present yet: fall back to the neutral plate.
@@ -171,6 +216,123 @@ export function createStageView(root) {
     curtain.classList.toggle('is-down', !visible);
   }
 
+  // ---- Tokens: round hero/enemy markers pinned to the map image. The Player
+  //      renders them read-only (the layer is pointer-events:none); the GM
+  //      board adds .board-interactive to re-enable dragging. ----
+  function activeMapImg() {
+    const layer = layers[activeIndex];
+    const img = layer ? layer.querySelector('.map-img') : null;
+    return (img && img.naturalWidth > 0) ? img : null;
+  }
+
+  // Position and size every token element from its stored x/y fraction and the
+  // current displayed-image rect. Cheap; called on render, on resize, and
+  // after a map image loads. No active map image -> hide the whole layer.
+  function layoutTokens() {
+    const img = activeMapImg();
+    if (!img) { tokenLayer.style.display = 'none'; return; }
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    tokenLayer.style.display = '';
+    const cr = computeContainRect(r.width, r.height, img.naturalWidth / img.naturalHeight);
+    const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
+    tokenLayer.querySelectorAll('.token').forEach((el) => {
+      const x = parseFloat(el.dataset.x) || 0;
+      const y = parseFloat(el.dataset.y) || 0;
+      el.style.left = (cr.left + x * cr.w) + 'px';
+      el.style.top = (cr.top + y * cr.h) + 'px';
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.fontSize = size + 'px';   // children scale in em
+    });
+  }
+
+  function buildTokenEl(inst) {
+    const cast = CAST_BY_ID[inst.castId] ||
+      { name: inst.label, ringColor: inst.kind === 'enemy' ? '#8a2e2e' : '#2f6b43' };
+    const el = document.createElement('div');
+    el.className = 'token token-' + inst.kind;
+    el.dataset.instId = inst.instId;
+    el.style.borderColor = cast.ringColor || '#888';
+
+    const fallback = document.createElement('div');
+    fallback.className = 'token-fallback';
+    fallback.style.background = cast.ringColor || '#555';
+    fallback.textContent = initials(inst.label);
+
+    // The portrait sits over the initials; if the art is not vendored yet it
+    // errors and the initials stay. A broken-image icon never shows.
+    const img = document.createElement('img');
+    img.className = 'token-portrait';
+    img.alt = '';
+    img.style.display = 'none';
+    img.onload = () => { img.style.display = ''; fallback.style.display = 'none'; };
+    img.onerror = () => { img.style.display = 'none'; fallback.style.display = ''; };
+
+    const label = document.createElement('div');
+    label.className = 'token-label';
+    label.textContent = inst.label;
+
+    el.append(fallback, img, label);
+    if (cast.tokenImage) {
+      img.src = cast.tokenImage;
+      if (img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
+    }
+    return el;
+  }
+
+  function updateTokenEl(el, inst) {
+    const lab = el.querySelector('.token-label');
+    if (lab && lab.textContent !== inst.label) {
+      lab.textContent = inst.label;
+      const fb = el.querySelector('.token-fallback');
+      if (fb) fb.textContent = initials(inst.label);
+    }
+  }
+
+  // Diff the live token list against what is on stage: create new, drop gone,
+  // update the label/position/hidden of survivors. Mirrors the character diff.
+  function updateTokens(state, scene) {
+    const list = (state.stage && Array.isArray(state.stage.tokens)) ? state.stage.tokens : [];
+    const haveMap = bgDescriptor(state, scene).kind === 'image';
+
+    const existing = new Map();
+    tokenLayer.querySelectorAll('.token').forEach((el) => existing.set(el.dataset.instId, el));
+
+    const seen = new Set();
+    for (const inst of list) {
+      seen.add(inst.instId);
+      let el = existing.get(inst.instId);
+      if (!el) { el = buildTokenEl(inst); tokenLayer.appendChild(el); }
+      else { updateTokenEl(el, inst); }
+      el.dataset.x = inst.x;
+      el.dataset.y = inst.y;
+      el.classList.toggle('is-hidden', inst.visible === false);
+    }
+    existing.forEach((el, id) => { if (!seen.has(id)) el.remove(); });
+
+    if (!haveMap) { tokenLayer.style.display = 'none'; return; }
+    layoutTokens();
+  }
+
+  // Client point -> clamped map fraction, using the SAME contain math as
+  // placement so a GM drag lands on the same map pixel on the Player TV.
+  function pointToFraction(clientX, clientY) {
+    const img = activeMapImg();
+    if (!img) return null;
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const cr = computeContainRect(r.width, r.height, img.naturalWidth / img.naturalHeight);
+    return {
+      x: clampUnit((clientX - r.left - cr.left) / cr.w),
+      y: clampUnit((clientY - r.top - cr.top) / cr.h)
+    };
+  }
+
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => layoutTokens()).observe(stage);
+  }
+
   function render(state, scene, opts = {}) {
     const instant = !!opts.instant;
 
@@ -182,6 +344,7 @@ export function createStageView(root) {
       applySide('left', resolveSide('left', state, scene), instant);
       applySide('right', resolveSide('right', state, scene), instant);
       updateCurtain(state);
+      updateTokens(state, scene);
     };
 
     if (instant) {
@@ -194,5 +357,5 @@ export function createStageView(root) {
     }
   }
 
-  return { render, el: stage };
+  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction };
 }
