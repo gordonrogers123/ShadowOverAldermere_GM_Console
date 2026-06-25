@@ -18,6 +18,20 @@
 /* Apply a posture with no animation (cold load restore). */
 .stage.no-anim * { transition: none !important; }
 
+/* Respect reduced-motion: collapse the long crossfades/slides/curtain to an
+   instant. The stage still settles correctly because the JS keys off image
+   load (not transitionend); this only removes the motion. Composes with the
+   .no-anim rule above. Applies to both the TV output and the GM preview,
+   which is intended -- a motion-sensitive GM benefits from the quiet preview
+   too, and the at-rest frame is unchanged so fidelity holds. */
+@media (prefers-reduced-motion: reduce) {
+  .stage .map-layer,
+  .stage .char-layer,
+  .stage .curtain,
+  .stage .idle,
+  .stage .token { transition-duration: 1ms !important; }
+}
+
 /* Two cross-fading background layers. */
 .stage .map-layer {
   position: absolute;

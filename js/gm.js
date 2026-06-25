@@ -51,7 +51,7 @@ export function mountGm(root) {
           <button class="gm-button new-scene" type="button">New scene</button>
         </div>
         <ul class="scene-list"></ul>
-        <p class="rescan-status" hidden></p>
+        <p class="rescan-status" role="status" aria-live="polite" hidden></p>
       </aside>
 
       <section class="gm-stage">
@@ -829,6 +829,7 @@ export function mountGm(root) {
       rm.type = 'button';
       rm.textContent = '×';
       rm.title = 'Remove from board';
+      rm.setAttribute('aria-label', 'Remove from board');
       rm.addEventListener('click', () => removeToken(t.instId));
       li.append(sw, nm, vis, rm);
       els.onboardList.appendChild(li);
@@ -1169,6 +1170,7 @@ export function mountGm(root) {
         del.type = 'button';
         del.textContent = '×';
         del.title = 'Delete this saved scene';
+        del.setAttribute('aria-label', 'Delete this saved scene');
         del.addEventListener('click', (e) => { e.stopPropagation(); deleteScene(scene.id); });
         li.appendChild(del);
       }
