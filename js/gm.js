@@ -21,7 +21,6 @@ import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
 import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
 import { createAudioEngine } from './audioEngine.js';
-import { AUDIO_FX, defaultEffectParams, normalizeEffects } from './audioFx.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -510,8 +509,7 @@ export function mountGm(root) {
       playing: false,
       volume: cfg.volume == null ? 0.8 : cfg.volume,
       pan: cfg.pan || 0,
-      loop: cfg.loop !== false,
-      effects: normalizeEffects(cfg.effects)
+      loop: cfg.loop !== false
     };
   }
   // Seed live tracks from a scene's audio config, preserving the GM's session
@@ -531,14 +529,14 @@ export function mountGm(root) {
       sfxTrigger
     };
   }
-  // Capture live tuning (volume/pan/effects) back into the scene's audio config
+  // Capture live tuning (volume/pan) back into the scene's audio config
   // so it recalls next session. Persists to both tiers, like Save layout.
   function saveAudioToScene() {
     const scene = sceneById(state.sceneId);
     if (!scene || !scene.audio) return;
     const a = JSON.parse(JSON.stringify(scene.audio));
     const tr = (state.audio && state.audio.tracks) || {};
-    const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false, effects: t.effects || {} });
+    const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false });
     if (a.music && tr.music) Object.assign(a.music, tune(tr.music));
     (a.ambience || []).forEach((amb, i) => { const t = tr['amb:' + i]; if (t) Object.assign(amb, tune(t)); });
     const updated = { ...scene, audio: a };
@@ -650,59 +648,8 @@ export function mountGm(root) {
     const pan = aRange('audio-pan', -1, 1, t.pan);
     pan.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].pan = +pan.value; commitAudio(); });
     head.append(aKnob('Vol', vol), aKnob('Pan', pan));
-    block.append(head, buildFxControls(key));
+    block.append(head);
     return block;
-  }
-
-  function ensureFx(key, fxId) {
-    ensureAudio();
-    const t = state.audio.tracks[key];
-    if (!t.effects) t.effects = {};
-    if (!t.effects[fxId]) t.effects[fxId] = defaultEffectParams(fxId);
-  }
-  function buildFxControls(key) {
-    const det = document.createElement('details'); det.className = 'audio-fx-details';
-    const sum = document.createElement('summary'); sum.textContent = 'Effects'; det.append(sum);
-    for (const fx of AUDIO_FX) {
-      const row = aRow('audio-fx-row'); row.dataset.fx = fx.id;
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'audio-fx'; cb.dataset.fx = fx.id;
-      const isOn = () => !!(state.audio.tracks[key].effects && state.audio.tracks[key].effects[fx.id]);
-      cb.checked = isOn();
-      cb.addEventListener('change', () => {
-        ensureAudio();
-        const eff = state.audio.tracks[key].effects || (state.audio.tracks[key].effects = {});
-        if (cb.checked) eff[fx.id] = defaultEffectParams(fx.id); else delete eff[fx.id];
-        commitAudio();
-      });
-      const lab = document.createElement('span'); lab.className = 'audio-fx-label'; lab.textContent = fx.label;
-      if (fx.note) lab.title = fx.note;
-      row.append(cb, lab);
-      const params = document.createElement('span'); params.className = 'audio-fx-params';
-      for (const [pname, spec] of Object.entries(fx.params)) {
-        if (Array.isArray(spec)) {
-          const [min, max, def] = spec;
-          const cur = (isOn() && state.audio.tracks[key].effects[fx.id][pname] != null) ? state.audio.tracks[key].effects[fx.id][pname] : def;
-          const r = aRange('audio-fx-param', min, max, cur); r.dataset.fx = fx.id; r.dataset.param = pname;
-          r.addEventListener('input', () => {
-            ensureFx(key, fx.id); cb.checked = true;
-            state.audio.tracks[key].effects[fx.id][pname] = +r.value; commitAudio();
-          });
-          params.append(aSub(pname), r);
-        } else {
-          const sel = document.createElement('select'); sel.className = 'audio-fx-param'; sel.dataset.fx = fx.id; sel.dataset.param = pname;
-          for (const opt of spec.options) { const o = document.createElement('option'); o.value = opt; o.textContent = opt; sel.append(o); }
-          sel.value = (isOn() && state.audio.tracks[key].effects[fx.id][pname]) || spec.default;
-          sel.addEventListener('change', () => {
-            ensureFx(key, fx.id); cb.checked = true;
-            state.audio.tracks[key].effects[fx.id][pname] = sel.value; commitAudio();
-          });
-          params.append(aSub(pname), sel);
-        }
-      }
-      row.append(params);
-      det.append(row);
-    }
-    return det;
   }
 
   // ---- Builder audio picker (which tracks the scene carries) ----
@@ -725,13 +672,13 @@ export function mountGm(root) {
     buildAudioChecks(els.bAmbience, audioAmbience,
       (item) => draft.audio.ambience.some((x) => x.src === item.src),
       (item, on) => {
-        if (on) { if (!draft.audio.ambience.some((x) => x.src === item.src)) draft.audio.ambience.push({ src: item.src, volume: 0.8, pan: 0, loop: true, effects: {} }); }
+        if (on) { if (!draft.audio.ambience.some((x) => x.src === item.src)) draft.audio.ambience.push({ src: item.src, volume: 0.8, pan: 0, loop: true }); }
         else draft.audio.ambience = draft.audio.ambience.filter((x) => x.src !== item.src);
       });
     buildAudioChecks(els.bSfx, audioSfx,
       (item) => draft.audio.sfx.some((x) => x.id === item.id),
       (item, on) => {
-        if (on) { if (!draft.audio.sfx.some((x) => x.id === item.id)) draft.audio.sfx.push({ id: item.id, src: item.src, volume: 0.8, pan: 0, effects: {} }); }
+        if (on) { if (!draft.audio.sfx.some((x) => x.id === item.id)) draft.audio.sfx.push({ id: item.id, src: item.src, volume: 0.8, pan: 0 }); }
         else draft.audio.sfx = draft.audio.sfx.filter((x) => x.id !== item.id);
       });
   }
@@ -1235,7 +1182,7 @@ export function mountGm(root) {
   els.bMusic.addEventListener('change', () => {
     const src = els.bMusic.value;
     draft.audio.music = src
-      ? ((draft.audio.music && draft.audio.music.src === src) ? draft.audio.music : { src, volume: 0.8, pan: 0, loop: true, effects: {} })
+      ? ((draft.audio.music && draft.audio.music.src === src) ? draft.audio.music : { src, volume: 0.8, pan: 0, loop: true })
       : null;
   });
   els.bCancel.addEventListener('click', closeBuilder);

@@ -46,11 +46,10 @@
 //      music:    null,   // legacy, unused (audio now lives in `audio`)
 //      ambience: [],     // legacy, unused
 //      // Audio (Phase 4): a music bed + ambience loops + one-shot SFX, each
-//      // with volume, pan, loop, and an effects map (reverb/low-high-pass/
-//      // delay/distortion/pitch). null = silent. Picked in the builder; tuned
+//      // with volume, pan, and loop. null = silent. Picked in the builder; tuned
 //      // live in the audio panel and captured with "Save audio to scene".
-//      audio:    null,   // or { music:{src,volume,pan,loop,effects},
-//                        //      ambience:[{src,...}], sfx:[{id,src,volume,pan,effects}] }
+//      audio:    null,   // or { music:{src,volume,pan,loop},
+//                        //      ambience:[{src,...}], sfx:[{id,src,volume,pan}] }
 //      gmNotes:  "GM only text."   // shown in the GM window only
 //    }
 //
@@ -121,11 +120,11 @@ export const SCENES = [
     // exercised here out of the box. Drop your own files into assets/audio/**,
     // Rescan, and re-pick them in the builder to replace these.
     audio: {
-      music: { src: "assets/audio/music/theme-calm.wav", volume: 0.6, pan: 0, loop: true, effects: {} },
-      ambience: [{ src: "assets/audio/ambience/wind.wav", volume: 0.35, pan: 0, loop: true, effects: {} }],
+      music: { src: "assets/audio/music/theme-calm.wav", volume: 0.6, pan: 0, loop: true },
+      ambience: [{ src: "assets/audio/ambience/wind.wav", volume: 0.35, pan: 0, loop: true }],
       sfx: [
-        { id: "chime", src: "assets/audio/sfx/chime.wav", volume: 0.7, pan: 0, effects: {} },
-        { id: "door-thud", src: "assets/audio/sfx/door-thud.wav", volume: 0.8, pan: 0, effects: {} }
+        { id: "chime", src: "assets/audio/sfx/chime.wav", volume: 0.7, pan: 0 },
+        { id: "door-thud", src: "assets/audio/sfx/door-thud.wav", volume: 0.8, pan: 0 }
       ]
     },
     gmNotes: "The old well at the center is the heart of the trouble. Reveal the map only once the party has reason to look closely; the carvings on the rim match the ones in Wick's journal."
