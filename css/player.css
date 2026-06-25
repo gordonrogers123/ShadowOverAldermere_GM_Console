@@ -84,10 +84,13 @@
    covering the center of the stage. */
 .stage .char-layer {
   position: absolute;
-  bottom: 0;
-  /* --char-scale (default 1) sizes the cutout; --char-flip (default 1, or -1)
-     mirrors it. Both are set per character by the compositor, so a small
-     transparent cutout (e.g. an NPC) can be sized up to match the art. */
+  /* Per-character tuning set by the compositor: --char-scale (default 1) sizes
+     the cutout, --char-flip (1 or -1) mirrors it, and --char-x / --char-y are
+     stage-relative position nudges. y rides on `bottom` so a cutout can be
+     raised to sit on the visible backdrop bottom when a non-16:9 image
+     letterboxes; x rides on left/right (below). These are layout, not
+     transforms, so positioning never drifts during the entrance. */
+  bottom: var(--char-y, 0);
   height: calc(88% * var(--char-scale, 1));
   width: auto;
   max-width: calc(38% * var(--char-scale, 1));
@@ -98,8 +101,8 @@
   transition: opacity var(--char-fade) ease, transform var(--char-slide) ease, filter var(--char-fade) ease;
   will-change: opacity, transform, filter;
 }
-.stage .char-left  { left: 0;  transform: translateX(-130%) scaleX(var(--char-flip, 1)); }   /* offstage left */
-.stage .char-right { right: 0; transform: translateX(130%) scaleX(var(--char-flip, 1)); }     /* offstage right */
+.stage .char-left  { left:  var(--char-x, 0); transform: translateX(-130%) scaleX(var(--char-flip, 1)); }   /* offstage left */
+.stage .char-right { right: var(--char-x, 0); transform: translateX(130%) scaleX(var(--char-flip, 1)); }    /* offstage right */
 /* Fade-in-from-blur: the character does not slide -- it resolves in place from a
    soft, slightly enlarged blur to sharp (a focus pull), and blurs back out.
    scaleX(--char-flip) is folded into every transform so a flip composes with

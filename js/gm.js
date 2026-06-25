@@ -146,7 +146,9 @@ export function mountGm(root) {
                 <select class="b-left-src"></select>
                 <select class="b-left-enter"></select>
                 <div class="char-adjust">
-                  <label class="char-size">Size <input type="range" class="b-left-scale" min="0.5" max="2" step="0.05"></label>
+                  <label class="char-size">Size <input type="range" class="b-left-scale" min="0.5" max="4" step="0.1"></label>
+                  <label class="char-size" title="Horizontal position">↔ <input type="range" class="b-left-x" min="-10" max="45" step="1"></label>
+                  <label class="char-size" title="Vertical position — raise to align with the backdrop bottom">↕ <input type="range" class="b-left-y" min="-10" max="30" step="1"></label>
                   <button class="gm-button btn--toggle b-left-flip" type="button" title="Flip the character to face the other way">Flip</button>
                 </div>
               </div>
@@ -155,7 +157,9 @@ export function mountGm(root) {
                 <select class="b-right-src"></select>
                 <select class="b-right-enter"></select>
                 <div class="char-adjust">
-                  <label class="char-size">Size <input type="range" class="b-right-scale" min="0.5" max="2" step="0.05"></label>
+                  <label class="char-size">Size <input type="range" class="b-right-scale" min="0.5" max="4" step="0.1"></label>
+                  <label class="char-size" title="Horizontal position">↔ <input type="range" class="b-right-x" min="-10" max="45" step="1"></label>
+                  <label class="char-size" title="Vertical position — raise to align with the backdrop bottom">↕ <input type="range" class="b-right-y" min="-10" max="30" step="1"></label>
                   <button class="gm-button btn--toggle b-right-flip" type="button" title="Flip the character to face the other way">Flip</button>
                 </div>
               </div>
@@ -244,10 +248,14 @@ export function mountGm(root) {
     bLeftSrc:     root.querySelector('.b-left-src'),
     bLeftEnter:   root.querySelector('.b-left-enter'),
     bLeftScale:   root.querySelector('.b-left-scale'),
+    bLeftX:       root.querySelector('.b-left-x'),
+    bLeftY:       root.querySelector('.b-left-y'),
     bLeftFlip:    root.querySelector('.b-left-flip'),
     bRightSrc:    root.querySelector('.b-right-src'),
     bRightEnter:  root.querySelector('.b-right-enter'),
     bRightScale:  root.querySelector('.b-right-scale'),
+    bRightX:      root.querySelector('.b-right-x'),
+    bRightY:      root.querySelector('.b-right-y'),
     bRightFlip:   root.querySelector('.b-right-flip'),
     bNotes:       root.querySelector('.b-notes'),
     bSave:        root.querySelector('.b-save'),
@@ -967,8 +975,8 @@ export function mountGm(root) {
         { key: 'hidden', src: TITLE_SRC },
         { key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }
       ],
-      left:  { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false },
-      right: { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false },
+      left:  { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
+      right: { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
       roster: { heroes: [], enemies: [] },
       savedLayout: [],
       audio: { music: null, ambience: [], sfx: [] }
@@ -979,8 +987,8 @@ export function mountGm(root) {
     const variants = Object.entries(scene.maps || {}).map(([key, src]) => ({ key, src: src === '' ? TITLE_SRC : src }));
     if (!variants.length) variants.push({ key: 'revealed', src: '' });
     const sideOf = (s) => (s
-      ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER, scale: +s.scale > 0 ? +s.scale : 1, flip: !!s.flip }
-      : { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false });
+      ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER, scale: +s.scale > 0 ? +s.scale : 1, flip: !!s.flip, x: +s.x || 0, y: +s.y || 0 }
+      : { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 });
     const t = scene.tokens || {};
     return {
       editingId: scene.id,
@@ -1043,6 +1051,8 @@ export function mountGm(root) {
       const c = { id: charIdOf(d.src), src: d.src, enter: d.enter };
       if (+d.scale > 0 && +d.scale !== 1) c.scale = +d.scale;
       if (d.flip) c.flip = true;
+      if (+d.x) c.x = +d.x;
+      if (+d.y) c.y = +d.y;
       return c;
     };
     if (d.left.src)  chars.left  = sideCfg(d.left);
@@ -1145,6 +1155,10 @@ export function mountGm(root) {
     fillEnterSelect(els.bRightEnter, draft.right.enter);
     els.bLeftScale.value = draft.left.scale || 1;
     els.bRightScale.value = draft.right.scale || 1;
+    els.bLeftX.value = draft.left.x || 0;
+    els.bLeftY.value = draft.left.y || 0;
+    els.bRightX.value = draft.right.x || 0;
+    els.bRightY.value = draft.right.y || 0;
     els.bLeftFlip.classList.toggle('is-on', !!draft.left.flip);
     els.bRightFlip.classList.toggle('is-on', !!draft.right.flip);
     renderRosterPick();
@@ -1241,6 +1255,10 @@ export function mountGm(root) {
   els.bRightEnter.addEventListener('change', () => { draft.right.enter = els.bRightEnter.value; renderBuilderPreview(); });
   els.bLeftScale.addEventListener('input', () => { draft.left.scale = +els.bLeftScale.value; renderBuilderPreview(); });
   els.bRightScale.addEventListener('input', () => { draft.right.scale = +els.bRightScale.value; renderBuilderPreview(); });
+  els.bLeftX.addEventListener('input', () => { draft.left.x = +els.bLeftX.value; renderBuilderPreview(); });
+  els.bLeftY.addEventListener('input', () => { draft.left.y = +els.bLeftY.value; renderBuilderPreview(); });
+  els.bRightX.addEventListener('input', () => { draft.right.x = +els.bRightX.value; renderBuilderPreview(); });
+  els.bRightY.addEventListener('input', () => { draft.right.y = +els.bRightY.value; renderBuilderPreview(); });
   els.bLeftFlip.addEventListener('click', () => { draft.left.flip = !draft.left.flip; els.bLeftFlip.classList.toggle('is-on', draft.left.flip); renderBuilderPreview(); });
   els.bRightFlip.addEventListener('click', () => { draft.right.flip = !draft.right.flip; els.bRightFlip.classList.toggle('is-on', draft.right.flip); renderBuilderPreview(); });
   els.bMusic.addEventListener('change', () => {
