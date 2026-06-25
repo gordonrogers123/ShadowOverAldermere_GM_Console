@@ -85,9 +85,12 @@
 .stage .char-layer {
   position: absolute;
   bottom: 0;
-  height: 88%;
+  /* --char-scale (default 1) sizes the cutout; --char-flip (default 1, or -1)
+     mirrors it. Both are set per character by the compositor, so a small
+     transparent cutout (e.g. an NPC) can be sized up to match the art. */
+  height: calc(88% * var(--char-scale, 1));
   width: auto;
-  max-width: 38%;
+  max-width: calc(38% * var(--char-scale, 1));
   object-fit: contain;
   object-position: bottom;
   opacity: 0;
@@ -95,14 +98,16 @@
   transition: opacity var(--char-fade) ease, transform var(--char-slide) ease, filter var(--char-fade) ease;
   will-change: opacity, transform, filter;
 }
-.stage .char-left  { left: 0;  transform: translateX(-130%); }   /* offstage left */
-.stage .char-right { right: 0; transform: translateX(130%); }    /* offstage right */
+.stage .char-left  { left: 0;  transform: translateX(-130%) scaleX(var(--char-flip, 1)); }   /* offstage left */
+.stage .char-right { right: 0; transform: translateX(130%) scaleX(var(--char-flip, 1)); }     /* offstage right */
 /* Fade-in-from-blur: the character does not slide -- it resolves in place from a
-   soft, slightly enlarged blur to sharp (a focus pull), and blurs back out. */
-.stage .char-layer.enter-fade { transform: scale(1.06); filter: blur(12px); }
+   soft, slightly enlarged blur to sharp (a focus pull), and blurs back out.
+   scaleX(--char-flip) is folded into every transform so a flip composes with
+   the entrance instead of being overwritten by it. */
+.stage .char-layer.enter-fade { transform: scale(1.06) scaleX(var(--char-flip, 1)); filter: blur(12px); }
 /* On stage. (A slide character carries no blur; filter: blur(0) is a no-op for it.) */
-.stage .char-layer.is-shown { opacity: 1; transform: translateX(0); filter: blur(0); }
-.stage .char-layer.enter-fade.is-shown { transform: scale(1); }
+.stage .char-layer.is-shown { opacity: 1; transform: translateX(0) scaleX(var(--char-flip, 1)); filter: blur(0); }
+.stage .char-layer.enter-fade.is-shown { transform: scale(1) scaleX(var(--char-flip, 1)); }
 
 /* Black curtain over the whole stage (scene show/hide). */
 .stage .curtain {

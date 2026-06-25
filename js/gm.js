@@ -145,11 +145,19 @@ export function mountGm(root) {
                 <span>Left character</span>
                 <select class="b-left-src"></select>
                 <select class="b-left-enter"></select>
+                <div class="char-adjust">
+                  <label class="char-size">Size <input type="range" class="b-left-scale" min="0.5" max="2" step="0.05"></label>
+                  <button class="gm-button btn--toggle b-left-flip" type="button" title="Flip the character to face the other way">Flip</button>
+                </div>
               </div>
               <div class="field char-field">
                 <span>Right character</span>
                 <select class="b-right-src"></select>
                 <select class="b-right-enter"></select>
+                <div class="char-adjust">
+                  <label class="char-size">Size <input type="range" class="b-right-scale" min="0.5" max="2" step="0.05"></label>
+                  <button class="gm-button btn--toggle b-right-flip" type="button" title="Flip the character to face the other way">Flip</button>
+                </div>
               </div>
             </div>
 
@@ -235,8 +243,12 @@ export function mountGm(root) {
     addVariant:   root.querySelector('.add-variant'),
     bLeftSrc:     root.querySelector('.b-left-src'),
     bLeftEnter:   root.querySelector('.b-left-enter'),
+    bLeftScale:   root.querySelector('.b-left-scale'),
+    bLeftFlip:    root.querySelector('.b-left-flip'),
     bRightSrc:    root.querySelector('.b-right-src'),
     bRightEnter:  root.querySelector('.b-right-enter'),
+    bRightScale:  root.querySelector('.b-right-scale'),
+    bRightFlip:   root.querySelector('.b-right-flip'),
     bNotes:       root.querySelector('.b-notes'),
     bSave:        root.querySelector('.b-save'),
     bExport:      root.querySelector('.b-export'),
@@ -955,8 +967,8 @@ export function mountGm(root) {
         { key: 'hidden', src: TITLE_SRC },
         { key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }
       ],
-      left:  { src: '', enter: DEFAULT_ENTER },
-      right: { src: '', enter: DEFAULT_ENTER },
+      left:  { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false },
+      right: { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false },
       roster: { heroes: [], enemies: [] },
       savedLayout: [],
       audio: { music: null, ambience: [], sfx: [] }
@@ -966,7 +978,9 @@ export function mountGm(root) {
     // An empty map src is a title-screen variant; surface it as such in the picker.
     const variants = Object.entries(scene.maps || {}).map(([key, src]) => ({ key, src: src === '' ? TITLE_SRC : src }));
     if (!variants.length) variants.push({ key: 'revealed', src: '' });
-    const sideOf = (s) => (s ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER } : { src: '', enter: DEFAULT_ENTER });
+    const sideOf = (s) => (s
+      ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER, scale: +s.scale > 0 ? +s.scale : 1, flip: !!s.flip }
+      : { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false });
     const t = scene.tokens || {};
     return {
       editingId: scene.id,
@@ -1021,8 +1035,18 @@ export function mountGm(root) {
       }));
     }
     const chars = {};
-    if (d.left.src)  chars.left  = { id: charIdOf(d.left.src),  src: d.left.src,  enter: d.left.enter };
-    if (d.right.src) chars.right = { id: charIdOf(d.right.src), src: d.right.src, enter: d.right.enter };
+    // Per-character display tuning (size + horizontal flip) rides on the scene's
+    // character config; only stored when it differs from the default to keep
+    // scenes clean. Useful for transparent cutouts (e.g. NPCs) that need scaling
+    // or need to face the other way.
+    const sideCfg = (d) => {
+      const c = { id: charIdOf(d.src), src: d.src, enter: d.enter };
+      if (+d.scale > 0 && +d.scale !== 1) c.scale = +d.scale;
+      if (d.flip) c.flip = true;
+      return c;
+    };
+    if (d.left.src)  chars.left  = sideCfg(d.left);
+    if (d.right.src) chars.right = sideCfg(d.right);
     if (chars.left || chars.right) scene.characters = chars;
     scene.defaults = { visible: true, leftShown: !!chars.left, rightShown: !!chars.right };
     return scene;
@@ -1119,6 +1143,10 @@ export function mountGm(root) {
     fillCharSelect(els.bRightSrc, draft.right.src, false);
     fillEnterSelect(els.bLeftEnter, draft.left.enter);
     fillEnterSelect(els.bRightEnter, draft.right.enter);
+    els.bLeftScale.value = draft.left.scale || 1;
+    els.bRightScale.value = draft.right.scale || 1;
+    els.bLeftFlip.classList.toggle('is-on', !!draft.left.flip);
+    els.bRightFlip.classList.toggle('is-on', !!draft.right.flip);
     renderRosterPick();
     renderAudioPick();
     els.bExportOut.hidden = true;
@@ -1211,6 +1239,10 @@ export function mountGm(root) {
   els.bLeftEnter.addEventListener('change', () => { draft.left.enter = els.bLeftEnter.value; renderBuilderPreview(); });
   els.bRightSrc.addEventListener('change', () => { draft.right.src = els.bRightSrc.value; renderBuilderPreview(); });
   els.bRightEnter.addEventListener('change', () => { draft.right.enter = els.bRightEnter.value; renderBuilderPreview(); });
+  els.bLeftScale.addEventListener('input', () => { draft.left.scale = +els.bLeftScale.value; renderBuilderPreview(); });
+  els.bRightScale.addEventListener('input', () => { draft.right.scale = +els.bRightScale.value; renderBuilderPreview(); });
+  els.bLeftFlip.addEventListener('click', () => { draft.left.flip = !draft.left.flip; els.bLeftFlip.classList.toggle('is-on', draft.left.flip); renderBuilderPreview(); });
+  els.bRightFlip.addEventListener('click', () => { draft.right.flip = !draft.right.flip; els.bRightFlip.classList.toggle('is-on', draft.right.flip); renderBuilderPreview(); });
   els.bMusic.addEventListener('change', () => {
     const src = els.bMusic.value;
     draft.audio.music = src

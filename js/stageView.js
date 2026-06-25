@@ -182,12 +182,22 @@ export function createStageView(root) {
     const onTitle = bgDescriptor(state, scene).kind === 'unrevealed';
     const shown = !onTitle && !!live.shown && !!src;
     const enter = (cfg && cfg.enter) || DEFAULT_ENTER;
-    return { src, shown, enter };
+    // Per-character display tuning: size multiplier + horizontal flip, clamped
+    // to a sane range. Especially useful for transparent cutouts (e.g. NPCs).
+    const rawScale = cfg && +cfg.scale;
+    const scale = rawScale ? Math.min(3, Math.max(0.3, rawScale)) : 1;
+    const flip = !!(cfg && cfg.flip);
+    return { src, shown, enter, scale, flip };
   }
 
   function applySide(side, r, instant) {
     const img = chars[side];
     const prev = applied[side];
+
+    // Size + flip ride as CSS custom properties so they compose with the
+    // entrance transforms (slide/fade) instead of fighting them.
+    img.style.setProperty('--char-scale', r.scale != null ? r.scale : 1);
+    img.style.setProperty('--char-flip', r.flip ? -1 : 1);
 
     // A fade-in character sits in place (no slide); a slide character starts
     // off its own edge. Setting the class before is-shown fixes the baseline.

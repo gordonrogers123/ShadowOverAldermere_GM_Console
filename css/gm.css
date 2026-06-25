@@ -368,6 +368,11 @@ body.view-gm {
 .view-gm .field > span small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
 .view-gm .b-name { width: 100%; }
 .view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
+/* Per-character size + flip controls under each character picker. */
+.view-gm .char-adjust { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-1); flex-wrap: wrap; }
+.view-gm .char-size { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-200); color: var(--neutral); }
+.view-gm .char-size input[type="range"] { width: 7rem; }
+.view-gm .b-left-flip, .view-gm .b-right-flip { font-size: var(--fs-200); padding: 0.35rem 0.7rem; }
 .view-gm .variant-edit { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
 .view-gm .v-key { width: 9rem; }
 .view-gm .v-tag { font-size: 0.8rem; color: var(--neutral); opacity: 0.7; min-width: 5rem; }
