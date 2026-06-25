@@ -121,6 +121,71 @@
   padding: 0 2rem;
 }
 
+/* ---------- Tokens (shared: Player TV, GM board, GM preview) ----------
+   Round hero/enemy markers pinned to the map image. JS sets each token's
+   font-size to its pixel diameter, so the ring, portrait, initials, and
+   label all scale from it via em. Read-only here; the GM board re-enables
+   pointer events via .board-interactive (gm.css). */
+.stage .token-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.stage .token {
+  position: absolute;
+  box-sizing: border-box;
+  border: 0.07em solid #888;        /* color set inline per token (ringColor) */
+  border-radius: 50%;
+  background: #0a0a0c;
+  box-shadow: 0 0.04em 0.18em rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%); /* x/y address the token's CENTER */
+  transition: left 0.12s ease, top 0.12s ease, opacity 0.2s ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.stage .token-portrait,
+.stage .token-fallback {
+  position: absolute;
+  inset: 0;                          /* fills the area inside the ring */
+  border-radius: 50%;
+  overflow: hidden;
+}
+.stage .token-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.stage .token-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.34em;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0.05em 0.12em rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0.6em rgba(0, 0, 0, 0.45);
+}
+.stage .token-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.12em;
+  white-space: nowrap;
+  font-size: 0.24em;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 0 0.4em;
+  border-radius: 0.4em;
+  background: rgba(0, 0, 0, 0.62);
+  color: var(--paper, #efe7d4);
+  pointer-events: none;
+}
+.stage .token.is-hidden { opacity: 0; }   /* hidden from the Player TV */
+
 /* ---------- Player view: fullscreen letterbox ---------- */
 body.view-player {
   background: var(--stage);

@@ -1,16 +1,24 @@
 // ============================================================
-//  cast.js  --  markers and portraits
+//  cast.js  --  token markers and NPC portraits
 // ------------------------------------------------------------
-//  STUB FOR LATER PHASES. Nothing in Phase 1 reads this file.
-//  It is here so the data layout is settled and so you can see
-//  the shape now. The token and portrait images it points at are
-//  vendored in Phase 3 (tokens) and Phase 2 (NPC portraits); the
-//  paths below are where those files will go.
+//  The single source of truth for who can be placed on a map. As of
+//  Phase 3, js/stageView.js reads `heroes` and `enemies` to draw round
+//  tokens (a scene's `tokens` roster lists which ids are eligible; the GM
+//  places them live). `npcs` portraits are still for a later phase.
+//
+//  Token art is vendored BY HAND into assets/tokens/** -- it is NOT scanned
+//  by scripts/scan_assets.py. Until a file exists, a token renders as a
+//  colored ring with the character's initials, so the board works now and
+//  the portrait simply appears once a file is dropped at the path below.
 //
 //  Shapes:
-//    heroes:  [{ id, name, tokenImage, ringColor }]  // small round portrait
-//    enemies: [{ id, name, tokenImage, ringColor }]  // small marker
-//    npcs:    [{ id, name, portrait }]               // fullscreen image
+//    heroes:  [{ id, name, tokenImage, ringColor }]            // round token
+//    enemies: [{ id, name, tokenImage, ringColor, singular? }] // round token
+//    npcs:    [{ id, name, portrait }]                          // fullscreen
+//
+//  `singular` (enemies, optional) is the label stem used when copies are
+//  auto-numbered on the board, e.g. "Brigand 1" from name "Brigands". If
+//  absent the code strips a trailing "s", then falls back to the full name.
 //
 //  Ring colors reuse the campaign palette:
 //    support green #2f6b43, control blue #2a4d7a, offense red #8a2e2e.
@@ -28,7 +36,7 @@ export const CAST = {
   ],
 
   enemies: [
-    { id: "brigands", name: "Brigands", tokenImage: "assets/tokens/enemies/brigands.jpg", ringColor: "#8a2e2e" }
+    { id: "brigands", name: "Brigands", tokenImage: "assets/tokens/enemies/brigands.jpg", ringColor: "#8a2e2e", singular: "Brigand" }
   ],
 
   npcs: [

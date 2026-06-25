@@ -18,10 +18,13 @@ import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
 import { BACKGROUNDS, CHARACTERS } from '../data/manifest.js';
+import { CAST } from '../data/cast.js';
 
 export function mountGm(root) {
   let state = loadState();
   let draft = null;                 // the in-progress scene while building
+  let mapMode = false;              // map mode replaces the live panel for token play
+  let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
 
@@ -58,6 +61,7 @@ export function mountGm(root) {
         <div class="gm-controls" hidden>
           <div class="control-row">
             <button class="gm-button vis-toggle" type="button">Hide scene</button>
+            <button class="gm-button map-mode-btn" type="button">Map mode</button>
             <button class="gm-button edit-scene" type="button">Edit in builder</button>
           </div>
           <div class="control-row variant-row">
@@ -108,6 +112,20 @@ export function mountGm(root) {
             <select class="b-right-enter"></select>
           </div>
 
+          <div class="field">
+            <span>Roster <small>(who can be placed on the map)</small></span>
+            <div class="roster-pick">
+              <div class="roster-group">
+                <span class="roster-group-label">Heroes</span>
+                <div class="roster-heroes"></div>
+              </div>
+              <div class="roster-group">
+                <span class="roster-group-label">Enemies</span>
+                <div class="roster-enemies"></div>
+              </div>
+            </div>
+          </div>
+
           <label class="field">
             <span>GM notes</span>
             <textarea class="b-notes" rows="2"></textarea>
@@ -120,6 +138,36 @@ export function mountGm(root) {
           </div>
           <p class="b-export-hint" hidden>Copy this into the SCENES array in data/scenes.js to commit or share it.</p>
           <textarea class="b-export-out" hidden readonly rows="8"></textarea>
+        </div>
+
+        <div class="gm-mapmode" hidden>
+          <div class="mapmode-head">
+            <h3 class="gm-h3 mapmode-title"></h3>
+            <div class="mapmode-head-actions">
+              <button class="gm-button mm-vis" type="button">Hide scene</button>
+              <button class="gm-button mm-exit" type="button">Exit map mode</button>
+            </div>
+          </div>
+          <div class="mapmode-board"></div>
+          <div class="mapmode-cols">
+            <div class="mapmode-tray">
+              <h4 class="mapmode-h4">Roster</h4>
+              <div class="tray-group">
+                <span class="tray-label">Heroes</span>
+                <div class="tray-heroes"></div>
+              </div>
+              <div class="tray-group">
+                <span class="tray-label">Enemies</span>
+                <div class="tray-enemies"></div>
+              </div>
+              <p class="tray-empty" hidden>No roster set. Edit the scene to choose heroes and enemies.</p>
+            </div>
+            <div class="mapmode-onboard">
+              <h4 class="mapmode-h4">On the board</h4>
+              <ul class="onboard-list"></ul>
+              <p class="onboard-empty">Nothing placed yet. Add tokens from the roster.</p>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -156,6 +204,19 @@ export function mountGm(root) {
     bCancel:      root.querySelector('.b-cancel'),
     bExportHint:  root.querySelector('.b-export-hint'),
     bExportOut:   root.querySelector('.b-export-out'),
+    mapModeBtn:   root.querySelector('.map-mode-btn'),
+    mapmode:      root.querySelector('.gm-mapmode'),
+    mapboard:     root.querySelector('.mapmode-board'),
+    mapmodeTitle: root.querySelector('.mapmode-title'),
+    mmVis:        root.querySelector('.mm-vis'),
+    mmExit:       root.querySelector('.mm-exit'),
+    trayHeroes:   root.querySelector('.tray-heroes'),
+    trayEnemies:  root.querySelector('.tray-enemies'),
+    trayEmpty:    root.querySelector('.tray-empty'),
+    onboardList:  root.querySelector('.onboard-list'),
+    onboardEmpty: root.querySelector('.onboard-empty'),
+    rosterHeroes: root.querySelector('.roster-heroes'),
+    rosterEnemies: root.querySelector('.roster-enemies'),
     charToggle: {
       left:  root.querySelector('.char-toggle[data-side="left"]'),
       right: root.querySelector('.char-toggle[data-side="right"]')
@@ -175,6 +236,12 @@ export function mountGm(root) {
   };
 
   const previewView = createStageView(els.previewFrame);
+  const boardView = createStageView(els.mapboard);
+  boardView.el.classList.add('board-interactive');   // tokens are draggable here
+  boardView.el.addEventListener('pointerdown', onBoardPointerDown);
+  boardView.el.addEventListener('pointermove', onBoardPointerMove);
+  boardView.el.addEventListener('pointerup', onBoardPointerUp);
+  boardView.el.addEventListener('pointercancel', onBoardPointerUp);
 
   // ---- Sync: broadcast state; reply to a Player hello with current state. ----
   const sync = createSync((msg) => {
@@ -217,8 +284,10 @@ export function mountGm(root) {
     state.stage = {
       visible: d.visible !== false,
       left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
-      right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null }
+      right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
+      tokens: []                       // a fresh board per scene selection
     };
+    mapMode = false;                   // start on the cinematic controls
     commit();
   }
 
@@ -240,6 +309,9 @@ export function mountGm(root) {
 
   els.visToggle.addEventListener('click', toggleVisible);
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
+  els.mapModeBtn.addEventListener('click', enterMapMode);
+  els.mmExit.addEventListener('click', exitMapMode);
+  els.mmVis.addEventListener('click', toggleVisible);
   for (const side of ['left', 'right']) {
     els.charToggle[side].addEventListener('click', () => toggleSide(side));
     els.charReset[side].addEventListener('click', () => resetSide(side));
@@ -300,6 +372,209 @@ export function mountGm(root) {
   }
 
   // ============================================================
+  //  Map mode: place and move tokens on the map
+  // ============================================================
+  function clamp01(n) { n = +n; if (!isFinite(n)) return 0; return n < 0 ? 0 : n > 1 ? 1 : n; }
+  function sceneHasMap(scene) { return !!(scene && scene.maps && Object.keys(scene.maps).length); }
+  function castEntry(castId, kind) {
+    const list = kind === 'hero' ? CAST.heroes : CAST.enemies;
+    return (list || []).find((c) => c.id === castId) || null;
+  }
+  // "Brigands" -> "Brigand": prefer an explicit singular, else strip a
+  // trailing s, else use the name as-is.
+  function enemySingular(cast) {
+    if (cast && cast.singular) return cast.singular;
+    const name = (cast && cast.name) || (cast && cast.id) || 'Enemy';
+    return name.replace(/s$/i, '') || name;
+  }
+  // Lowest unused copy number for this enemy, so removing a middle one and
+  // re-adding fills the gap rather than ever leaving a hole in the count.
+  function nextEnemyNumber(tokens, castId) {
+    const used = new Set();
+    for (const t of tokens) {
+      if (t.kind === 'enemy' && t.castId === castId) {
+        const m = /(\d+)\s*$/.exec(t.label || '');
+        if (m) used.add(+m[1]);
+      }
+    }
+    let n = 1;
+    while (used.has(n)) n += 1;
+    return n;
+  }
+  function ensureTokens() {
+    if (!state.stage) state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [] };
+    if (!Array.isArray(state.stage.tokens)) state.stage.tokens = [];
+  }
+  // Seed the instId counter above any id already in saved state so re-adds
+  // after a reload never collide.
+  function seedTokenSeq() {
+    let max = 0;
+    for (const t of (state.stage && state.stage.tokens) || []) {
+      const m = /^tk(\d+)$/.exec(t.instId || '');
+      if (m) max = Math.max(max, +m[1]);
+    }
+    tokenSeq = max;
+  }
+
+  function addToken(castId, kind) {
+    const cast = castEntry(castId, kind);
+    if (!cast) return;
+    ensureTokens();
+    const tokens = state.stage.tokens;
+    let label, visible;
+    if (kind === 'hero') {
+      if (tokens.some((t) => t.kind === 'hero' && t.castId === castId)) return;  // heroes are unique
+      label = cast.name;
+      visible = true;                              // heroes are placed in the open
+    } else {
+      label = enemySingular(cast) + ' ' + nextEnemyNumber(tokens, castId);
+      visible = false;                             // enemies are staged hidden, revealed on cue
+    }
+    // Scatter around the center so stacked drops do not perfectly overlap.
+    const k = tokens.length;
+    const x = clamp01(0.5 + ((k % 5) - 2) * 0.045);
+    const y = clamp01(0.5 + ((Math.floor(k / 5) % 5) - 2) * 0.045);
+    tokens.push({ instId: 'tk' + (++tokenSeq), castId, kind, label, x, y, visible });
+    commit();
+  }
+  function removeToken(instId) {
+    ensureTokens();
+    state.stage.tokens = state.stage.tokens.filter((t) => t.instId !== instId);
+    commit();
+  }
+  function toggleTokenVisible(instId) {
+    ensureTokens();
+    const t = state.stage.tokens.find((x) => x.instId === instId);
+    if (t) { t.visible = t.visible === false; commit(); }
+  }
+
+  function enterMapMode() { if (sceneHasMap(sceneById(state.sceneId))) { mapMode = true; renderUI(); } }
+  function exitMapMode() { mapMode = false; renderUI(); }
+
+  function renderTray(scene) {
+    const roster = scene.tokens || {};
+    const heroes = Array.isArray(roster.heroes) ? roster.heroes : [];
+    const enemies = Array.isArray(roster.enemies) ? roster.enemies : [];
+    const placed = (state.stage && state.stage.tokens) || [];
+    const build = (container, ids, kind) => {
+      container.innerHTML = '';
+      for (const id of ids) {
+        const cast = castEntry(id, kind);
+        if (!cast) continue;
+        const row = document.createElement('div');
+        row.className = 'tray-item';
+        const sw = document.createElement('span');
+        sw.className = 'roster-swatch';
+        sw.style.background = cast.ringColor || '#888';
+        const nm = document.createElement('span');
+        nm.className = 'tray-name';
+        nm.textContent = cast.name;
+        const add = document.createElement('button');
+        add.className = 'gm-button tray-add';
+        add.type = 'button';
+        if (kind === 'hero' && placed.some((t) => t.kind === 'hero' && t.castId === id)) {
+          add.textContent = 'On board';
+          add.disabled = true;
+        } else {
+          add.textContent = 'Add';
+          add.addEventListener('click', () => addToken(id, kind));
+        }
+        row.append(sw, nm, add);
+        container.appendChild(row);
+      }
+    };
+    build(els.trayHeroes, heroes, 'hero');
+    build(els.trayEnemies, enemies, 'enemy');
+    els.trayEmpty.hidden = (heroes.length + enemies.length) > 0;
+  }
+
+  function renderOnboard() {
+    const tokens = (state.stage && state.stage.tokens) || [];
+    els.onboardList.innerHTML = '';
+    els.onboardEmpty.hidden = tokens.length > 0;
+    for (const t of tokens) {
+      const li = document.createElement('li');
+      li.className = 'onboard-item';
+      const sw = document.createElement('span');
+      sw.className = 'roster-swatch';
+      const cast = castEntry(t.castId, t.kind);
+      sw.style.background = (cast && cast.ringColor) || '#888';
+      const nm = document.createElement('span');
+      nm.className = 'onboard-name';
+      nm.textContent = t.label;
+      if (t.visible === false) nm.classList.add('is-hidden-name');
+      const vis = document.createElement('button');
+      vis.className = 'gm-button onboard-vis';
+      vis.type = 'button';
+      vis.textContent = t.visible === false ? 'Reveal' : 'Hide';
+      vis.addEventListener('click', () => toggleTokenVisible(t.instId));
+      const rm = document.createElement('button');
+      rm.className = 'onboard-del';
+      rm.type = 'button';
+      rm.textContent = '×';
+      rm.title = 'Remove from board';
+      rm.addEventListener('click', () => removeToken(t.instId));
+      li.append(sw, nm, vis, rm);
+      els.onboardList.appendChild(li);
+    }
+  }
+
+  function renderMapMode(scene) {
+    els.mapmodeTitle.textContent = scene.name;
+    els.mmVis.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
+    boardView.render(state, scene, { instant: true });
+    boardView.layoutTokens();          // the board was just unhidden; re-pin now
+    renderTray(scene);
+    renderOnboard();
+  }
+
+  // ---- Drag a token on the board. The element follows the pointer locally
+  //      every move; the broadcast to the Player is throttled to one per
+  //      frame, and the authoritative save happens once on release. ----
+  let drag = null;
+  let dragRAF = 0;
+  let dragPending = false;
+  function flushDragBroadcast() { dragPending = false; dragRAF = 0; broadcast(); }
+  function scheduleDragBroadcast() {
+    if (dragPending) return;
+    dragPending = true;
+    dragRAF = requestAnimationFrame(flushDragBroadcast);
+  }
+  function onBoardPointerDown(e) {
+    const tokenEl = e.target.closest && e.target.closest('.token');
+    if (!tokenEl || !boardView.el.contains(tokenEl)) return;
+    const instId = tokenEl.dataset.instId;
+    const tokens = (state.stage && state.stage.tokens) || [];
+    if (!tokens.some((t) => t.instId === instId)) return;
+    drag = { instId, el: tokenEl };
+    tokenEl.classList.add('dragging');
+    if (tokenEl.setPointerCapture) { try { tokenEl.setPointerCapture(e.pointerId); } catch (_) {} }
+    e.preventDefault();
+  }
+  function onBoardPointerMove(e) {
+    if (!drag) return;
+    const frac = boardView.pointToFraction(e.clientX, e.clientY);
+    if (!frac) return;
+    const t = (state.stage.tokens || []).find((x) => x.instId === drag.instId);
+    if (!t) return;
+    t.x = frac.x; t.y = frac.y;
+    drag.el.dataset.x = frac.x;
+    drag.el.dataset.y = frac.y;
+    boardView.layoutTokens();          // reposition locally (smooth on the GM board)
+    scheduleDragBroadcast();           // mirror to the Player, throttled to a frame
+  }
+  function onBoardPointerUp(e) {
+    if (!drag) return;
+    const el = drag.el;
+    el.classList.remove('dragging');
+    if (el.releasePointerCapture && e.pointerId != null) { try { el.releasePointerCapture(e.pointerId); } catch (_) {} }
+    drag = null;
+    if (dragRAF) cancelAnimationFrame(dragRAF);
+    dragPending = false;
+    commit();                          // final save + broadcast + refreshed lists
+  }
+
+  // ============================================================
   //  Scene builder
   // ============================================================
   function blankDraft() {
@@ -309,20 +584,26 @@ export function mountGm(root) {
       gmNotes: '',
       variants: [{ key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }],
       left:  { src: '', enter: DEFAULT_ENTER },
-      right: { src: '', enter: DEFAULT_ENTER }
+      right: { src: '', enter: DEFAULT_ENTER },
+      roster: { heroes: [], enemies: [] }
     };
   }
   function sceneToDraft(scene) {
     const variants = Object.entries(scene.maps || {}).map(([key, src]) => ({ key, src }));
     if (!variants.length) variants.push({ key: 'revealed', src: '' });
     const sideOf = (s) => (s ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER } : { src: '', enter: DEFAULT_ENTER });
+    const t = scene.tokens || {};
     return {
       editingId: scene.id,
       name: scene.name || '',
       gmNotes: scene.gmNotes || '',
       variants,
       left:  sideOf(scene.characters && scene.characters.left),
-      right: sideOf(scene.characters && scene.characters.right)
+      right: sideOf(scene.characters && scene.characters.right),
+      roster: {
+        heroes: Array.isArray(t.heroes) ? t.heroes.slice() : [],
+        enemies: Array.isArray(t.enemies) ? t.enemies.slice() : []
+      }
     };
   }
 
@@ -337,12 +618,16 @@ export function mountGm(root) {
     });
     const keys = Object.keys(maps);
     const id = d.editingId || slug(d.name);
+    const roster = d.roster || { heroes: [], enemies: [] };
+    const hasRoster = (roster.heroes && roster.heroes.length) || (roster.enemies && roster.enemies.length);
     const scene = {
       id,
       name: (d.name || '').trim() || humanize(id),
       maps,
       defaultMapState: keys[0] || 'revealed',
-      tokens: null,
+      tokens: hasRoster
+        ? { heroes: (roster.heroes || []).slice(), enemies: (roster.enemies || []).slice() }
+        : null,
       music: null,
       ambience: [],
       audio: null,
@@ -421,8 +706,38 @@ export function mountGm(root) {
     fillCharSelect(els.bRightSrc, draft.right.src, false);
     fillEnterSelect(els.bLeftEnter, draft.left.enter);
     fillEnterSelect(els.bRightEnter, draft.right.enter);
+    renderRosterPick();
     els.bExportOut.hidden = true;
     els.bExportHint.hidden = true;
+  }
+
+  // Roster checkboxes from CAST; toggling one edits draft.roster in place.
+  // No preview refresh -- the roster does not change the composited image.
+  function renderRosterPick() {
+    const build = (container, list, selected) => {
+      container.innerHTML = '';
+      for (const c of list) {
+        const lab = document.createElement('label');
+        lab.className = 'roster-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = selected.includes(c.id);
+        cb.addEventListener('change', () => {
+          const i = selected.indexOf(c.id);
+          if (cb.checked && i < 0) selected.push(c.id);
+          else if (!cb.checked && i >= 0) selected.splice(i, 1);
+        });
+        const sw = document.createElement('span');
+        sw.className = 'roster-swatch';
+        sw.style.background = c.ringColor || '#888';
+        const nm = document.createElement('span');
+        nm.textContent = c.name;
+        lab.append(cb, sw, nm);
+        container.appendChild(lab);
+      }
+    };
+    build(els.rosterHeroes, CAST.heroes || [], draft.roster.heroes);
+    build(els.rosterEnemies, CAST.enemies || [], draft.roster.enemies);
   }
 
   function fillEnterSelect(sel, value) {
@@ -531,7 +846,8 @@ export function mountGm(root) {
     removeUserScene(id);
     if (state.sceneId === id) {
       state.sceneId = null;
-      state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null } };
+      state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [] };
+      mapMode = false;
       saveState(state);
       broadcast();
     }
@@ -571,18 +887,25 @@ export function mountGm(root) {
     highlightActive();
     const scene = sceneById(state.sceneId);
     const building = !!draft;
+    const inMap = mapMode && !!scene && !building;
 
-    els.empty.hidden = building || !!scene;
-    els.preview.hidden = !(building || scene);
-    els.controls.hidden = building || !scene;
-    els.notes.hidden = building || !scene;
+    els.empty.hidden = building || !!scene || inMap;
+    els.preview.hidden = inMap || !(building || scene);
+    els.controls.hidden = inMap || building || !scene;
+    els.notes.hidden = inMap || building || !scene;
     els.builder.hidden = !building;
+    els.mapmode.hidden = !inMap;
 
-    if (building) renderBuilderPreview();
+    if (inMap) renderMapMode(scene);
+    else if (building) renderBuilderPreview();
     else if (scene) renderLive(scene);
+
+    // The Map mode entry button only makes sense for a scene with a map.
+    els.mapModeBtn.hidden = !(scene && sceneHasMap(scene));
   }
 
   // First paint, and a broadcast so a Player window already waiting updates.
+  seedTokenSeq();
   rebuildSceneList();
   renderUI();
   broadcast();

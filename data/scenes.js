@@ -39,7 +39,10 @@
 //      // the curtain is up and each side shows only if it has a character.
 //      defaults: { visible: true, leftShown: true, rightShown: true },
 //
-//      tokens:   null,   // RESERVED (Phase 3): { enemies:[id...], heroes:[id...] }
+//      // Token roster for map mode: which cast ids (data/cast.js) may be
+//      // placed on this map. null or omitted means none. The GM places and
+//      // moves them live during play.
+//      tokens:   { heroes:[id...], enemies:[id...] },   // or null
 //      music:    null,   // RESERVED (Phase 4)
 //      ambience: [],     // RESERVED (Phase 4)
 //      audio:    null,   // RESERVED (Phase 4)
