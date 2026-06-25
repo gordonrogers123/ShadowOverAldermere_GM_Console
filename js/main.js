@@ -11,6 +11,14 @@ const params = new URLSearchParams(location.search);
 const view = params.get('view');
 const app = document.getElementById('app');
 
+if (view === 'gm' || view === 'player') {
+  // Saved scenes may live on disk (data/userScenes.json). Load them before
+  // mounting so both the GM and the Player can resolve a file-only scene.
+  // Failure is swallowed inside loadFileScenes, so a missing server never blocks.
+  const { loadFileScenes } = await import('./fileScenes.js');
+  await loadFileScenes();
+}
+
 if (view === 'gm') {
   document.body.classList.add('view-gm');
   const { mountGm } = await import('./gm.js');

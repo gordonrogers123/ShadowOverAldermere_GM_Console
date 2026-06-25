@@ -80,9 +80,13 @@ click **Edit in builder** to base a new one on it.
   to the scene list, marked "saved". **Export** prints a paste-ready scene
   object to copy into `data/scenes.js` when you want to commit or share it.
 
-Saved scenes live in the browser's localStorage, so they are per machine until
-you export them into `data/scenes.js`. A saved scene whose id matches a shipped
-scene overrides it, so you can tweak a built version of a shipped scene.
+Saved scenes are stored two ways: in the browser's localStorage (instant) and,
+when the local server is running, on disk in `data/userScenes.json`. The disk
+copy is what lets a setup survive clearing browser data or moving to another
+machine — both windows load it at startup. A saved scene whose id matches a
+shipped scene overrides it, so you can tweak a built version of a shipped scene.
+Export still prints a paste-ready object for `data/scenes.js` when you want to
+commit a scene into the code itself.
 
 ## Tokens and map mode
 
@@ -101,6 +105,10 @@ Map mode opens an enlarged board with the roster tray beside it:
   placed visible; enemies are placed hidden, so you can stage an ambush and
   reveal them on cue. A hidden token still shows as a dim ghost on your board.
 - **×** takes a token off the board.
+- **Save layout** records where every token sits (and which are hidden) onto the
+  scene, so opening it later places them exactly as you left them. **Reset to
+  saved layout** snaps the board back to that arrangement after live moves. This
+  is how you prep an encounter the day before and still rearrange in the moment.
 
 Tokens render as a colored ring (green for heroes, red for enemies) around a
 round portrait. Until you vendor token art (below) a token shows the character's
@@ -144,6 +152,13 @@ path a cast entry names (for example `assets/tokens/enemies/brigands.jpg`) and
 it shows on that token automatically. Until then the token falls back to the
 character's initials, so the board works before any art exists. Add a hero or
 enemy to the roster picker by adding an entry to `data/cast.js`.
+
+Seed the public sample token art (the seven heroes plus a sample brigands enemy)
+from the reference site with:
+
+```
+SEED_TOKENS=1 ./scripts/sync-assets.sh
+```
 
 ## Add or hand-edit a scene
 

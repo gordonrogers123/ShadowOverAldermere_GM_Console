@@ -11,9 +11,10 @@
 # Single source of truth: the reference repo. Self-contained output:
 # this repo. Run this before a local session and before deploying.
 #
-# It NEVER copies GM-only assets (hidden map variants, enemy tokens,
-# spoilers). Those live only in this repo and must never go to the
-# public reference repo. This script only ever reads from the
+# It NEVER copies GM-only assets (hidden map variants, custom spoiler
+# art). Those live only in this repo and must never go to the public
+# reference repo. The optional SEED_SAMPLES / SEED_TOKENS steps copy
+# only already-public sample art. This script only ever reads from the
 # reference repo and writes into this one.
 # -------------------------------------------------------------------
 set -euo pipefail
@@ -67,6 +68,20 @@ HEROES=(
   truf.png
 )
 
+# Public round token art (JPGs) seeded as SAMPLE tokens when SEED_TOKENS=1.
+# Hero files keep their name (assets/tokens/heroes/<id>.jpg); the sample enemy
+# is renamed to match cast.js (assets/tokens/enemies/brigands.jpg). Tokens are
+# NOT scanned -- cast.js is the source of truth; drop your own art at its paths.
+HERO_TOKENS=(
+  lysander.jpg
+  telstar.jpg
+  thraka.jpg
+  khaleesi.jpg
+  sai.jpg
+  samsara.jpg
+  truf.jpg
+)
+
 copy_set () {
   local label="$1" src_dir="$2" dst_dir="$3"; shift 3
   local names=("$@")
@@ -92,6 +107,24 @@ copy_set "Fonts" "$REF_DIR/fonts" "$PROJECT_ROOT/assets/fonts" "${FONTS[@]}"
 #   SEED_SAMPLES=1 ./scripts/sync-assets.sh
 if [ "${SEED_SAMPLES:-0}" = "1" ]; then
   copy_set "Characters (samples)" "$REF_DIR/art" "$PROJECT_ROOT/assets/characters" "${HEROES[@]}"
+fi
+
+# Optional: seed sample round token art (heroes + the sample brigands enemy) so
+# the map board shows portraits on a fresh checkout. Off by default. Enable with:
+#   SEED_TOKENS=1 ./scripts/sync-assets.sh
+if [ "${SEED_TOKENS:-0}" = "1" ]; then
+  copy_set "Hero tokens" "$REF_DIR/hero" "$PROJECT_ROOT/assets/tokens/heroes" "${HERO_TOKENS[@]}"
+  # The sample enemy art is enemy-brigands.jpg in the reference repo, but cast.js
+  # points at tokens/enemies/brigands.jpg -- copy it under the expected name.
+  mkdir -p "$PROJECT_ROOT/assets/tokens/enemies"
+  echo
+  echo "Enemy tokens  ($REF_DIR/hero -> $PROJECT_ROOT/assets/tokens/enemies)"
+  if [ -f "$REF_DIR/hero/enemy-brigands.jpg" ]; then
+    cp -f "$REF_DIR/hero/enemy-brigands.jpg" "$PROJECT_ROOT/assets/tokens/enemies/brigands.jpg"
+    echo "  copied  enemy-brigands.jpg -> brigands.jpg"
+  else
+    echo "  MISSING enemy-brigands.jpg (not found in reference repo)" >&2
+  fi
 fi
 
 # Always regenerate the asset manifest the scene builder reads, scanning

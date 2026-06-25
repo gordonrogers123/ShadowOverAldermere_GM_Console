@@ -13,6 +13,7 @@
 
 import { allScenes, sceneById, isUserScene } from './scenesAll.js';
 import { addUserScene, removeUserScene } from './userScenes.js';
+import { saveSceneToFile, removeSceneFromFile } from './fileScenes.js';
 import { loadState, saveState } from './state.js';
 import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
@@ -144,6 +145,8 @@ export function mountGm(root) {
           <div class="mapmode-head">
             <h3 class="gm-h3 mapmode-title"></h3>
             <div class="mapmode-head-actions">
+              <button class="gm-button mm-save-layout" type="button">Save layout</button>
+              <button class="gm-button mm-reset-layout" type="button" hidden>Reset to saved layout</button>
               <button class="gm-button mm-vis" type="button">Hide scene</button>
               <button class="gm-button mm-exit" type="button">Exit map mode</button>
             </div>
@@ -210,6 +213,8 @@ export function mountGm(root) {
     mapmodeTitle: root.querySelector('.mapmode-title'),
     mmVis:        root.querySelector('.mm-vis'),
     mmExit:       root.querySelector('.mm-exit'),
+    mmSaveLayout: root.querySelector('.mm-save-layout'),
+    mmResetLayout: root.querySelector('.mm-reset-layout'),
     trayHeroes:   root.querySelector('.tray-heroes'),
     trayEnemies:  root.querySelector('.tray-enemies'),
     trayEmpty:    root.querySelector('.tray-empty'),
@@ -270,6 +275,23 @@ export function mountGm(root) {
   // ============================================================
   //  Live play controls
   // ============================================================
+  // Expand a scene's saved token layout into fresh live tokens. Positions are
+  // identity-free in the scene; mint instIds in the 'tk<N>' shape so seedTokenSeq
+  // keeps the counter ahead of them and a later add never collides.
+  function expandSavedLayout(scene) {
+    const layout = (scene && Array.isArray(scene.savedLayout)) ? scene.savedLayout : [];
+    return layout
+      .filter((L) => L && typeof L.castId === 'string' && L.castId)
+      .map((L) => ({
+        instId: 'tk' + (++tokenSeq),
+        castId: L.castId,
+        kind: L.kind === 'hero' ? 'hero' : 'enemy',
+        label: (L.label != null && String(L.label).trim()) ? String(L.label) : L.castId,
+        x: clamp01(L.x),
+        y: clamp01(L.y),
+        visible: L.visible !== false
+      }));
+  }
   function selectScene(id) {
     const scene = sceneById(id);
     if (!scene) return;
@@ -285,7 +307,7 @@ export function mountGm(root) {
       visible: d.visible !== false,
       left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
       right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
-      tokens: []                       // a fresh board per scene selection
+      tokens: expandSavedLayout(scene)  // auto-place a saved layout, else empty
     };
     mapMode = false;                   // start on the cinematic controls
     commit();
@@ -312,6 +334,8 @@ export function mountGm(root) {
   els.mapModeBtn.addEventListener('click', enterMapMode);
   els.mmExit.addEventListener('click', exitMapMode);
   els.mmVis.addEventListener('click', toggleVisible);
+  els.mmSaveLayout.addEventListener('click', saveLayout);
+  els.mmResetLayout.addEventListener('click', resetLayout);
   for (const side of ['left', 'right']) {
     els.charToggle[side].addEventListener('click', () => toggleSide(side));
     els.charReset[side].addEventListener('click', () => resetSide(side));
@@ -451,6 +475,32 @@ export function mountGm(root) {
   function enterMapMode() { if (sceneHasMap(sceneById(state.sceneId))) { mapMode = true; renderUI(); } }
   function exitMapMode() { mapMode = false; renderUI(); }
 
+  // Capture the current board into the scene's savedLayout, so selecting the
+  // scene later auto-places these tokens. Persists to BOTH tiers: localStorage
+  // (instant) and disk (best-effort, survives clearing browser data).
+  function saveLayout() {
+    const scene = sceneById(state.sceneId);
+    if (!scene) return;
+    ensureTokens();
+    const layout = state.stage.tokens.map((t) => ({
+      castId: t.castId, kind: t.kind, label: t.label, x: t.x, y: t.y, visible: t.visible !== false
+    }));
+    const updated = { ...scene, savedLayout: layout };
+    addUserScene(updated);            // localStorage upsert by id
+    saveSceneToFile(updated);         // disk write-through (best-effort, async)
+    rebuildSceneList();               // it is a saved scene now -> gets the "saved" badge
+    renderMapMode(sceneById(state.sceneId));   // refresh; the Reset button now shows
+    const n = layout.length;
+    setStatus('Saved layout for "' + scene.name + '" (' + n + ' token' + (n === 1 ? '' : 's') + ').');
+  }
+  // Discard live edits and re-place the scene's saved layout.
+  function resetLayout() {
+    const scene = sceneById(state.sceneId);
+    if (!scene) return;
+    state.stage.tokens = expandSavedLayout(scene);
+    commit();
+  }
+
   function renderTray(scene) {
     const roster = scene.tokens || {};
     const heroes = Array.isArray(roster.heroes) ? roster.heroes : [];
@@ -522,6 +572,7 @@ export function mountGm(root) {
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
     els.mmVis.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
+    els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
     renderTray(scene);
@@ -585,7 +636,8 @@ export function mountGm(root) {
       variants: [{ key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }],
       left:  { src: '', enter: DEFAULT_ENTER },
       right: { src: '', enter: DEFAULT_ENTER },
-      roster: { heroes: [], enemies: [] }
+      roster: { heroes: [], enemies: [] },
+      savedLayout: []
     };
   }
   function sceneToDraft(scene) {
@@ -603,7 +655,9 @@ export function mountGm(root) {
       roster: {
         heroes: Array.isArray(t.heroes) ? t.heroes.slice() : [],
         enemies: Array.isArray(t.enemies) ? t.enemies.slice() : []
-      }
+      },
+      // Carried opaquely through the builder; positions are edited in map mode.
+      savedLayout: Array.isArray(scene.savedLayout) ? scene.savedLayout.slice() : []
     };
   }
 
@@ -633,6 +687,11 @@ export function mountGm(root) {
       audio: null,
       gmNotes: (d.gmNotes || '').trim()
     };
+    if (Array.isArray(d.savedLayout) && d.savedLayout.length) {
+      scene.savedLayout = d.savedLayout.map((L) => ({
+        castId: L.castId, kind: L.kind, label: L.label, x: L.x, y: L.y, visible: L.visible !== false
+      }));
+    }
     const chars = {};
     if (d.left.src)  chars.left  = { id: charIdOf(d.left.src),  src: d.left.src,  enter: d.left.enter };
     if (d.right.src) chars.right = { id: charIdOf(d.right.src), src: d.right.src, enter: d.right.enter };
@@ -790,6 +849,7 @@ export function mountGm(root) {
     if (!draft.name.trim()) { setStatus('Name the scene before saving.'); els.bName.focus(); return; }
     const scene = draftToScene(draft);
     addUserScene(scene);
+    saveSceneToFile(scene);           // mirror the save to disk (best-effort)
     draft = null;
     rebuildSceneList();
     selectScene(scene.id);
@@ -844,6 +904,7 @@ export function mountGm(root) {
   }
   function deleteScene(id) {
     removeUserScene(id);
+    removeSceneFromFile(id);          // clear the disk tier too
     if (state.sceneId === id) {
       state.sceneId = null;
       state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [] };
