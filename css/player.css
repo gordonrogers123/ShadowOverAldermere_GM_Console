@@ -1,0 +1,94 @@
+/* ============================================================
+   player.css  --  the TV output
+   ------------------------------------------------------------
+   A full screen, near-black letterbox stage. Two stacked map
+   layers cross-fade on every change. No chrome, no text beyond
+   the scene plate and the idle title. Scoped under .view-player.
+   ============================================================ */
+
+body.view-player {
+  background: var(--stage);
+  overflow: hidden;
+}
+
+.view-player #app,
+.view-player .stage {
+  position: fixed;
+  inset: 0;
+}
+.view-player .stage { background: var(--stage); }
+
+/* The two cross-fading layers. */
+.view-player .map-layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--crossfade) ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Maps are letterboxed: full bleed, aspect preserved, centered. */
+.view-player .map-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Neutral plate shown for a scene whose current map file is not
+   present yet. Atmospheric, never spoilery. */
+.view-player .unrevealed {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background:
+    radial-gradient(120% 90% at 50% 30%, #14140f 0%, #0a0a0c 70%);
+  border: 1px solid rgba(203, 191, 168, 0.12);
+}
+.view-player .unrevealed-mark {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 2.4vw, 1.6rem);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(203, 191, 168, 0.45);
+  margin-bottom: 1rem;
+}
+.view-player .unrevealed-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  letter-spacing: 0.04em;
+  color: var(--rule);
+}
+
+/* Idle title, shown before any scene is chosen. */
+.view-player .idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--crossfade) ease;
+  pointer-events: none;
+}
+.view-player .idle.show { opacity: 1; }
+.view-player .idle-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 5rem);
+  letter-spacing: 0.05em;
+  color: var(--rule);
+  padding: 0 2rem;
+}
+
+/* Hide the cursor after idle (class toggled on the body by player.js). */
+.view-player.cursor-hidden,
+.view-player.cursor-hidden * { cursor: none; }

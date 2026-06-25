@@ -1,0 +1,95 @@
+/* ============================================================
+   app.css  --  shared base for both views
+   ------------------------------------------------------------
+   Fonts, the campaign palette, a small reset, and the chooser
+   page. View specific layout lives in gm.css and player.css,
+   each scoped under a body class so the two never collide.
+   ============================================================ */
+
+/* ---------- Fonts (vendored, work offline) ---------- */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url('../assets/fonts/cinzel.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/atkinson-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../assets/fonts/atkinson-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: italic; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/atkinson-italic.woff2') format('woff2');
+}
+
+/* ---------- Palette (matches the reference site) ---------- */
+:root {
+  --ink: #1a1a1a;
+  --paper: #ffffff;
+  --offense: #8a2e2e;   /* red */
+  --support: #2f6b43;   /* green */
+  --control: #2a4d7a;   /* blue */
+  --neutral: #3f3a36;   /* structural */
+  --rule: #cbbfa8;      /* hairlines, parchment ink on dark */
+  --fill: #f4f1ea;      /* light box fill */
+  --abilityFill: #efe7d6;
+
+  --stage: #0a0a0c;     /* Player letterbox background */
+  --gm-bg: #e9e3d6;     /* GM control surface background */
+  --gm-panel: #faf7f0;  /* GM cards */
+
+  --crossfade: 350ms;   /* keep in step with CURSOR/crossfade timing in JS */
+
+  --font-display: 'Cinzel', Georgia, serif;
+  --font-body: 'Atkinson Hyperlegible', system-ui, 'Segoe UI', Arial, sans-serif;
+}
+
+/* ---------- Reset ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+img { max-width: 100%; }
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--ink);
+}
+
+/* ---------- Chooser (shown when no ?view= is given) ---------- */
+.view-chooser body, body.view-chooser { background: var(--stage); }
+.chooser {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--fill);
+  padding: 2rem;
+}
+.chooser-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: 0.04em;
+  margin: 0 0 0.4rem;
+}
+.chooser-sub { margin: 0 0 2rem; opacity: 0.8; }
+.chooser-links { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+.chooser-link {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--fill);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0.9rem 1.6rem;
+}
+.chooser-link:hover { background: var(--paper); }
+.chooser-hint { margin-top: 2rem; opacity: 0.6; font-size: 0.95rem; }

@@ -1,0 +1,177 @@
+/* ============================================================
+   gm.css  --  the laptop control surface
+   ------------------------------------------------------------
+   Legible and uncluttered: large targets, plenty of contrast,
+   Cinzel for headings and Atkinson Hyperlegible for everything
+   else. All rules are scoped under .view-gm.
+   ============================================================ */
+
+body.view-gm {
+  background: var(--gm-bg);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.view-gm .gm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.5rem;
+  background: var(--neutral);
+  color: var(--fill);
+  border-bottom: 3px solid var(--rule);
+}
+.view-gm .gm-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-size: clamp(1.3rem, 2.5vw, 1.9rem);
+  margin: 0;
+}
+
+/* Buttons (shared look). Big, calm, clearly clickable. */
+.view-gm .gm-button {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: var(--fill);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0.7rem 1.2rem;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+}
+.view-gm .gm-button:hover { background: var(--paper); }
+.view-gm .gm-open { background: var(--fill); }
+
+.view-gm .gm-main {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ---- Scene list ---- */
+.view-gm .gm-scenes {
+  flex: 0 0 320px;
+}
+.view-gm .gm-h2,
+.view-gm .gm-h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.8rem;
+}
+.view-gm .scene-list { list-style: none; margin: 0; padding: 0; }
+.view-gm .scene-list li { margin: 0 0 0.6rem; }
+.view-gm .scene-button {
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  color: var(--ink);
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+}
+.view-gm .scene-button:hover { background: var(--paper); }
+.view-gm .scene-button.active {
+  border-left-color: var(--control);
+  background: var(--paper);
+  font-weight: 700;
+}
+
+/* ---- Stage (current scene) ---- */
+.view-gm .gm-stage { flex: 1 1 auto; min-width: 0; }
+.view-gm .gm-empty {
+  font-size: 1.2rem;
+  color: var(--neutral);
+  background: var(--gm-panel);
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.view-gm .gm-preview { margin: 0 0 1rem; }
+.view-gm .preview-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--stage);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.view-gm .preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.view-gm .preview-plate {
+  color: var(--rule);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 1rem;
+}
+.view-gm .preview-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+.view-gm .preview-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.view-gm .badge {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fill);
+  background: var(--neutral);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+}
+.view-gm .badge.badge-revealed { background: var(--support); }
+
+.view-gm .gm-controls { margin: 0 0 1.5rem; }
+.view-gm .toggle {
+  font-size: 1.2rem;
+  padding: 0.9rem 1.6rem;
+  background: var(--control);
+  color: var(--paper);
+  border-color: var(--control);
+}
+.view-gm .toggle:hover { filter: brightness(1.08); background: var(--control); }
+
+/* ---- GM notes (never leaves this window) ---- */
+.view-gm .gm-notes {
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--offense);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+}
+.view-gm .notes-body { margin: 0; font-size: 1.1rem; }
+
+/* ---- Narrow screens: stack the columns ---- */
+@media (max-width: 760px) {
+  .view-gm .gm-main { flex-direction: column; }
+  .view-gm .gm-scenes { flex-basis: auto; width: 100%; }
+}
