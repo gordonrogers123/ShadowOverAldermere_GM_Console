@@ -67,9 +67,9 @@ export function mountGm(root) {
 
         <div class="gm-controls" hidden>
           <div class="control-row">
-            <button class="gm-button vis-toggle" type="button">Hide scene</button>
-            <button class="gm-button map-mode-btn" type="button">Map mode</button>
-            <button class="gm-button edit-scene" type="button">Edit in builder</button>
+            <button class="gm-button btn--toggle vis-toggle" type="button">Hide scene</button>
+            <button class="gm-button btn--quiet map-mode-btn" type="button">Map mode</button>
+            <button class="gm-button btn--quiet edit-scene" type="button">Edit in builder</button>
           </div>
           <div class="control-row variant-row">
             <span class="control-label">Background</span>
@@ -102,60 +102,66 @@ export function mountGm(root) {
         <div class="gm-builder" hidden>
           <h3 class="gm-h3 builder-title">Build a scene</h3>
 
-          <label class="field">
-            <span>Name</span>
-            <input class="b-name" type="text" placeholder="A Word at the Gate">
-          </label>
+          <div class="builder-grid">
+            <div class="builder-col">
+              <label class="field">
+                <span>Name</span>
+                <input class="b-name" type="text" placeholder="A Word at the Gate">
+              </label>
 
-          <div class="field">
-            <span>Background variants <small>(the first one is shown first)</small></span>
-            <div class="variant-list"></div>
-            <button class="gm-button add-variant" type="button">Add variant</button>
-          </div>
-
-          <div class="field char-field">
-            <span>Left character</span>
-            <select class="b-left-src"></select>
-            <select class="b-left-enter"></select>
-          </div>
-          <div class="field char-field">
-            <span>Right character</span>
-            <select class="b-right-src"></select>
-            <select class="b-right-enter"></select>
-          </div>
-
-          <div class="field">
-            <span>Roster <small>(who can be placed on the map)</small></span>
-            <div class="roster-pick">
-              <div class="roster-group">
-                <span class="roster-group-label">Heroes</span>
-                <div class="roster-heroes"></div>
+              <div class="field">
+                <span>Background variants <small>(the first one is shown first)</small></span>
+                <div class="variant-list"></div>
+                <button class="gm-button btn--quiet add-variant" type="button">Add variant</button>
               </div>
-              <div class="roster-group">
-                <span class="roster-group-label">Enemies</span>
-                <div class="roster-enemies"></div>
+
+              <div class="field char-field">
+                <span>Left character</span>
+                <select class="b-left-src"></select>
+                <select class="b-left-enter"></select>
+              </div>
+              <div class="field char-field">
+                <span>Right character</span>
+                <select class="b-right-src"></select>
+                <select class="b-right-enter"></select>
               </div>
             </div>
-          </div>
 
-          <div class="field">
-            <span>Audio <small>(music bed, ambience loops, one-shot SFX)</small></span>
-            <div class="audio-pick">
-              <label class="audio-pick-row"><span class="audio-pick-label">Music</span><select class="b-music"></select></label>
-              <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
-              <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
+            <div class="builder-col">
+              <div class="field">
+                <span>Roster <small>(who can be placed on the map)</small></span>
+                <div class="roster-pick">
+                  <div class="roster-group">
+                    <span class="roster-group-label">Heroes</span>
+                    <div class="roster-heroes"></div>
+                  </div>
+                  <div class="roster-group">
+                    <span class="roster-group-label">Enemies</span>
+                    <div class="roster-enemies"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <span>Audio <small>(music bed, ambience loops, one-shot SFX)</small></span>
+                <div class="audio-pick">
+                  <label class="audio-pick-row"><span class="audio-pick-label">Music</span><select class="b-music"></select></label>
+                  <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
+                  <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
+                </div>
+              </div>
+
+              <label class="field">
+                <span>GM notes</span>
+                <textarea class="b-notes" rows="2"></textarea>
+              </label>
             </div>
           </div>
-
-          <label class="field">
-            <span>GM notes</span>
-            <textarea class="b-notes" rows="2"></textarea>
-          </label>
 
           <div class="builder-actions">
-            <button class="gm-button b-save" type="button">Save scene</button>
-            <button class="gm-button b-export" type="button">Export</button>
-            <button class="gm-button b-cancel" type="button">Cancel</button>
+            <button class="gm-button btn--save b-save" type="button">Save scene</button>
+            <button class="gm-button btn--quiet b-export" type="button">Export</button>
+            <button class="gm-button btn--quiet b-cancel" type="button">Cancel</button>
           </div>
           <p class="b-export-hint" hidden>Copy this into the SCENES array in data/scenes.js to commit or share it.</p>
           <textarea class="b-export-out" hidden readonly rows="8"></textarea>
@@ -165,10 +171,10 @@ export function mountGm(root) {
           <div class="mapmode-head">
             <h3 class="gm-h3 mapmode-title"></h3>
             <div class="mapmode-head-actions">
-              <button class="gm-button mm-save-layout" type="button">Save layout</button>
-              <button class="gm-button mm-reset-layout" type="button" hidden>Reset to saved layout</button>
-              <button class="gm-button mm-vis" type="button">Hide scene</button>
-              <button class="gm-button mm-exit" type="button">Exit map mode</button>
+              <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
+              <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
+              <button class="gm-button btn--toggle mm-vis" type="button">Hide scene</button>
+              <button class="gm-button btn--quiet mm-exit" type="button">Exit map mode</button>
             </div>
           </div>
           <div class="mapmode-board"></div>
@@ -379,7 +385,7 @@ export function mountGm(root) {
     const keys = scene.maps ? Object.keys(scene.maps) : [];
     for (const key of keys) {
       const btn = document.createElement('button');
-      btn.className = 'gm-button variant-button';
+      btn.className = 'gm-button btn--toggle variant-button';  // segmented toggle; .active lights it
       btn.type = 'button';
       btn.textContent = humanize(key);
       btn.classList.toggle('active', key === state.mapState);
@@ -413,6 +419,7 @@ export function mountGm(root) {
     els.badge.classList.toggle('badge-revealed', keys.length > 1 && state.mapState !== keys[0]);
 
     els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
+    els.visToggle.classList.toggle('is-on', state.stage.visible !== false);  // toggle lit while shown
     renderVariantButtons(scene);
 
     for (const side of ['left', 'right']) {
@@ -510,7 +517,7 @@ export function mountGm(root) {
     const outWrap = document.createElement('div'); outWrap.className = 'audio-outputs';
     for (const [key, text] of [['player', 'TV'], ['gm', 'Laptop']]) {
       const b = document.createElement('button');
-      b.className = 'gm-button audio-output'; b.type = 'button'; b.dataset.out = key; b.textContent = text;
+      b.className = 'gm-button btn--toggle audio-output'; b.type = 'button'; b.dataset.out = key; b.textContent = text;
       const isOn = () => !!(state.audio.outputs && state.audio.outputs[key]);
       b.classList.toggle('active', isOn());
       b.addEventListener('click', () => { ensureAudio(); state.audio.outputs[key] = !isOn(); b.classList.toggle('active', isOn()); commitAudio(); });
@@ -538,7 +545,7 @@ export function mountGm(root) {
 
     const saveRow = aRow();
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'gm-button audio-save'; saveBtn.type = 'button'; saveBtn.textContent = 'Save audio to scene';
+    saveBtn.className = 'gm-button btn--save audio-save'; saveBtn.type = 'button'; saveBtn.textContent = 'Save audio to scene';
     saveBtn.addEventListener('click', saveAudioToScene);
     saveRow.append(saveBtn);
     els.audioBody.append(saveRow);
@@ -839,6 +846,7 @@ export function mountGm(root) {
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
     els.mmVis.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
+    els.mmVis.classList.toggle('is-on', state.stage.visible !== false);  // toggle lit while shown
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
