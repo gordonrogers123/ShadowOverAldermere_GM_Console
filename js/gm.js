@@ -35,6 +35,11 @@ export function mountGm(root) {
   let audioSfx = SFX.slice();
   let builtAudioSceneId = null;            // which scene's audio panel is currently built
 
+  // Sentinel a builder variant uses for "the Aldermere title screen": a
+  // background with no image. It saves as an empty src, which the compositor
+  // renders as the title plate (Aldermere + the scene name) before the reveal.
+  const TITLE_SRC = '__title__';
+
   root.innerHTML = `
     <header class="gm-header">
       <div class="gm-title-wrap">
@@ -113,7 +118,7 @@ export function mountGm(root) {
               </label>
 
               <div class="field">
-                <span>Background variants <small>(the first one is shown first)</small></span>
+                <span>Background variants <small>(first is shown first; pick "Title screen" for an Aldermere card that reveals to a map)</small></span>
                 <div class="variant-list"></div>
                 <button class="gm-button btn--quiet add-variant" type="button">Add variant</button>
               </div>
@@ -187,6 +192,11 @@ export function mountGm(root) {
               <button class="gm-button btn--quiet mm-exit" type="button">Exit map mode</button>
             </div>
           </div>
+          <p class="mapmode-intro">Place and move tokens on the map. Tokens show on the TV <strong>only while you are in map mode</strong> &mdash; Exit map mode returns to the scene controls and clears them from the TV.</p>
+          <div class="control-row mapmode-variant-row" hidden>
+            <span class="control-label">Background</span>
+            <div class="mapmode-variants variant-buttons"></div>
+          </div>
           <div class="mapmode-board"></div>
           <div class="mapmode-cols">
             <div class="mapmode-tray">
@@ -249,6 +259,8 @@ export function mountGm(root) {
     mapmode:      root.querySelector('.gm-mapmode'),
     mapboard:     root.querySelector('.mapmode-board'),
     mapmodeTitle: root.querySelector('.mapmode-title'),
+    mapmodeVariants:   root.querySelector('.mapmode-variants'),
+    mapmodeVariantRow: root.querySelector('.mapmode-variant-row'),
     mmVis:        root.querySelector('.mm-vis'),
     mmExit:       root.querySelector('.mm-exit'),
     mmSaveLayout: root.querySelector('.mm-save-layout'),
@@ -349,7 +361,10 @@ export function mountGm(root) {
     state.sceneId = id;
     const keys = scene.maps ? Object.keys(scene.maps) : [];
     const def = scene.defaultMapState;
-    state.mapState = (def && scene.maps && scene.maps[def]) ? def : (keys[0] || 'hidden');
+    // Use defaultMapState when it names a real variant KEY -- a title-screen
+    // variant has an empty src, so test for the key, not a truthy value.
+    const hasDef = def && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, def);
+    state.mapState = hasDef ? def : (keys[0] || 'hidden');
     const d = scene.defaults || {};
     const hasLeft = !!(scene.characters && scene.characters.left);
     const hasRight = !!(scene.characters && scene.characters.right);
@@ -357,7 +372,8 @@ export function mountGm(root) {
       visible: d.visible !== false,
       left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
       right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
-      tokens: expandSavedLayout(scene)  // auto-place a saved layout, else empty
+      tokens: expandSavedLayout(scene),  // auto-place a saved layout, else empty
+      mapMode: false                     // selecting a scene starts on the cinematic controls
     };
     state.audio = seedAudioFromScene(scene, state.audio);
     builtAudioSceneId = null;           // force the audio panel to rebuild on select
@@ -394,8 +410,10 @@ export function mountGm(root) {
     els.charSwap[side].addEventListener('change', () => swapSide(side, els.charSwap[side].value));
   }
 
-  function renderVariantButtons(scene) {
-    els.variantButtons.innerHTML = '';
+  // Build the background-variant buttons into a container; shared by the live
+  // controls and the map-mode panel. Returns the variant count.
+  function buildVariantButtons(container, scene) {
+    container.innerHTML = '';
     const keys = scene.maps ? Object.keys(scene.maps) : [];
     for (const key of keys) {
       const btn = document.createElement('button');
@@ -404,9 +422,12 @@ export function mountGm(root) {
       btn.textContent = humanize(key);
       btn.classList.toggle('active', key === state.mapState);
       btn.addEventListener('click', () => setVariant(key));
-      els.variantButtons.appendChild(btn);
+      container.appendChild(btn);
     }
-    els.variantRow.hidden = keys.length <= 1;
+    return keys.length;
+  }
+  function renderVariantButtons(scene) {
+    els.variantRow.hidden = buildVariantButtons(els.variantButtons, scene) <= 1;
   }
 
   // Category label + order for the grouped left/right character pickers.
@@ -743,7 +764,7 @@ export function mountGm(root) {
     return n;
   }
   function ensureTokens() {
-    if (!state.stage) state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [] };
+    if (!state.stage) state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [], mapMode: false };
     if (!Array.isArray(state.stage.tokens)) state.stage.tokens = [];
   }
   // Seed the instId counter above any id already in saved state so re-adds
@@ -789,8 +810,18 @@ export function mountGm(root) {
     if (t) { t.visible = t.visible === false; commit(); }
   }
 
-  function enterMapMode() { if (sceneHasMap(sceneById(state.sceneId))) { mapMode = true; renderUI(); } }
-  function exitMapMode() { mapMode = false; renderUI(); }
+  function enterMapMode() {
+    if (!sceneHasMap(sceneById(state.sceneId))) return;
+    mapMode = true;
+    ensureTokens();
+    state.stage.mapMode = true;   // tell the Player to reveal the tokens
+    commit();                     // save + broadcast the flag + re-render
+  }
+  function exitMapMode() {
+    mapMode = false;
+    if (state.stage) state.stage.mapMode = false;   // Player hides the tokens again
+    commit();
+  }
 
   // Capture the current board into the scene's savedLayout, so selecting the
   // scene later auto-places these tokens. Persists to BOTH tiers: localStorage
@@ -892,6 +923,9 @@ export function mountGm(root) {
     els.mmVis.textContent = state.stage.visible === false ? 'Show scene' : 'Hide scene';
     els.mmVis.classList.toggle('is-on', state.stage.visible !== false);  // toggle lit while shown
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
+    // Background picker inside map mode: switch which variant the board (and TV)
+    // shows -- e.g. reveal the map from the title screen so tokens have ground to sit on.
+    els.mapmodeVariantRow.hidden = buildVariantButtons(els.mapmodeVariants, scene) <= 1;
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
     renderTray(scene);
@@ -952,7 +986,11 @@ export function mountGm(root) {
       editingId: null,
       name: '',
       gmNotes: '',
-      variants: [{ key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }],
+      // New scenes open on the Aldermere title screen, then reveal to a map.
+      variants: [
+        { key: 'hidden', src: TITLE_SRC },
+        { key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '' }
+      ],
       left:  { src: '', enter: DEFAULT_ENTER },
       right: { src: '', enter: DEFAULT_ENTER },
       roster: { heroes: [], enemies: [] },
@@ -961,7 +999,8 @@ export function mountGm(root) {
     };
   }
   function sceneToDraft(scene) {
-    const variants = Object.entries(scene.maps || {}).map(([key, src]) => ({ key, src }));
+    // An empty map src is a title-screen variant; surface it as such in the picker.
+    const variants = Object.entries(scene.maps || {}).map(([key, src]) => ({ key, src: src === '' ? TITLE_SRC : src }));
     if (!variants.length) variants.push({ key: 'revealed', src: '' });
     const sideOf = (s) => (s ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER } : { src: '', enter: DEFAULT_ENTER });
     const t = scene.tokens || {};
@@ -989,11 +1028,11 @@ export function mountGm(root) {
   function draftToScene(d) {
     const maps = {};
     d.variants.forEach((v, i) => {
-      if (!v.src) return;
+      if (!v.src) return;                              // unset variant -- skip
       let base = slug(v.key) || ('variant-' + (i + 1));
       let key = base; let n = 2;
       while (Object.prototype.hasOwnProperty.call(maps, key)) { key = base + '-' + n; n += 1; }
-      maps[key] = v.src;
+      maps[key] = v.src === TITLE_SRC ? '' : v.src;     // title screen saves as an empty src
     });
     const keys = Object.keys(maps);
     const id = d.editingId || slug(d.name);
@@ -1051,6 +1090,10 @@ export function mountGm(root) {
       none.value = '';
       none.textContent = '(choose background)';
       sel.appendChild(none);
+      const title = document.createElement('option');
+      title.value = TITLE_SRC;
+      title.textContent = 'Title screen (Aldermere)';
+      sel.appendChild(title);
       for (const b of backgrounds) {
         const o = document.createElement('option');
         o.value = b.src;
@@ -1273,7 +1316,7 @@ export function mountGm(root) {
     removeSceneFromFile(id);          // clear the disk tier too
     if (state.sceneId === id) {
       state.sceneId = null;
-      state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [] };
+      state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [], mapMode: false };
       mapMode = false;
       saveState(state);
       broadcast();

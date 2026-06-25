@@ -87,6 +87,8 @@ export function createStageView(root) {
 
   let activeIndex = 0;       // which background layer is currently visible
   let currentBgKey = null;   // what background is on screen, to skip redundant work
+  let tokensShown = false;   // last token-visibility decision, so a ResizeObserver
+                             // re-layout keeps tokens hidden when not in map mode
   const applied = {          // last applied posture, for diffing
     left: { shown: false, src: null },
     right: { shown: false, src: null }
@@ -230,7 +232,7 @@ export function createStageView(root) {
   // after a map image loads. No active map image -> hide the whole layer.
   function layoutTokens() {
     const img = activeMapImg();
-    if (!img) { tokenLayer.style.display = 'none'; return; }
+    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; return; }
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
@@ -311,7 +313,13 @@ export function createStageView(root) {
     }
     existing.forEach((el, id) => { if (!seen.has(id)) el.remove(); });
 
-    if (!haveMap) { tokenLayer.style.display = 'none'; return; }
+    // Tokens are a map-mode concern. The interactive GM board always shows them
+    // (placement happens there); every mirror -- the Player TV and the GM
+    // preview -- shows them only while the GM is in map mode, so leaving map
+    // mode clears the table on the TV.
+    const inMapMode = !!(state.stage && state.stage.mapMode);
+    tokensShown = stage.classList.contains('board-interactive') || inMapMode;
+    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; return; }
     layoutTokens();
   }
 
