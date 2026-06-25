@@ -1058,11 +1058,33 @@ export function mountGm(root) {
       title.value = TITLE_SRC;
       title.textContent = 'Title screen (Aldermere)';
       sel.appendChild(title);
-      for (const b of backgrounds) {
-        const o = document.createElement('option');
-        o.value = b.src;
-        o.textContent = b.name;
-        sel.appendChild(o);
+      // Group the backdrops so the GM can tell a top-down MAP from a cinematic
+      // BACKGROUND at a glance; the kind comes from the asset folder (assets/maps
+      // vs assets/backgrounds), tagged by the scanner.
+      const used = new Set();
+      for (const [k, label] of [['map', 'Maps'], ['background', 'Backgrounds']]) {
+        const items = backgrounds.filter((b) => b.kind === k);
+        if (!items.length) continue;
+        const og = document.createElement('optgroup');
+        og.label = label;
+        for (const b of items) {
+          const o = document.createElement('option');
+          o.value = b.src; o.textContent = b.name;
+          og.appendChild(o); used.add(b.src);
+        }
+        sel.appendChild(og);
+      }
+      // Any untagged backdrops (loose files) keep working under a neutral group.
+      const rest = backgrounds.filter((b) => !used.has(b.src));
+      if (rest.length) {
+        const og = document.createElement('optgroup');
+        og.label = 'Other';
+        for (const b of rest) {
+          const o = document.createElement('option');
+          o.value = b.src; o.textContent = b.name;
+          og.appendChild(o);
+        }
+        sel.appendChild(og);
       }
       sel.value = v.src;
       sel.addEventListener('change', () => { v.src = sel.value; renderBuilderPreview(); });

@@ -30,7 +30,7 @@ def _humanize(stem: str) -> str:
     return " ".join(w[:1].upper() + w[1:] for w in words) if words else stem
 
 
-def _list(folder: str, exts, *, skip_hidden: bool, category=None):
+def _list(folder: str, exts, *, skip_hidden: bool, category=None, kind=None):
     out = []
     directory = os.path.join(ASSETS, folder)
     if not os.path.isdir(directory):
@@ -45,9 +45,12 @@ def _list(folder: str, exts, *, skip_hidden: bool, category=None):
         if skip_hidden and stem.endswith("_hidden"):
             continue
         entry = {"id": stem, "name": _humanize(stem), "src": f"assets/{folder}/{name}"}
-        # Characters carry a category so the builder can group the pickers.
+        # Characters carry a category so the builder can group the pickers;
+        # backgrounds carry a kind (map vs background) for the same reason.
         if category is not None:
             entry["category"] = category
+        if kind is not None:
+            entry["kind"] = kind
         out.append(entry)
     return out
 
@@ -55,8 +58,8 @@ def _list(folder: str, exts, *, skip_hidden: bool, category=None):
 def scan():
     """Return the asset lists (backgrounds, characters, audio) sorted for stable diffs."""
     backgrounds = (
-        _list("maps", IMAGE_EXTS, skip_hidden=True)
-        + _list("backgrounds", IMAGE_EXTS, skip_hidden=True)
+        _list("maps", IMAGE_EXTS, skip_hidden=True, kind="map")
+        + _list("backgrounds", IMAGE_EXTS, skip_hidden=True, kind="background")
     )
     backgrounds.sort(key=lambda e: e["src"])
     # Character cutouts are split into category subfolders; each entry is tagged
@@ -91,9 +94,11 @@ def _emit(entries) -> str:
         fields = "id: {0}, name: {1}, src: {2}".format(
             json.dumps(e["id"]), json.dumps(e["name"]), json.dumps(e["src"])
         )
-        # Characters also carry a category; backgrounds and audio do not.
+        # Characters carry a category; backgrounds carry a kind; audio neither.
         if e.get("category"):
             fields += ", category: {0}".format(json.dumps(e["category"]))
+        if e.get("kind"):
+            fields += ", kind: {0}".format(json.dumps(e["kind"]))
         rows.append("  {{ {0} }}".format(fields))
     return ",\n".join(rows)
 
