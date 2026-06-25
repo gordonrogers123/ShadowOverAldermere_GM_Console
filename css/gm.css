@@ -385,6 +385,10 @@ body.view-gm {
 }
 .view-gm .mapmode-title { margin: 0; }
 .view-gm .mapmode-head-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+/* One-line explainer + a background picker, so map mode reads as its own clear
+   token-placement mode rather than a surprising switch. */
+.view-gm .mapmode-intro { margin: 0 0 var(--space-3); color: var(--neutral); font-size: var(--fs-200); }
+.view-gm .mapmode-variant-row { margin-bottom: var(--space-3); }
 /* .mm-vis is the same show/hide control as .vis-toggle -- colour from .btn--toggle. */
 .view-gm .mapmode-board {
   position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 72vh;

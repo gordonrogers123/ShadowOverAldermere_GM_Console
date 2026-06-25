@@ -83,6 +83,11 @@ function normalizeToken(t, i) {
 // reader never trips over an absent sub-key. (The old shallow merge could
 // not do this: it replaced the whole stage object wholesale.) tokens is
 // backfilled to [] for pre-Phase-3 saved state.
+//
+// stage.mapMode is a TRANSIENT broadcast flag (gm.js sets it true while the GM
+// is in map mode, telling the Player to reveal tokens). It is deliberately not
+// persisted or normalized here, so a reload clears it and the Player hides
+// tokens until the GM re-enters map mode.
 function normalizeStage(s) {
   s = s || {};
   const side = (x) => ({
