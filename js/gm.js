@@ -67,11 +67,13 @@ export function mountGm(root) {
 
         <!-- Live controls live in the rail so they stay put (and visible) whether
              you are directing the scene or in map mode: nothing jumps. The nav
-             row (Hide/Show + Map<->Exit) is shown in BOTH modes at one fixed spot. -->
+             row (Black out + Map<->Exit + Edit) is shown in BOTH modes at one
+             fixed spot, so the three quick actions sit together and never move. -->
         <div class="gm-controls" hidden>
           <div class="control-row controls-nav">
-            <button class="gm-button btn--toggle vis-toggle" type="button">Hide scene</button>
+            <button class="gm-button btn--toggle vis-toggle" type="button">Black out</button>
             <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
+            <button class="gm-button btn--quiet edit-scene" type="button">Edit</button>
           </div>
           <div class="control-row variant-row">
             <span class="control-label">Background</span>
@@ -89,9 +91,6 @@ export function mountGm(root) {
               <button class="gm-button char-toggle" data-side="right" type="button">Enter</button>
               <select class="char-swap" data-side="right" aria-label="Right character"></select>
               <button class="gm-button char-reset" data-side="right" type="button">Reset</button>
-            </div>
-            <div class="control-row">
-              <button class="gm-button btn--quiet edit-scene" type="button">Edit in builder</button>
             </div>
           </div>
           <div class="controls-map" hidden>
@@ -401,8 +400,12 @@ export function mountGm(root) {
     commit();
   }
   function swapSide(side, src) {
-    if (src) { state.stage[side].srcOverride = src; state.stage[side].shown = true; }
-    else { state.stage[side].srcOverride = null; }
+    // Selecting a character only ARMS it -- the Enter button triggers the
+    // entrance. Picking from the dropdown never makes someone pop onto the
+    // stage (and never shows them over a title screen); visibility is left
+    // exactly as it was, so a live swap of an already-shown character is still
+    // instant while a hidden side stays hidden until you press Enter.
+    state.stage[side].srcOverride = src || null;
     commit();
   }
   function resetSide(side) { state.stage[side].srcOverride = null; commit(); }

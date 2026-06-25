@@ -175,7 +175,12 @@ export function createStageView(root) {
     const cfg = scene && scene.characters ? scene.characters[side] : null;
     const live = (state.stage && state.stage[side]) || { shown: false, srcOverride: null };
     const src = live.srcOverride || (cfg && cfg.src) || null;
-    const shown = !!live.shown && !!src;
+    // Characters never composite over a title screen (an empty-src variant) --
+    // the Aldermere plate is meant to stand alone, so a character armed/shown
+    // from a prior backdrop does not bleed onto it. They enter once the GM
+    // reveals a real map/background.
+    const onTitle = bgDescriptor(state, scene).kind === 'unrevealed';
+    const shown = !onTitle && !!live.shown && !!src;
     const enter = (cfg && cfg.enter) || DEFAULT_ENTER;
     return { src, shown, enter };
   }
