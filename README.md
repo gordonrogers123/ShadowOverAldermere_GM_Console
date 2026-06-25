@@ -123,19 +123,15 @@ them in the builder's **Audio** field from whatever is in `assets/audio/`
 (`music/`, `ambience/`, `sfx/`), then run it from the **Audio** panel on the
 scene's live controls:
 
-- **Play / Stop**, **volume**, **pan**, and **loop** per track, with a
-  **master** volume over everything.
-- **Effects** per track (under the Effects twirl-down): **reverb** (room / hall
-  / cave), **low/high-pass** filter (muffled / distant), **delay / echo**,
-  **distortion / lo-fi**, and **pitch** — which also changes speed, so lower is
-  slower and deeper.
+- **Play / Stop**, **volume**, and **pan** per track, with a **master** volume
+  over everything. Music and ambience beds **loop automatically**; SFX fire once.
 - **SFX** buttons fire a cue once.
 - **Output** picks which window actually makes sound: **TV** (the Player, on the
   room speakers over HDMI) and/or **Laptop** (the GM, e.g. to monitor on
   headphones). The TV is on by default.
-- **Save audio to scene** captures the current tuning (volumes, pans, effects)
-  back onto the scene so it recalls next session — the audio half of prepping
-  the day before.
+- **Save audio to scene** captures the current tuning (volumes, pans) back onto
+  the scene so it recalls next session — the audio half of prepping the day
+  before.
 
 The first click in the Player window enables its sound (browsers block audio
 until a gesture); a small hint says so, then disappears. No audio ships with the
@@ -211,9 +207,9 @@ unique `id`, and save. It appears in the GM list on the next reload.
   music:    null,   // legacy, unused
   ambience: [],     // legacy, unused
   audio:    {       // music bed + ambience loops + one-shot SFX, or null
-    music: { src: "assets/audio/music/old-mill.ogg", volume: 0.6, loop: true, pan: 0, effects: {} },
-    ambience: [{ src: "assets/audio/ambience/river.ogg", volume: 0.4, loop: true, pan: 0, effects: {} }],
-    sfx: [{ id: "wheel-creak", src: "assets/audio/sfx/wheel-creak.ogg", volume: 0.8, pan: 0, effects: {} }]
+    music: { src: "assets/audio/music/old-mill.ogg", volume: 0.6, loop: true, pan: 0 },
+    ambience: [{ src: "assets/audio/ambience/river.ogg", volume: 0.4, loop: true, pan: 0 }],
+    sfx: [{ id: "wheel-creak", src: "assets/audio/sfx/wheel-creak.ogg", volume: 0.8, pan: 0 }]
   },
   gmNotes:  "Only you see this."
 }
@@ -289,8 +285,7 @@ background, characters, named variants, the curtain, and the in-window builder;
 tokens (Phase 3) — round hero/enemy markers placed, numbered, dragged, and
 revealed on a map in a dedicated map mode, with a per-scene roster; and audio
 (Phase 4) — a state-driven Web Audio engine in both windows with per-track
-play/stop/loop/volume/pan, a reverb / filter / delay / distortion / pitch
-effects rack, one-shot SFX, and selectable TV / laptop output. Phase 4 also made
+play/stop/loop/volume/pan, one-shot SFX, and selectable TV / laptop output. Phase 4 also made
 setups durable: saved scenes persist to disk (`data/userScenes.json`) and recall
 their full configuration, including token placement.
 
