@@ -464,6 +464,8 @@ body.view-gm {
 .view-gm .audio-knob { display: inline-flex; align-items: center; gap: var(--space-1); }
 .view-gm .audio-knob input[type="range"] { flex: 0 0 auto; width: 6rem; max-width: 6rem; }
 .view-gm .audio-knob .audio-sub-label { flex: 0 0 auto; }
+/* A clear gap between the transport (Play) and the first (Volume) knob. */
+.view-gm .audio-track > .audio-row > .audio-knob:first-of-type { margin-left: var(--space-4); }
 .view-gm .audio-sub-label { font-size: var(--fs-100); color: var(--neutral); letter-spacing: 0.02em; }
 .view-gm input[type="range"] {
   -webkit-appearance: none; appearance: none; height: 8px;
