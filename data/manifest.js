@@ -11,13 +11,13 @@
 // ============================================================
 
 export const BACKGROUNDS = [
-  { id: "Gateguardpost", name: "Gateguardpost", src: "assets/backgrounds/Gateguardpost.png" },
-  { id: "city gate", name: "City Gate", src: "assets/backgrounds/city gate.png" },
-  { id: "tavern", name: "Tavern", src: "assets/backgrounds/tavern.png" },
-  { id: "city-gate", name: "City Gate", src: "assets/maps/city-gate.jpg" },
-  { id: "inn-first-floor", name: "Inn First Floor", src: "assets/maps/inn-first-floor.jpg" },
-  { id: "market", name: "Market", src: "assets/maps/market.jpg" },
-  { id: "town-center", name: "Town Center", src: "assets/maps/town-center.jpg" }
+  { id: "Gateguardpost", name: "Gateguardpost", src: "assets/backgrounds/Gateguardpost.png", kind: "background" },
+  { id: "city gate", name: "City Gate", src: "assets/backgrounds/city gate.png", kind: "background" },
+  { id: "tavern", name: "Tavern", src: "assets/backgrounds/tavern.png", kind: "background" },
+  { id: "city-gate", name: "City Gate", src: "assets/maps/city-gate.jpg", kind: "map" },
+  { id: "inn-first-floor", name: "Inn First Floor", src: "assets/maps/inn-first-floor.jpg", kind: "map" },
+  { id: "market", name: "Market", src: "assets/maps/market.jpg", kind: "map" },
+  { id: "town-center", name: "Town Center", src: "assets/maps/town-center.jpg", kind: "map" }
 ];
 
 export const CHARACTERS = [
