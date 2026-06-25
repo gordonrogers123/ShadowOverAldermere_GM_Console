@@ -49,6 +49,60 @@ body.view-gm {
 .view-gm .gm-button:hover { background: var(--paper); }
 .view-gm .gm-open { background: var(--fill); }
 
+/* ============================================================
+   Shared refinement foundation (Phase 5) -- all scoped .view-gm.
+   Tokens live in app.css :root; these are the reusable classes the
+   panels below adopt. Defining them changes nothing until an element
+   opts in, and the :focus rules only show on keyboard focus. Placed
+   after .gm-button so the role classes win by source order, exactly
+   like the existing per-button styles (.vis-toggle, .b-save, ...).
+   ============================================================ */
+
+/* Remove the default outline, then show a strong ring on keyboard focus
+   only (mouse/touch focus stays quiet). One a11y focus indicator for the
+   whole console, range sliders included. */
+.view-gm :is(button, a[href], input, select, textarea, summary, [tabindex]):focus { outline: none; }
+.view-gm :is(button, a[href], input, select, textarea, summary, [tabindex]):focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* Button roles -- map the palette to meaning so the same action reads the
+   same everywhere (a toggle is always blue-when-on, not blue here and green
+   there). Layered on top of .gm-button. */
+.view-gm .btn--primary { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .btn--save    { background: var(--support); color: var(--paper); border-color: var(--support); }
+.view-gm .btn--danger  { background: var(--gm-panel); color: var(--offense); border-color: var(--rule); }
+.view-gm .btn--quiet   { background: var(--fill); color: var(--ink); }
+.view-gm .btn--toggle       { background: var(--fill); color: var(--ink); }
+.view-gm .btn--toggle.is-on { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .btn--primary:hover,
+.view-gm .btn--save:hover,
+.view-gm .btn--toggle.is-on:hover { filter: brightness(1.07); }
+
+/* Panel -- a card with an accent strip; the modifier picks the accent. */
+.view-gm .u-panel {
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-5);
+}
+.view-gm .u-panel--control { border-left-color: var(--control); }
+.view-gm .u-panel--support { border-left-color: var(--support); }
+.view-gm .u-panel--offense { border-left-color: var(--offense); }
+.view-gm .u-panel--neutral { border-left-color: var(--neutral); }
+
+/* Section label rhythm. */
+.view-gm .u-label { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.02em; }
+
+/* Square icon button with a comfortable >=44px hit target. */
+.view-gm .u-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--gm-panel); cursor: pointer;
+}
+
 .view-gm .gm-main {
   display: flex;
   gap: 1.5rem;
@@ -198,16 +252,17 @@ body.view-gm {
 .view-gm .gm-scenes-head .gm-h2 { margin: 0; }
 .view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
 .view-gm .scene-list li { position: relative; }
-.view-gm .scene-button { padding-right: 2.8rem; }
+.view-gm .scene-button { padding-right: 3.5rem; }
 .view-gm .scene-tag {
-  margin-left: 0.5rem; font-size: 0.7rem; letter-spacing: 0.08em;
+  margin-left: 0.5rem; font-size: var(--fs-100); letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--neutral); opacity: 0.7; font-weight: 400;
 }
 .view-gm .scene-del {
-  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
-  width: 2rem; height: 2rem; padding: 0; line-height: 1;
-  border: 1px solid var(--rule); border-radius: 8px;
-  background: var(--gm-panel); color: var(--offense); font-size: 1.1rem; cursor: pointer;
+  position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--gm-panel); color: var(--offense); font-size: 1.2rem; cursor: pointer;
 }
 .view-gm .scene-del:hover { background: var(--paper); }
 .view-gm .rescan-status {
@@ -229,7 +284,7 @@ body.view-gm {
 .view-gm .variant-button.active { background: var(--control); color: var(--paper); border-color: var(--control); }
 .view-gm .char-row.row-disabled { opacity: 0.5; }
 .view-gm .char-toggle[disabled],
-.view-gm .char-reset[disabled] { cursor: default; opacity: 0.6; }
+.view-gm .char-reset[disabled] { cursor: not-allowed; opacity: 0.6; }
 .view-gm .char-swap { max-width: 12rem; }
 
 /* ---- Scene builder ---- */
@@ -251,7 +306,7 @@ body.view-gm {
   background: var(--fill); border: 1px solid var(--rule);
   border-radius: 8px; cursor: pointer; color: var(--ink);
 }
-.view-gm .v-remove[disabled] { opacity: 0.4; cursor: default; }
+.view-gm .v-remove[disabled] { opacity: 0.4; cursor: not-allowed; }
 .view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .view-gm .b-save { background: var(--support); color: var(--paper); border-color: var(--support); }
 .view-gm .b-save:hover { filter: brightness(1.06); background: var(--support); }
@@ -303,7 +358,7 @@ body.view-gm {
 }
 .view-gm .tray-group { margin-bottom: 0.7rem; }
 .view-gm .tray-label {
-  display: block; font-size: 0.8rem; letter-spacing: 0.06em;
+  display: block; font-size: var(--fs-100); letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--neutral); opacity: 0.8; margin-bottom: 0.3rem;
 }
 .view-gm .tray-item,
@@ -313,12 +368,13 @@ body.view-gm {
 .view-gm .onboard-name.is-hidden-name { opacity: 0.55; font-style: italic; }
 .view-gm .tray-add,
 .view-gm .onboard-vis { font-size: 0.85rem; padding: 0.35rem 0.7rem; }
-.view-gm .tray-add[disabled] { opacity: 0.5; cursor: default; }
+.view-gm .tray-add[disabled] { opacity: 0.5; cursor: not-allowed; }
 .view-gm .onboard-list { list-style: none; margin: 0; padding: 0; }
 .view-gm .onboard-del {
-  width: 1.9rem; height: 1.9rem; padding: 0; line-height: 1;
-  border: 1px solid var(--rule); border-radius: 8px;
-  background: var(--gm-panel); color: var(--offense); font-size: 1.05rem; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--gm-panel); color: var(--offense); font-size: 1.2rem; cursor: pointer;
 }
 .view-gm .onboard-del:hover { background: var(--paper); }
 .view-gm .tray-empty,
@@ -340,19 +396,19 @@ body.view-gm {
 .view-gm .gm-audio .gm-h3 { margin: 0 0 0.7rem; }
 .view-gm .audio-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
 .view-gm .audio-track { border-top: 1px solid var(--rule); padding-top: 0.6rem; margin-top: 0.3rem; }
-.view-gm .audio-sub-label { font-size: 0.8rem; color: var(--neutral); letter-spacing: 0.02em; }
+.view-gm .audio-sub-label { font-size: var(--fs-100); color: var(--neutral); letter-spacing: 0.02em; }
 .view-gm input[type="range"] {
-  -webkit-appearance: none; appearance: none; height: 6px;
-  background: var(--rule); border-radius: 999px; outline: none; cursor: pointer; vertical-align: middle;
+  -webkit-appearance: none; appearance: none; height: 8px;
+  background: var(--rule); border-radius: var(--radius-pill); cursor: pointer; vertical-align: middle;
 }
 .view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 8rem; max-width: 34vw; }
 .view-gm .audio-fx-param { width: 6rem; }
 .view-gm input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+  -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
   border-radius: 50%; background: var(--control); cursor: pointer;
 }
 .view-gm input[type="range"]::-moz-range-thumb {
-  width: 16px; height: 16px; border: none; border-radius: 50%; background: var(--control); cursor: pointer;
+  width: 20px; height: 20px; border: none; border-radius: 50%; background: var(--control); cursor: pointer;
 }
 .view-gm .audio-play { background: var(--support); color: var(--paper); border-color: var(--support); }
 .view-gm .audio-play.is-playing { background: var(--offense); border-color: var(--offense); }
