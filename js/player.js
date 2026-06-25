@@ -15,6 +15,7 @@ import { sceneById } from './scenesAll.js';
 import { loadState } from './state.js';
 import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
+import { createAudioEngine } from './audioEngine.js';
 
 const CURSOR_HIDE_MS = 3000;
 
@@ -22,11 +23,24 @@ export function mountPlayer(root) {
   const view = createStageView(root);
   let firstPaint = true;
 
+  // Audio: the Player is on the TV, so it is the room's output by default. The
+  // engine follows state; a one-time click anywhere unlocks it (browsers block
+  // audio until a user gesture). A small hint says so, then dismisses itself.
+  const engine = createAudioEngine({ role: 'player', gestureTarget: document.body });
+  window.__audio = engine;   // debug / test hook
+  const gate = document.createElement('div');
+  gate.className = 'sound-gate';
+  gate.textContent = '\u{1F50A} Click to enable sound';
+  document.body.appendChild(gate);
+  const dismissGate = () => { engine.unlock(); gate.classList.add('gone'); window.removeEventListener('click', dismissGate); };
+  window.addEventListener('click', dismissGate);
+
   function paint(state) {
     const scene = sceneById(state.sceneId);
     view.render(state, scene, { instant: firstPaint });
     firstPaint = false;
     preloadAround(state, scene);
+    engine.sync(state, scene);
   }
 
   // Preload the other background variants and both character cutouts so a

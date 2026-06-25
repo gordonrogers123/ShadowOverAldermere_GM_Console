@@ -331,6 +331,55 @@ body.view-gm {
 .view-gm .board-interactive .token.dragging { cursor: grabbing; transition: none; z-index: 2; }
 .view-gm .board-interactive .token.is-hidden { opacity: 0.35; }
 
+/* ---- Audio panel (live) ---- */
+.view-gm .gm-audio {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 6px solid var(--neutral); border-radius: 8px;
+  padding: 1rem 1.2rem; margin: 0 0 1.5rem;
+}
+.view-gm .gm-audio .gm-h3 { margin: 0 0 0.7rem; }
+.view-gm .audio-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.view-gm .audio-track { border-top: 1px solid var(--rule); padding-top: 0.6rem; margin-top: 0.3rem; }
+.view-gm .audio-sub-label { font-size: 0.8rem; color: var(--neutral); letter-spacing: 0.02em; }
+.view-gm input[type="range"] {
+  -webkit-appearance: none; appearance: none; height: 6px;
+  background: var(--rule); border-radius: 999px; outline: none; cursor: pointer; vertical-align: middle;
+}
+.view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 8rem; max-width: 34vw; }
+.view-gm .audio-fx-param { width: 6rem; }
+.view-gm input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--control); cursor: pointer;
+}
+.view-gm input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border: none; border-radius: 50%; background: var(--control); cursor: pointer;
+}
+.view-gm .audio-play { background: var(--support); color: var(--paper); border-color: var(--support); }
+.view-gm .audio-play.is-playing { background: var(--offense); border-color: var(--offense); }
+.view-gm .audio-outputs { display: inline-flex; gap: 0.3rem; }
+.view-gm .audio-output, .view-gm .audio-sfx { font-size: 0.85rem; padding: 0.35rem 0.7rem; }
+.view-gm .audio-output.active { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .audio-save { background: var(--fill); font-size: 0.9rem; margin-top: 0.4rem; }
+.view-gm .audio-fx-details { margin: 0.2rem 0; }
+.view-gm .audio-fx-details summary {
+  cursor: pointer; font-size: 0.85rem; color: var(--neutral);
+  font-family: var(--font-display); letter-spacing: 0.04em; padding: 0.2rem 0;
+}
+.view-gm .audio-fx-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin: 0.2rem 0 0.2rem 1rem; font-size: 0.9rem; }
+.view-gm .audio-fx-label { min-width: 6rem; }
+.view-gm .audio-fx-params { display: inline-flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.view-gm .audio-fx-params select { font-size: 0.85rem; padding: 0.2rem 0.3rem; }
+
+/* ---- Builder audio picker ---- */
+.view-gm .audio-pick { display: flex; flex-direction: column; gap: 0.5rem; }
+.view-gm .audio-pick-row { display: flex; align-items: center; gap: 0.5rem; }
+.view-gm .audio-pick-label {
+  font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;
+  min-width: 5rem; display: inline-block;
+}
+.view-gm .audio-pick-group { display: flex; flex-direction: column; gap: 0.2rem; }
+.view-gm .audio-pick-empty { font-size: 0.85rem; color: var(--neutral); opacity: 0.7; }
+
 /* ---- Narrow screens: stack the columns ---- */
 @media (max-width: 760px) {
   .view-gm .gm-main { flex-direction: column; }

@@ -43,9 +43,14 @@
 //      // placed on this map. null or omitted means none. The GM places and
 //      // moves them live during play.
 //      tokens:   { heroes:[id...], enemies:[id...] },   // or null
-//      music:    null,   // RESERVED (Phase 4)
-//      ambience: [],     // RESERVED (Phase 4)
-//      audio:    null,   // RESERVED (Phase 4)
+//      music:    null,   // legacy, unused (audio now lives in `audio`)
+//      ambience: [],     // legacy, unused
+//      // Audio (Phase 4): a music bed + ambience loops + one-shot SFX, each
+//      // with volume, pan, loop, and an effects map (reverb/low-high-pass/
+//      // delay/distortion/pitch). null = silent. Picked in the builder; tuned
+//      // live in the audio panel and captured with "Save audio to scene".
+//      audio:    null,   // or { music:{src,volume,pan,loop,effects},
+//                        //      ambience:[{src,...}], sfx:[{id,src,volume,pan,effects}] }
 //      gmNotes:  "GM only text."   // shown in the GM window only
 //    }
 //

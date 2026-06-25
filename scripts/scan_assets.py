@@ -21,6 +21,7 @@ ASSETS = os.path.join(ROOT, "assets")
 # Backgrounds may be any image; character cutouts want transparency.
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 CHARACTER_EXTS = (".png", ".webp")
+AUDIO_EXTS = (".mp3", ".ogg", ".wav", ".m4a", ".webm")
 
 
 def _humanize(stem: str) -> str:
@@ -48,7 +49,7 @@ def _list(folder: str, exts, *, skip_hidden: bool):
 
 
 def scan():
-    """Return {'backgrounds': [...], 'characters': [...]} sorted for stable diffs."""
+    """Return the asset lists (backgrounds, characters, audio) sorted for stable diffs."""
     backgrounds = (
         _list("maps", IMAGE_EXTS, skip_hidden=True)
         + _list("backgrounds", IMAGE_EXTS, skip_hidden=True)
@@ -56,7 +57,19 @@ def scan():
     backgrounds.sort(key=lambda e: e["src"])
     characters = _list("characters", CHARACTER_EXTS, skip_hidden=False)
     characters.sort(key=lambda e: e["src"])
-    return {"backgrounds": backgrounds, "characters": characters}
+
+    def audio(sub):
+        items = _list(f"audio/{sub}", AUDIO_EXTS, skip_hidden=False)
+        items.sort(key=lambda e: e["src"])
+        return items
+
+    return {
+        "backgrounds": backgrounds,
+        "characters": characters,
+        "music": audio("music"),
+        "ambience": audio("ambience"),
+        "sfx": audio("sfx"),
+    }
 
 
 def _emit(entries) -> str:
@@ -80,6 +93,7 @@ def write_manifest():
         "//  The scene builder reads these. BACKGROUNDS come from\n"
         "//  assets/maps and assets/backgrounds (files ending in _hidden are\n"
         "//  GM-only and excluded). CHARACTERS come from assets/characters.\n"
+        "//  MUSIC / AMBIENCE / SFX come from assets/audio/{music,ambience,sfx}.\n"
         "// ============================================================\n\n"
         "export const BACKGROUNDS = [\n"
         + _emit(data["backgrounds"])
@@ -88,6 +102,18 @@ def write_manifest():
         "export const CHARACTERS = [\n"
         + _emit(data["characters"])
         + ("\n" if data["characters"] else "")
+        + "];\n\n"
+        "export const MUSIC = [\n"
+        + _emit(data["music"])
+        + ("\n" if data["music"] else "")
+        + "];\n\n"
+        "export const AMBIENCE = [\n"
+        + _emit(data["ambience"])
+        + ("\n" if data["ambience"] else "")
+        + "];\n\n"
+        "export const SFX = [\n"
+        + _emit(data["sfx"])
+        + ("\n" if data["sfx"] else "")
         + "];\n"
     )
     out_path = os.path.join(ROOT, "data", "manifest.js")
@@ -99,7 +125,9 @@ def write_manifest():
 if __name__ == "__main__":
     result = write_manifest()
     print(
-        "Wrote data/manifest.js: {0} backgrounds, {1} characters".format(
-            len(result["backgrounds"]), len(result["characters"])
+        "Wrote data/manifest.js: {0} backgrounds, {1} characters, "
+        "{2} music, {3} ambience, {4} sfx".format(
+            len(result["backgrounds"]), len(result["characters"]),
+            len(result["music"]), len(result["ambience"]), len(result["sfx"])
         )
     )
