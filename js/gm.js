@@ -558,6 +558,13 @@ export function mountGm(root) {
     r.value = (val == null ? min : val);
     return r;
   }
+  // A short unit label paired with its slider (label on the left), kept compact
+  // so the row leaves visual space rather than stretching edge to edge.
+  function aKnob(labelText, rangeEl) {
+    const w = document.createElement('div'); w.className = 'audio-knob';
+    w.append(aSub(labelText), rangeEl);
+    return w;
+  }
 
   function buildAudioPanel(scene) {
     ensureAudio();
@@ -642,7 +649,7 @@ export function mountGm(root) {
     vol.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].volume = +vol.value; commitAudio(); });
     const pan = aRange('audio-pan', -1, 1, t.pan);
     pan.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].pan = +pan.value; commitAudio(); });
-    head.append(aSub('Vol'), vol, aSub('Pan'), pan);
+    head.append(aKnob('Vol', vol), aKnob('Pan', pan));
     block.append(head, buildFxControls(key));
     return block;
   }

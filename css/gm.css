@@ -456,17 +456,23 @@ body.view-gm {
    align with each other. */
 .view-gm .audio-track > .audio-row {
   display: grid;
-  grid-template-columns: 6rem 5rem auto minmax(4rem, 11rem) auto minmax(4rem, 11rem);
+  grid-template-columns: 6rem 5rem auto auto;   /* name | transport | Vol knob | Pan knob; trailing space left intentionally */
   align-items: center; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-2);
 }
+/* Label on the left, then a compact fixed-width slider. The fixed width keeps
+   every slider the same size and leaves visual space to the right of the row. */
+.view-gm .audio-knob { display: inline-flex; align-items: center; gap: var(--space-1); }
+.view-gm .audio-knob input[type="range"] { flex: 0 0 auto; width: 6rem; max-width: 6rem; }
+.view-gm .audio-knob .audio-sub-label { flex: 0 0 auto; }
+/* A clear gap between the transport (Play) and the first (Volume) knob. */
+.view-gm .audio-track > .audio-row > .audio-knob:first-of-type { margin-left: var(--space-4); }
 .view-gm .audio-sub-label { font-size: var(--fs-100); color: var(--neutral); letter-spacing: 0.02em; }
 .view-gm input[type="range"] {
   -webkit-appearance: none; appearance: none; height: 8px;
   background: var(--rule); border-radius: var(--radius-pill); cursor: pointer; vertical-align: middle;
 }
-.view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 8rem; max-width: 34vw; }
-/* In the track grid the sliders fill their column instead of a fixed width. */
-.view-gm .audio-track .audio-vol, .view-gm .audio-track .audio-pan { width: 100%; max-width: none; }
+.view-gm .audio-master, .view-gm .audio-vol, .view-gm .audio-pan { width: 6rem; max-width: 34vw; }
+/* (Track Vol/Pan sliders now live inside .audio-knob, which sizes them; see above.) */
 .view-gm .audio-fx-param { width: 6rem; }
 .view-gm input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
@@ -528,5 +534,4 @@ body.view-gm {
 @media (max-width: 480px) {
   .view-gm .gm-main { padding: var(--space-3); gap: var(--space-4); }
   .view-gm .audio-track > .audio-row { display: flex; flex-wrap: wrap; }
-  .view-gm .audio-track .audio-vol, .view-gm .audio-track .audio-pan { width: 100%; max-width: 8rem; }
 }
