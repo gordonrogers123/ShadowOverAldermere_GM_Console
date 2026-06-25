@@ -40,6 +40,11 @@ export function mountGm(root) {
   // renders as the title plate (Aldermere + the scene name) before the reveal.
   const TITLE_SRC = '__title__';
 
+  // The GM preview animates character entrances/exits like the TV, so the chosen
+  // transition is actually visible while directing. Only the very first paint is
+  // instant (a restored scene appears already in place, matching the Player).
+  let previewFirstPaint = true;
+
   root.innerHTML = `
     <header class="gm-header">
       <div class="gm-title-wrap">
@@ -460,7 +465,7 @@ export function mountGm(root) {
   }
 
   function renderLive(scene) {
-    previewView.render(state, scene, { instant: true });
+    previewView.render(state, scene, { instant: previewFirstPaint }); previewFirstPaint = false;
     els.previewName.textContent = scene.name;
 
     const keys = scene.maps ? Object.keys(scene.maps) : [];
@@ -1207,7 +1212,7 @@ export function mountGm(root) {
         right: { shown: !!(scene.characters && scene.characters.right), srcOverride: null }
       }
     };
-    previewView.render(pstate, scene, { instant: true });
+    previewView.render(pstate, scene, { instant: previewFirstPaint }); previewFirstPaint = false;
     els.previewName.textContent = scene.name || 'New scene';
     els.badge.textContent = humanize(firstKey);
     els.badge.classList.remove('badge-revealed');
