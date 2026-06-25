@@ -182,12 +182,30 @@ export function createStageView(root) {
     const onTitle = bgDescriptor(state, scene).kind === 'unrevealed';
     const shown = !onTitle && !!live.shown && !!src;
     const enter = (cfg && cfg.enter) || DEFAULT_ENTER;
-    return { src, shown, enter };
+    // Per-character display tuning: size multiplier, horizontal flip, and a
+    // stage-relative x/y nudge (percent) -- useful for transparent cutouts
+    // (e.g. NPCs) that need to grow, mirror, or lift up to the visible backdrop
+    // bottom when a non-16:9 image letterboxes. All clamped to sane ranges.
+    const rawScale = cfg && +cfg.scale;
+    const scale = rawScale ? Math.min(4, Math.max(0.3, rawScale)) : 1;
+    const flip = !!(cfg && cfg.flip);
+    const clampN = (v, lo, hi) => { v = +v; return !isFinite(v) ? 0 : v < lo ? lo : v > hi ? hi : v; };
+    const x = clampN(cfg && cfg.x, -20, 60);
+    const y = clampN(cfg && cfg.y, -20, 40);
+    return { src, shown, enter, scale, flip, x, y };
   }
 
   function applySide(side, r, instant) {
     const img = chars[side];
     const prev = applied[side];
+
+    // Size + flip ride as CSS custom properties so they compose with the
+    // entrance transforms (slide/fade) instead of fighting them; x/y are
+    // stage-relative position offsets applied via left/right/bottom (no drift).
+    img.style.setProperty('--char-scale', r.scale != null ? r.scale : 1);
+    img.style.setProperty('--char-flip', r.flip ? -1 : 1);
+    img.style.setProperty('--char-x', (r.x || 0) + '%');
+    img.style.setProperty('--char-y', (r.y || 0) + '%');
 
     // A fade-in character sits in place (no slide); a slide character starts
     // off its own edge. Setting the class before is-shown fixes the baseline.
