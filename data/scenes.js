@@ -28,11 +28,11 @@
 //      defaultMapState: "hidden",     // which variant key shows on select
 //
 //      // CHARACTERS. Optional, independent left and right. Each points at a
-//      // transparent PNG in assets/characters and a default entrance:
-//      //   "slide" (in from its own side) or "fade".
+//      // transparent PNG in assets/characters/{heroes,npcs,enemies} and a
+//      // default entrance: "slide" (in from its own side) or "fade".
 //      characters: {
-//        left:  { id: "lysander", src: "assets/characters/lysander.png", enter: "slide" },
-//        right: { id: "thraka",   src: "assets/characters/thraka.png",   enter: "fade" }
+//        left:  { id: "lysander", src: "assets/characters/heroes/lysander.png", enter: "slide" },
+//        right: { id: "thraka",   src: "assets/characters/heroes/thraka.png",   enter: "fade" }
 //      },
 //
 //      // Optional opening posture when the scene is selected. If absent,
@@ -58,8 +58,9 @@
 //  never in the public reference repo. The shared maps below come from the
 //  shared assets (run scripts/sync-assets.sh to refresh). Drop your own
 //  hidden art at the paths named; until you do, the Player shows a neutral
-//  "not yet revealed" plate and the reveal still cross-fades. Character
-//  PNGs are dropped into assets/characters (SEED_SAMPLES seeds samples).
+//  "not yet revealed" plate and the reveal still cross-fades. Character PNGs
+//  are dropped into assets/characters/{heroes,npcs,enemies} (SEED_SAMPLES seeds
+//  hero samples).
 // ============================================================
 
 export const SCENES = [
@@ -131,8 +132,8 @@ export const SCENES = [
     },
     defaultMapState: "revealed",
     characters: {
-      left:  { id: "lysander", src: "assets/characters/lysander.png", enter: "slide" },
-      right: { id: "thraka",   src: "assets/characters/thraka.png",   enter: "slide" }
+      left:  { id: "lysander", src: "assets/characters/heroes/lysander.png", enter: "slide" },
+      right: { id: "thraka",   src: "assets/characters/heroes/thraka.png",   enter: "slide" }
     },
     defaults: { visible: true, leftShown: true, rightShown: true },
     tokens: null,

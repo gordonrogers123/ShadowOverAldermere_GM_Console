@@ -135,11 +135,17 @@ export function mountGm(root) {
                 <span>Roster <small>(who can be placed on the map)</small></span>
                 <div class="roster-pick">
                   <div class="roster-group">
-                    <span class="roster-group-label">Heroes</span>
+                    <div class="roster-group-head">
+                      <span class="roster-group-label">Heroes</span>
+                      <button class="roster-all" data-group="heroes" type="button">Select all</button>
+                    </div>
                     <div class="roster-heroes"></div>
                   </div>
                   <div class="roster-group">
-                    <span class="roster-group-label">Enemies</span>
+                    <div class="roster-group-head">
+                      <span class="roster-group-label">Enemies</span>
+                      <button class="roster-all" data-group="enemies" type="button">Select all</button>
+                    </div>
                     <div class="roster-enemies"></div>
                   </div>
                 </div>
@@ -254,6 +260,8 @@ export function mountGm(root) {
     onboardEmpty: root.querySelector('.onboard-empty'),
     rosterHeroes: root.querySelector('.roster-heroes'),
     rosterEnemies: root.querySelector('.roster-enemies'),
+    rosterAllHeroes:  root.querySelector('.roster-all[data-group="heroes"]'),
+    rosterAllEnemies: root.querySelector('.roster-all[data-group="enemies"]'),
     audio:        root.querySelector('.gm-audio'),
     audioBody:    root.querySelector('.audio-body'),
     bMusic:       root.querySelector('.b-music'),
@@ -401,18 +409,32 @@ export function mountGm(root) {
     els.variantRow.hidden = keys.length <= 1;
   }
 
+  // Category label + order for the grouped left/right character pickers.
+  const CHAR_GROUPS = [['hero', 'Heroes'], ['npc', 'NPCs'], ['enemy', 'Enemies']];
   function fillCharSelect(sel, value, withDefaultLabel) {
     sel.innerHTML = '';
     const first = document.createElement('option');
     first.value = '';
     first.textContent = withDefaultLabel ? 'Scene default' : 'None';
     sel.appendChild(first);
-    for (const c of characters) {
-      const o = document.createElement('option');
-      o.value = c.src;
-      o.textContent = c.name;
-      sel.appendChild(o);
-    }
+    // Group the cutouts under <optgroup> by category; anything with an unknown
+    // or missing category falls into a trailing "Other" group so it is never lost.
+    const grouped = new Set();
+    const addGroup = (label, items) => {
+      if (!items.length) return;
+      const g = document.createElement('optgroup');
+      g.label = label;
+      for (const c of items) {
+        const o = document.createElement('option');
+        o.value = c.src;
+        o.textContent = c.name;
+        g.appendChild(o);
+        grouped.add(c);
+      }
+      sel.appendChild(g);
+    };
+    for (const [cat, label] of CHAR_GROUPS) addGroup(label, characters.filter((c) => c.category === cat));
+    addGroup('Other', characters.filter((c) => !grouped.has(c)));
     sel.value = value || '';
   }
 
@@ -1078,7 +1100,7 @@ export function mountGm(root) {
   // Roster checkboxes from CAST; toggling one edits draft.roster in place.
   // No preview refresh -- the roster does not change the composited image.
   function renderRosterPick() {
-    const build = (container, list, selected) => {
+    const build = (container, allBtn, list, selected) => {
       container.innerHTML = '';
       for (const c of list) {
         const lab = document.createElement('label');
@@ -1090,6 +1112,7 @@ export function mountGm(root) {
           const i = selected.indexOf(c.id);
           if (cb.checked && i < 0) selected.push(c.id);
           else if (!cb.checked && i >= 0) selected.splice(i, 1);
+          syncAllBtn();
         });
         const sw = document.createElement('span');
         sw.className = 'roster-swatch';
@@ -1099,9 +1122,22 @@ export function mountGm(root) {
         lab.append(cb, sw, nm);
         container.appendChild(lab);
       }
+      // "Select all" toggles the whole group at once (heroes are the common
+      // case); it flips to "Clear" once every member is selected.
+      const allOn = () => list.length > 0 && list.every((c) => selected.includes(c.id));
+      function syncAllBtn() {
+        allBtn.disabled = list.length === 0;
+        allBtn.textContent = allOn() ? 'Clear' : 'Select all';
+      }
+      allBtn.onclick = () => {
+        if (allOn()) selected.length = 0;
+        else for (const c of list) if (!selected.includes(c.id)) selected.push(c.id);
+        renderRosterPick();   // rebuild both groups to reflect the new state
+      };
+      syncAllBtn();
     };
-    build(els.rosterHeroes, CAST.heroes || [], draft.roster.heroes);
-    build(els.rosterEnemies, CAST.enemies || [], draft.roster.enemies);
+    build(els.rosterHeroes, els.rosterAllHeroes, CAST.heroes || [], draft.roster.heroes);
+    build(els.rosterEnemies, els.rosterAllEnemies, CAST.enemies || [], draft.roster.enemies);
   }
 
   function fillEnterSelect(sel, value) {

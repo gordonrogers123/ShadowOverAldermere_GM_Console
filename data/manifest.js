@@ -5,7 +5,8 @@
 //
 //  The scene builder reads these. BACKGROUNDS come from
 //  assets/maps and assets/backgrounds (files ending in _hidden are
-//  GM-only and excluded). CHARACTERS come from assets/characters.
+//  GM-only and excluded). CHARACTERS come from
+//  assets/characters/{heroes,npcs,enemies} (each tagged with a category).
 //  MUSIC / AMBIENCE / SFX come from assets/audio/{music,ambience,sfx}.
 // ============================================================
 
@@ -17,13 +18,13 @@ export const BACKGROUNDS = [
 ];
 
 export const CHARACTERS = [
-  { id: "khaleesi", name: "Khaleesi", src: "assets/characters/khaleesi.png" },
-  { id: "lysander", name: "Lysander", src: "assets/characters/lysander.png" },
-  { id: "sai", name: "Sai", src: "assets/characters/sai.png" },
-  { id: "samsara", name: "Samsara", src: "assets/characters/samsara.png" },
-  { id: "telstar", name: "Telstar", src: "assets/characters/telstar.png" },
-  { id: "thraka", name: "Thraka", src: "assets/characters/thraka.png" },
-  { id: "truf", name: "Truf", src: "assets/characters/truf.png" }
+  { id: "khaleesi", name: "Khaleesi", src: "assets/characters/heroes/khaleesi.png", category: "hero" },
+  { id: "lysander", name: "Lysander", src: "assets/characters/heroes/lysander.png", category: "hero" },
+  { id: "sai", name: "Sai", src: "assets/characters/heroes/sai.png", category: "hero" },
+  { id: "samsara", name: "Samsara", src: "assets/characters/heroes/samsara.png", category: "hero" },
+  { id: "telstar", name: "Telstar", src: "assets/characters/heroes/telstar.png", category: "hero" },
+  { id: "thraka", name: "Thraka", src: "assets/characters/heroes/thraka.png", category: "hero" },
+  { id: "truf", name: "Truf", src: "assets/characters/heroes/truf.png", category: "hero" }
 ];
 
 export const MUSIC = [
