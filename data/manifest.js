@@ -28,10 +28,17 @@ export const CHARACTERS = [
 ];
 
 export const MUSIC = [
+  { id: "theme-calm", name: "Theme Calm", src: "assets/audio/music/theme-calm.wav" },
+  { id: "theme-tense", name: "Theme Tense", src: "assets/audio/music/theme-tense.wav" }
 ];
 
 export const AMBIENCE = [
+  { id: "tavern", name: "Tavern", src: "assets/audio/ambience/tavern.wav" },
+  { id: "wind", name: "Wind", src: "assets/audio/ambience/wind.wav" }
 ];
 
 export const SFX = [
+  { id: "chime", name: "Chime", src: "assets/audio/sfx/chime.wav" },
+  { id: "door-thud", name: "Door Thud", src: "assets/audio/sfx/door-thud.wav" },
+  { id: "sword-clash", name: "Sword Clash", src: "assets/audio/sfx/sword-clash.wav" }
 ];

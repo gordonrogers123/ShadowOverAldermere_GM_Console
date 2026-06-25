@@ -117,7 +117,17 @@ export const SCENES = [
     tokens: null,
     music: null,
     ambience: [],
-    audio: null,
+    // Demo audio (Phase 6D): synthesized placeholders so the audio panel can be
+    // exercised here out of the box. Drop your own files into assets/audio/**,
+    // Rescan, and re-pick them in the builder to replace these.
+    audio: {
+      music: { src: "assets/audio/music/theme-calm.wav", volume: 0.6, pan: 0, loop: true, effects: {} },
+      ambience: [{ src: "assets/audio/ambience/wind.wav", volume: 0.35, pan: 0, loop: true, effects: {} }],
+      sfx: [
+        { id: "chime", src: "assets/audio/sfx/chime.wav", volume: 0.7, pan: 0, effects: {} },
+        { id: "door-thud", src: "assets/audio/sfx/door-thud.wav", volume: 0.8, pan: 0, effects: {} }
+      ]
+    },
     gmNotes: "The old well at the center is the heart of the trouble. Reveal the map only once the party has reason to look closely; the carvings on the rim match the ones in Wick's journal."
   },
 
