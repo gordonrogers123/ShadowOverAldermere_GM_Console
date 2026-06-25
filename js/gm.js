@@ -206,25 +206,7 @@ export function mountGm(root) {
           </div>
           <p class="mapmode-intro">Place and move tokens on the map; they show on the TV <strong>only while you are in map mode</strong>. The rail keeps <strong>Background</strong> (reveal the map), <strong>Save layout</strong>, and <strong>Exit map mode</strong> right where they were &mdash; nothing jumps.</p>
           <div class="mapmode-board"></div>
-          <div class="mapmode-cols">
-            <div class="mapmode-tray">
-              <h4 class="mapmode-h4">Roster</h4>
-              <div class="tray-group">
-                <span class="tray-label">Heroes</span>
-                <div class="tray-heroes"></div>
-              </div>
-              <div class="tray-group">
-                <span class="tray-label">Enemies</span>
-                <div class="tray-enemies"></div>
-              </div>
-              <p class="tray-empty" hidden>No roster set. Edit the scene to choose heroes and enemies.</p>
-            </div>
-            <div class="mapmode-onboard">
-              <h4 class="mapmode-h4">On the board</h4>
-              <ul class="onboard-list"></ul>
-              <p class="onboard-empty">Nothing placed yet. Add tokens from the roster.</p>
-            </div>
-          </div>
+          <div class="mapmode-roster"></div>
         </div>
       </section>
     </div>
@@ -271,11 +253,7 @@ export function mountGm(root) {
     mapmodeTitle: root.querySelector('.mapmode-title'),
     mmSaveLayout: root.querySelector('.mm-save-layout'),
     mmResetLayout: root.querySelector('.mm-reset-layout'),
-    trayHeroes:   root.querySelector('.tray-heroes'),
-    trayEnemies:  root.querySelector('.tray-enemies'),
-    trayEmpty:    root.querySelector('.tray-empty'),
-    onboardList:  root.querySelector('.onboard-list'),
-    onboardEmpty: root.querySelector('.onboard-empty'),
+    mapRoster:    root.querySelector('.mapmode-roster'),
     rosterHeroes: root.querySelector('.roster-heroes'),
     rosterEnemies: root.querySelector('.roster-enemies'),
     rosterAllHeroes:  root.querySelector('.roster-all[data-group="heroes"]'),
@@ -811,72 +789,102 @@ export function mountGm(root) {
     commit();
   }
 
-  function renderTray(scene) {
+  // Map-mode roster: ONE compact place per entity (no more roster + on-board
+  // duplication). Two category columns. A hero shows Add until placed, then its
+  // Hide/Reveal + remove inline. An enemy type shows Add (a numbered copy) with
+  // its placed copies listed and controlled beneath it. Add-all fills a column.
+  function rosterSwatch(color) {
+    const s = document.createElement('span'); s.className = 'roster-swatch';
+    s.style.background = color || '#888'; return s;
+  }
+  function rosterVisBtn(t) {
+    const b = document.createElement('button');
+    b.className = 'gm-button mmr-vis' + (t.visible === false ? ' is-hidden' : '');
+    b.type = 'button';
+    b.textContent = t.visible === false ? 'Reveal' : 'Hide';
+    b.addEventListener('click', () => toggleTokenVisible(t.instId));
+    return b;
+  }
+  function rosterDelBtn(t) {
+    const b = document.createElement('button');
+    b.className = 'mmr-del'; b.type = 'button'; b.textContent = '×';
+    b.title = 'Remove from board'; b.setAttribute('aria-label', 'Remove ' + t.label + ' from board');
+    b.addEventListener('click', () => removeToken(t.instId));
+    return b;
+  }
+  function rosterAddBtn(id, kind) {
+    const b = document.createElement('button');
+    b.className = 'gm-button mmr-add'; b.type = 'button'; b.textContent = 'Add';
+    b.addEventListener('click', () => addToken(id, kind));
+    return b;
+  }
+  function rosterRow(extraClass) {
+    const r = document.createElement('div'); r.className = 'mmr-row' + (extraClass ? ' ' + extraClass : '');
+    return r;
+  }
+  function rosterName(text, hidden) {
+    const n = document.createElement('span'); n.className = 'mmr-name'; n.textContent = text;
+    if (hidden) n.classList.add('is-hidden-name');
+    return n;
+  }
+  function rosterColumn(label, addAll) {
+    const col = document.createElement('div'); col.className = 'mmr-cat';
+    const head = document.createElement('div'); head.className = 'mmr-head';
+    const lab = document.createElement('span'); lab.className = 'mmr-label'; lab.textContent = label;
+    const all = document.createElement('button');
+    all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
+    all.addEventListener('click', addAll);
+    head.append(lab, all);
+    const list = document.createElement('div'); list.className = 'mmr-list';
+    col.append(head, list);
+    return { col, list };
+  }
+
+  function renderRoster(scene) {
     const roster = scene.tokens || {};
     const heroes = Array.isArray(roster.heroes) ? roster.heroes : [];
     const enemies = Array.isArray(roster.enemies) ? roster.enemies : [];
     const placed = (state.stage && state.stage.tokens) || [];
-    const build = (container, ids, kind) => {
-      container.innerHTML = '';
-      for (const id of ids) {
-        const cast = castEntry(id, kind);
-        if (!cast) continue;
-        const row = document.createElement('div');
-        row.className = 'tray-item';
-        const sw = document.createElement('span');
-        sw.className = 'roster-swatch';
-        sw.style.background = cast.ringColor || '#888';
-        const nm = document.createElement('span');
-        nm.className = 'tray-name';
-        nm.textContent = cast.name;
-        const add = document.createElement('button');
-        add.className = 'gm-button tray-add';
-        add.type = 'button';
-        if (kind === 'hero' && placed.some((t) => t.kind === 'hero' && t.castId === id)) {
-          add.textContent = 'On board';
-          add.disabled = true;
-        } else {
-          add.textContent = 'Add';
-          add.addEventListener('click', () => addToken(id, kind));
-        }
-        row.append(sw, nm, add);
-        container.appendChild(row);
-      }
-    };
-    build(els.trayHeroes, heroes, 'hero');
-    build(els.trayEnemies, enemies, 'enemy');
-    els.trayEmpty.hidden = (heroes.length + enemies.length) > 0;
-  }
+    els.mapRoster.innerHTML = '';
 
-  function renderOnboard() {
-    const tokens = (state.stage && state.stage.tokens) || [];
-    els.onboardList.innerHTML = '';
-    els.onboardEmpty.hidden = tokens.length > 0;
-    for (const t of tokens) {
-      const li = document.createElement('li');
-      li.className = 'onboard-item';
-      const sw = document.createElement('span');
-      sw.className = 'roster-swatch';
-      const cast = castEntry(t.castId, t.kind);
-      sw.style.background = (cast && cast.ringColor) || '#888';
-      const nm = document.createElement('span');
-      nm.className = 'onboard-name';
-      nm.textContent = t.label;
-      if (t.visible === false) nm.classList.add('is-hidden-name');
-      const vis = document.createElement('button');
-      vis.className = 'gm-button onboard-vis';
-      vis.type = 'button';
-      vis.textContent = t.visible === false ? 'Reveal' : 'Hide';
-      vis.addEventListener('click', () => toggleTokenVisible(t.instId));
-      const rm = document.createElement('button');
-      rm.className = 'onboard-del';
-      rm.type = 'button';
-      rm.textContent = '×';
-      rm.title = 'Remove from board';
-      rm.setAttribute('aria-label', 'Remove from board');
-      rm.addEventListener('click', () => removeToken(t.instId));
-      li.append(sw, nm, vis, rm);
-      els.onboardList.appendChild(li);
+    if (!heroes.length && !enemies.length) {
+      const p = document.createElement('p');
+      p.className = 'mmr-empty';
+      p.textContent = 'No roster set. Edit the scene to choose heroes and enemies.';
+      els.mapRoster.append(p);
+      return;
+    }
+
+    if (heroes.length) {
+      // Add all skips heroes already placed (addToken is a no-op for those).
+      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); });
+      for (const id of heroes) {
+        const c = castEntry(id, 'hero'); if (!c) continue;
+        const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
+        const row = rosterRow(inst ? 'is-placed' : null);
+        row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
+        if (inst) row.append(rosterVisBtn(inst), rosterDelBtn(inst));
+        else row.append(rosterAddBtn(id, 'hero'));
+        list.append(row);
+      }
+      els.mapRoster.append(col);
+    }
+
+    if (enemies.length) {
+      // Add all drops one copy of each enemy type.
+      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); });
+      for (const id of enemies) {
+        const c = castEntry(id, 'enemy'); if (!c) continue;
+        const typeRow = rosterRow('mmr-type');
+        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), rosterAddBtn(id, 'enemy'));
+        list.append(typeRow);
+        for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) {
+          const row = rosterRow('mmr-copy');
+          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), rosterVisBtn(t), rosterDelBtn(t));
+          list.append(row);
+        }
+      }
+      els.mapRoster.append(col);
     }
   }
 
@@ -885,8 +893,7 @@ export function mountGm(root) {
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
-    renderTray(scene);
-    renderOnboard();
+    renderRoster(scene);
   }
 
   // ---- Drag a token on the board. The element follows the pointer locally
