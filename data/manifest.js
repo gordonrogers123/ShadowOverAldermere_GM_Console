@@ -11,6 +11,9 @@
 // ============================================================
 
 export const BACKGROUNDS = [
+  { id: "Gateguardpost", name: "Gateguardpost", src: "assets/backgrounds/Gateguardpost.png" },
+  { id: "city gate", name: "City Gate", src: "assets/backgrounds/city gate.png" },
+  { id: "tavern", name: "Tavern", src: "assets/backgrounds/tavern.png" },
   { id: "city-gate", name: "City Gate", src: "assets/maps/city-gate.jpg" },
   { id: "inn-first-floor", name: "Inn First Floor", src: "assets/maps/inn-first-floor.jpg" },
   { id: "market", name: "Market", src: "assets/maps/market.jpg" },
@@ -24,7 +27,11 @@ export const CHARACTERS = [
   { id: "samsara", name: "Samsara", src: "assets/characters/heroes/samsara.png", category: "hero" },
   { id: "telstar", name: "Telstar", src: "assets/characters/heroes/telstar.png", category: "hero" },
   { id: "thraka", name: "Thraka", src: "assets/characters/heroes/thraka.png", category: "hero" },
-  { id: "truf", name: "Truf", src: "assets/characters/heroes/truf.png", category: "hero" }
+  { id: "truf", name: "Truf", src: "assets/characters/heroes/truf.png", category: "hero" },
+  { id: "cassian", name: "Cassian", src: "assets/characters/npcs/cassian.png", category: "npc" },
+  { id: "dorran", name: "Dorran", src: "assets/characters/npcs/dorran.png", category: "npc" },
+  { id: "pip", name: "Pip", src: "assets/characters/npcs/pip.png", category: "npc" },
+  { id: "wick", name: "Wick", src: "assets/characters/npcs/wick.png", category: "npc" }
 ];
 
 export const MUSIC = [

@@ -1,1 +1,207 @@
-[]
+[
+  {
+    "id": "inn-first-floor",
+    "name": "The Inn, Ground Floor",
+    "maps": {
+      "hidden": "assets/maps/inn-first-floor_hidden.jpg",
+      "revealed": "assets/maps/inn-first-floor.jpg"
+    },
+    "defaultMapState": "hidden",
+    "tokens": null,
+    "music": null,
+    "ambience": [],
+    "audio": {
+      "music": {
+        "src": "assets/audio/music/theme-calm.wav",
+        "volume": 0.8,
+        "pan": 0,
+        "loop": true,
+        "effects": {}
+      },
+      "ambience": [],
+      "sfx": []
+    },
+    "gmNotes": "Warm, low, and crowded. Hob clams up if pressed about the cellar. Vela may brush past the party on her way out; she lifts a coin purse if no one is watching.",
+    "defaults": {
+      "visible": true,
+      "leftShown": false,
+      "rightShown": false
+    }
+  },
+  {
+    "id": "town-center",
+    "name": "Aldermere Town Center",
+    "maps": {
+      "hidden": "",
+      "revealed": "assets/backgrounds/Gateguardpost.png",
+      "variant-3": "assets/backgrounds/city gate.png"
+    },
+    "defaultMapState": "hidden",
+    "tokens": {
+      "heroes": [
+        "lysander",
+        "telstar",
+        "thraka",
+        "khaleesi",
+        "sai",
+        "samsara",
+        "truf"
+      ],
+      "enemies": [
+        "brigands"
+      ]
+    },
+    "music": null,
+    "ambience": [],
+    "audio": {
+      "music": {
+        "src": "assets/audio/music/theme-calm.wav",
+        "volume": 0.6,
+        "pan": 0,
+        "loop": true,
+        "effects": {}
+      },
+      "ambience": [
+        {
+          "src": "assets/audio/ambience/wind.wav",
+          "volume": 0.35,
+          "pan": 0,
+          "loop": true,
+          "effects": {}
+        }
+      ],
+      "sfx": [
+        {
+          "id": "chime",
+          "src": "assets/audio/sfx/chime.wav",
+          "volume": 0.7,
+          "pan": 0,
+          "effects": {}
+        },
+        {
+          "id": "door-thud",
+          "src": "assets/audio/sfx/door-thud.wav",
+          "volume": 0.8,
+          "pan": 0,
+          "effects": {}
+        }
+      ]
+    },
+    "gmNotes": "The old well at the center is the heart of the trouble. Reveal the map only once the party has reason to look closely; the carvings on the rim match the ones in Wick's journal.",
+    "savedLayout": [
+      {
+        "castId": "telstar",
+        "kind": "hero",
+        "label": "Telstar",
+        "x": 0.36337962252792255,
+        "y": 0.571849036607549,
+        "visible": true
+      },
+      {
+        "castId": "thraka",
+        "kind": "hero",
+        "label": "Thraka",
+        "x": 0.34283104058070846,
+        "y": 0.48679093158807085,
+        "visible": true
+      },
+      {
+        "castId": "khaleesi",
+        "kind": "hero",
+        "label": "Khaleesi",
+        "x": 0.3670678621975115,
+        "y": 0.6635227662490591,
+        "visible": true
+      },
+      {
+        "castId": "sai",
+        "kind": "hero",
+        "label": "Sai",
+        "x": 0.43977838493353283,
+        "y": 0.905465819084593,
+        "visible": true
+      },
+      {
+        "castId": "truf",
+        "kind": "hero",
+        "label": "Truf",
+        "x": 0.3823475799472662,
+        "y": 0.39133681071847376,
+        "visible": true
+      },
+      {
+        "castId": "samsara",
+        "kind": "hero",
+        "label": "Samsara",
+        "x": 0.3470460972073086,
+        "y": 0.8213527810473992,
+        "visible": true
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 1",
+        "x": 0.7016415491347548,
+        "y": 0.5623981201868065,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 2",
+        "x": 0.7622336610623747,
+        "y": 0.45465784950252186,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 3",
+        "x": 0.8006964507436855,
+        "y": 0.5888606446326079,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 4",
+        "x": 0.6953189352520485,
+        "y": 0.40551315939191396,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 5",
+        "x": 0.8855253842881082,
+        "y": 0.4641087529444276,
+        "visible": false
+      },
+      {
+        "castId": "lysander",
+        "kind": "hero",
+        "label": "Lysander",
+        "x": 0.455,
+        "y": 0.5,
+        "visible": true
+      }
+    ],
+    "characters": {
+      "left": {
+        "id": "dorran",
+        "src": "assets/characters/npcs/dorran.png",
+        "enter": "fade"
+      },
+      "right": {
+        "id": "cassian",
+        "src": "assets/characters/npcs/cassian.png",
+        "enter": "slide"
+      }
+    },
+    "defaults": {
+      "visible": true,
+      "leftShown": true,
+      "rightShown": true
+    }
+  }
+]
