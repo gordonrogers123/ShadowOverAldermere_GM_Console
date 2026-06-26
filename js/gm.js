@@ -940,6 +940,23 @@ export function mountGm(root) {
     if (musicBeds(a).length) els.mixerFaders.append(buildFader('Music', 'mus'));
     if ((a.ambience || []).length) els.mixerFaders.append(buildFader('Ambience', 'amb'));
 
+    // SFX get their own mixer column: a label with the one-shot buttons stacked
+    // beneath it, sitting alongside the faders.
+    if ((a.sfx || []).length) {
+      const col = document.createElement('div'); col.className = 'mixer-fader mixer-sfx-col';
+      const name = document.createElement('span'); name.className = 'mixer-fader-name'; name.textContent = 'SFX';
+      const btns = document.createElement('div'); btns.className = 'mixer-sfx-buttons';
+      for (const s of (a.sfx || [])) {
+        const b = document.createElement('button');
+        b.className = 'gm-button mixer-sfx'; b.type = 'button'; b.dataset.sfx = s.id; b.textContent = humanize(s.id);
+        b.addEventListener('click', () => { ensureAudio(); state.audio.sfxTrigger[s.id] = (state.audio.sfxTrigger[s.id] || 0) + 1; commitAudio(); });
+        btns.append(b);
+      }
+      col.append(name, btns);
+      els.mixerFaders.append(col);
+    }
+
+    // The whole-mix Fade sits on its own row below the columns.
     const fade = document.createElement('button');
     fade.className = 'gm-button btn--toggle mixer-fade'; fade.type = 'button';
     fade.textContent = state.audio.masterMuted ? 'Fade in' : 'Fade out';
@@ -947,13 +964,6 @@ export function mountGm(root) {
     fade.title = 'Fade all audio out / back in';
     fade.addEventListener('click', fadeAudio);
     els.mixerExtra.append(fade);
-
-    for (const s of (a.sfx || [])) {
-      const b = document.createElement('button');
-      b.className = 'gm-button mixer-sfx'; b.type = 'button'; b.dataset.sfx = s.id; b.textContent = humanize(s.id);
-      b.addEventListener('click', () => { ensureAudio(); state.audio.sfxTrigger[s.id] = (state.audio.sfxTrigger[s.id] || 0) + 1; commitAudio(); });
-      els.mixerExtra.append(b);
-    }
   }
 
   // GM notes shown live: a cue's own notes when it is the active cue (so blocking
