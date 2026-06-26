@@ -274,6 +274,7 @@ export function mountGm(root) {
     rescanStatus: root.querySelector('.rescan-status'),
     newScene:     root.querySelector('.new-scene'),
     empty:        root.querySelector('.gm-empty'),
+    stage:        root.querySelector('.gm-stage'),
     preview:      root.querySelector('.gm-preview'),
     previewFrame: root.querySelector('.preview-frame'),
     previewSize:  root.querySelector('.preview-size'),
@@ -294,6 +295,7 @@ export function mountGm(root) {
     variantRow:   root.querySelector('.variant-row'),
     variantButtons: root.querySelector('.variant-buttons'),
     notes:        root.querySelector('.gm-notes'),
+    notesTitle:   root.querySelector('.gm-notes .gm-h3'),
     notesBody:    root.querySelector('.notes-body'),
     builder:      root.querySelector('.gm-builder'),
     bName:        root.querySelector('.b-name'),
@@ -351,11 +353,22 @@ export function mountGm(root) {
 
   const previewView = createStageView(els.previewFrame);
 
-  // Layout: the live controls move under the preview (the performance surface),
-  // and GM notes move to the bottom of the left rail beneath the scene list. The
-  // markup keeps each as one readable block; we relocate the nodes here. Toggling
+  // Layout: the performance surface puts the control surface and the preview
+  // SIDE BY SIDE (compact mode) so the whole thing fits on one screen. Within the
+  // controls, the audio mixer + quick-action modules pair side by side at the
+  // top, the cue bar is a row beneath them, and the nav (Edit) + extended map
+  // controls sit below. GM notes move to the bottom of the left rail. The markup
+  // keeps each as one readable block; we relocate the nodes here, so toggling
   // their .hidden / contents in renderUI works the same wherever they sit.
-  els.preview.after(els.controls);                          // controls below the preview
+  const quickMix = document.createElement('div');
+  quickMix.className = 'quick-mix';
+  els.mixer.before(quickMix);
+  quickMix.append(els.mixer, els.quick);   // mixer left, quick (visual) right
+  els.controls.prepend(quickMix);          // the pair leads; cue bar + nav follow
+  const surface = document.createElement('div');
+  surface.className = 'gm-surface';
+  els.preview.before(surface);
+  surface.append(els.controls, els.preview);   // controls left, preview right
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
 
   const boardView = createStageView(els.mapboard);
@@ -475,7 +488,9 @@ export function mountGm(root) {
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
   els.previewSize.addEventListener('click', () => {
     previewLarge = !previewLarge;
-    els.preview.classList.toggle('is-large', previewLarge);
+    // The class drives the whole surface: compact lays the preview beside the
+    // controls; large stacks a full-width preview above them.
+    els.stage.classList.toggle('is-large', previewLarge);
     els.previewSize.textContent = previewLarge ? '⤡ Smaller' : '⤢ Larger';
   });
   els.mapModeToggle.addEventListener('click', () => { if (mapMode) exitMapMode(); else enterMapMode(); });
@@ -979,7 +994,12 @@ export function mountGm(root) {
     els.badge.textContent = (scene.maps && scene.maps[state.mapState] === '') ? 'Title screen' : humanize(state.mapState);
     els.badge.classList.toggle('badge-revealed', keys.length > 1 && state.mapState !== keys[0]);
 
-    // GM notes follow the active cue (its own notes when set), else the scene's.
+    // GM notes follow the active cue: when the active cue has its own note, the
+    // panel is titled with that cue's name (so it reads as the cue's blocking),
+    // otherwise it falls back to the scene's default note under "GM notes".
+    const activeCue = scene && (scene.cues || []).find((c) => c.id === activeCueId);
+    const cueHasNote = !!(activeCue && (activeCue.notes || '').trim());
+    els.notesTitle.textContent = cueHasNote ? (activeCue.label || 'Cue') : 'GM notes';
     els.notesBody.textContent = activeCueNotes(scene);
   }
 
@@ -2377,7 +2397,7 @@ export function mountGm(root) {
     els.mapmode.hidden = !inMap;
     // In the builder, shrink the preview and pin it so it stays visible while
     // scrolling the controls (so "Test in preview" is actually watchable).
-    if (els.preview.parentElement) els.preview.parentElement.classList.toggle('is-building', building);
+    els.stage.classList.toggle('is-building', building);
 
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.

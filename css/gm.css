@@ -202,14 +202,27 @@ body.view-gm {
   text-align: center;
 }
 
-/* The GM preview defaults to a compact size in BOTH the live performance view
-   and the builder, so the controls below it (cues, quick actions, mixer) stay on
-   screen without scrolling. The caption's Larger/Smaller toggle flips .is-large
-   to expand it to the full column for detail or map work. */
+/* Performance surface: in compact mode (default) the control surface and the
+   preview sit SIDE BY SIDE, so the whole live view fits on one screen -- the
+   controls on the left, a half-size preview on the right. The caption's
+   Larger/Smaller toggle adds .is-large to the stage, which stacks a full-width
+   preview above the controls for detail or map work. */
 .view-gm .gm-preview { margin: 0 0 var(--space-4); max-width: 560px; }
-.view-gm .gm-preview.is-large { max-width: none; }
-/* While editing a scene, also pin the (compact) preview to the top so it stays
-   on screen as you scroll the controls -- "Test in preview" stays watchable. */
+.view-gm .gm-surface { display: block; }
+.view-gm .gm-stage:not(.is-building):not(.is-large) .gm-surface {
+  display: flex; gap: var(--space-4); align-items: flex-start;
+}
+.view-gm .gm-stage:not(.is-building):not(.is-large) .gm-surface > .gm-controls {
+  order: 1; flex: 1 1 0; min-width: 0; margin: 0;
+}
+.view-gm .gm-stage:not(.is-building):not(.is-large) .gm-surface > .gm-preview {
+  order: 2; flex: 0 0 44%; max-width: 560px; margin: 0;
+  position: sticky; top: var(--space-3);   /* stays in view as the controls grow */
+}
+/* Larger: a full-width preview stacked above the controls. */
+.view-gm .gm-stage.is-large .gm-preview { max-width: none; }
+/* While editing a scene, pin the (compact) preview to the top so it stays on
+   screen as you scroll the controls -- "Test in preview" stays watchable. */
 .view-gm .gm-stage.is-building .gm-preview {
   position: sticky; top: var(--space-3); z-index: 5;
   max-width: 420px; margin: 0 0 var(--space-3);
@@ -251,7 +264,7 @@ body.view-gm {
 /* Preview size toggle, pushed to the right of the caption. Enlarging overrides
    the builder's small/pinned preview so a map scene can be built at full size. */
 .view-gm .preview-size { margin-left: auto; font-size: var(--fs-100); padding: 0.3rem 0.6rem; white-space: nowrap; }
-.view-gm .gm-stage.is-building .gm-preview.is-large { position: static; max-width: none; }
+.view-gm .gm-stage.is-building.is-large .gm-preview { position: static; max-width: none; }
 .view-gm .preview-name {
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -334,7 +347,7 @@ body.view-gm {
 .view-gm .gm-scenes-head .gm-h2 { margin: 0; }
 .view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
 .view-gm .scene-list li { position: relative; }
-.view-gm .scene-button { padding-left: 2.6rem; padding-right: 3.5rem; }
+.view-gm .scene-button { padding-left: 2.6rem; padding-right: 2.4rem; }
 /* Pin/star toggle on the left: hollow when idle, a warm gold star when pinned.
    Sits over the scene button's padding so the row stays one clickable surface. */
 .view-gm .scene-pin {
@@ -353,9 +366,9 @@ body.view-gm {
 .view-gm .scene-del {
   position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
   display: inline-flex; align-items: center; justify-content: center;
-  width: 2.75rem; height: 2.75rem; padding: 0; line-height: 1;
+  width: 1.6rem; height: 1.6rem; padding: 0; line-height: 1;
   border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--gm-panel); color: var(--offense); font-size: 1.2rem; cursor: pointer;
+  background: var(--gm-panel); color: var(--offense); font-size: 0.95rem; cursor: pointer;
 }
 .view-gm .scene-del:hover { background: var(--paper); }
 .view-gm .rescan-status {
@@ -375,9 +388,16 @@ body.view-gm {
 .view-gm .variant-button { font-size: var(--fs-200); padding: 0.45rem 0.8rem; }
 /* .variant-button active colour now comes from the .btn--toggle role. */
 
+/* The audio mixer + quick-action modules pair side by side at the top of the
+   control surface, so the two live manual surfaces sit together; they stack only
+   when the control column gets narrow. */
+.view-gm .quick-mix { display: flex; gap: var(--space-3); align-items: stretch; flex-wrap: wrap; }
+.view-gm .quick-mix > .gm-mixer,
+.view-gm .quick-mix > .gm-quick { flex: 1 1 13rem; min-width: 0; }
+
 /* ---- Quick actions module (live manual surface) ----
-   Background hot-swap + black out, then Left/Right hot-swap + hide, in tidy rows
-   right under the cue bar. Each row is label | controls on one line. */
+   Background hot-swap + black out, then Left/Right hot-swap + hide, in tidy rows.
+   Each row is label | controls on one line. */
 .view-gm .gm-quick {
   margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3);
   background: var(--gm-panel); border: 1px solid var(--rule);
