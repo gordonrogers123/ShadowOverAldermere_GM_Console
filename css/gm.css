@@ -131,10 +131,20 @@ body.view-gm {
   margin: 0 auto;
 }
 
-/* ---- Scene list ---- */
+/* ---- Scene list + GM notes (left rail) ----
+   The rail fills the viewport beside the stage and splits into a compact scene
+   list (~1/3) up top and GM notes (~2/3) below, so the notes are always in view
+   during play. Sticky so it stays put while the center performance surface
+   scrolls. */
 .view-gm .gm-scenes {
   min-width: 0;
+  position: sticky;
+  top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 7.5rem);
 }
+.view-gm .gm-scenes-head { flex: 0 0 auto; }
 .view-gm .gm-h2,
 .view-gm .gm-h3 {
   font-family: var(--font-display);
@@ -158,19 +168,19 @@ body.view-gm {
 /* Height-capped + scrollable so the live controls beneath the list never get
    pushed down as scenes accumulate; pinned scenes float to the top (see below)
    so the ones in play this session stay in view without scrolling. */
-.view-gm .scene-list { list-style: none; margin: 0; padding: 0; max-height: 21rem; overflow-y: auto; }
-.view-gm .scene-list li { margin: 0 0 0.6rem; }
+.view-gm .scene-list { list-style: none; margin: 0; padding: 0 2px 0 0; flex: 1 1 0; min-height: 5rem; overflow-y: auto; }
+.view-gm .scene-list li { margin: 0 0 0.4rem; }
 .view-gm .scene-button {
   width: 100%;
   text-align: left;
   font-family: var(--font-body);
-  font-size: 1.15rem;
+  font-size: 0.98rem;
   color: var(--ink);
   background: var(--gm-panel);
   border: 1px solid var(--rule);
-  border-left: 6px solid var(--rule);
+  border-left: 5px solid var(--rule);
   border-radius: 8px;
-  padding: 0.9rem 1rem;
+  padding: 0.5rem 0.8rem;
   cursor: pointer;
 }
 .view-gm .scene-button:hover { background: var(--paper); }
@@ -193,6 +203,13 @@ body.view-gm {
 }
 
 .view-gm .gm-preview { margin: 0 0 var(--space-4); }
+/* While editing a scene, shrink the preview and pin it to the top so it stays
+   on screen as you scroll the controls -- so "Test in preview" is watchable and
+   the controls aren't pushed far down the page. */
+.view-gm .gm-stage.is-building .gm-preview {
+  position: sticky; top: var(--space-3); z-index: 5;
+  max-width: 420px; margin: 0 0 var(--space-3);
+}
 .view-gm .preview-frame {
   position: relative;
   width: 100%;
@@ -227,6 +244,10 @@ body.view-gm {
   gap: 0.8rem;
   margin-top: 0.6rem;
 }
+/* Preview size toggle, pushed to the right of the caption. Enlarging overrides
+   the builder's small/pinned preview so a map scene can be built at full size. */
+.view-gm .preview-size { margin-left: auto; font-size: var(--fs-100); padding: 0.3rem 0.6rem; white-space: nowrap; }
+.view-gm .gm-stage.is-building .gm-preview.is-large { position: static; max-width: none; }
 .view-gm .preview-name {
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -243,13 +264,14 @@ body.view-gm {
 }
 .view-gm .badge.badge-revealed { background: var(--support); }
 
-.view-gm .gm-controls { margin: 0 0 var(--space-5); }
-/* The live controls sit in the rail beneath the scene list. A divider sets them
-   off, and the nav row (Black out + Map<->Exit) stays put in both modes. */
-.view-gm .gm-scenes .gm-controls {
-  margin: var(--space-4) 0 0;
-  padding-top: var(--space-4);
-  border-top: 2px solid var(--rule);
+/* The live controls -- the performance surface -- sit in the center under the
+   preview now (cues lead, then the contextual + collapsible manual controls). */
+.view-gm .gm-controls { margin: 0 0 var(--space-4); }
+.view-gm .gm-stage .gm-controls {
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
 }
 /* The persistent nav row -- Black out | Map<->Exit | Edit -- shares the rail
    width on one line. The buttons flex to fit (and wrap gracefully only on the
@@ -264,15 +286,24 @@ body.view-gm {
 /* (PR 2 removed the standalone .toggle rule -- it was dead, never in the markup.
    The show/hide button now carries the .btn--toggle role for its colour.) */
 
-/* ---- GM notes (never leaves this window) ---- */
+/* ---- GM notes (never leaves this window) ----
+   Lives at the bottom of the left rail now, filling the lower ~2/3 and scrolling
+   its own body so long notes never push anything off-screen during play. */
 .view-gm .gm-notes {
   background: var(--gm-panel);
   border: 1px solid var(--rule);
   border-left: 6px solid var(--offense);
   border-radius: 8px;
-  padding: 1rem 1.2rem;
+  padding: 0.8rem 1rem;
+  flex: 2 1 0;
+  min-height: 6rem;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-.view-gm .notes-body { margin: 0; font-size: 1.1rem; }
+.view-gm .gm-notes .gm-h3 { flex: 0 0 auto; margin-bottom: 0.5rem; }
+.view-gm .notes-body { margin: 0; font-size: 1.02rem; overflow-y: auto; flex: 1 1 auto; white-space: pre-wrap; }
 
 /* ---- Header actions ---- */
 .view-gm .gm-header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
@@ -370,6 +401,8 @@ body.view-gm {
 /* The opening cue (fires on select) wears a small gold star. */
 .view-gm .cue-button.is-opening::before { content: '\2605 '; color: #b07d2b; }
 .view-gm .cue-button.is-opening.active::before { color: var(--paper); }
+/* A sequenced cue (plays as a timed choreography) wears a small play triangle. */
+.view-gm .cue-button.is-sequenced::after { content: ' \25B8'; opacity: 0.7; }
 .view-gm .cue-save { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; white-space: nowrap; }
 /* When a scene has no cues yet, the row is just the inviting "Save as cue". */
 .view-gm .cue-buttons:empty { flex: 0 0 auto; }
@@ -423,6 +456,21 @@ body.view-gm {
 .view-gm .field { display: block; margin-bottom: 0.9rem; }
 .view-gm .field > span { display: block; font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem; }
 .view-gm .field > span small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
+/* Collapsible builder sections (Roster, Audio): a <details> whose summary reads
+   like a field label, with a rotating caret. Collapsed by default to cut clutter
+   -- the GM opens just what they need. */
+.view-gm .builder-collapse { margin-bottom: 0.9rem; }
+.view-gm .builder-collapse > summary {
+  cursor: pointer; list-style: none; user-select: none;
+  font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem;
+}
+.view-gm .builder-collapse > summary::-webkit-details-marker { display: none; }
+.view-gm .builder-collapse > summary::before {
+  content: '\25B8'; display: inline-block; margin-right: var(--space-2);
+  transition: transform 0.15s ease; color: var(--control);
+}
+.view-gm .builder-collapse[open] > summary::before { transform: rotate(90deg); }
+.view-gm .builder-collapse > summary small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
 .view-gm .b-name { width: 100%; }
 .view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
 /* Per-character size + flip controls under each character picker. */
@@ -467,6 +515,8 @@ body.view-gm {
   margin: 0 0 0.6rem 0.5rem; padding: var(--space-2) var(--space-3);
   border-left: 3px solid var(--control); background: var(--fill); border-radius: var(--radius-sm);
 }
+.view-gm .cue-tl-controls { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
+.view-gm .cue-tl-test, .view-gm .cue-tl-reset { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
 .view-gm .cue-lane { display: flex; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-1); flex-wrap: wrap; }
 .view-gm .cue-lane-name { flex: 0 0 7rem; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100); }
 .view-gm .cue-lane-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); color: var(--neutral); }

@@ -11,13 +11,14 @@
 // ============================================================
 
 export const BACKGROUNDS = [
-  { id: "Gateguardpost", name: "Gateguardpost", src: "assets/backgrounds/Gateguardpost.png", kind: "background" },
-  { id: "city gate", name: "City Gate", src: "assets/backgrounds/city gate.png", kind: "background" },
-  { id: "tavern", name: "Tavern", src: "assets/backgrounds/tavern.png", kind: "background" },
-  { id: "city-gate", name: "City Gate", src: "assets/maps/city-gate.jpg", kind: "map" },
-  { id: "inn-first-floor", name: "Inn First Floor", src: "assets/maps/inn-first-floor.jpg", kind: "map" },
-  { id: "market", name: "Market", src: "assets/maps/market.jpg", kind: "map" },
-  { id: "town-center", name: "Town Center", src: "assets/maps/town-center.jpg", kind: "map" }
+  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png" },
+  { id: "A1 S2 City Gates", name: "A1 S2 City Gates", src: "assets/backgrounds/A1 S2 City Gates.png" },
+  { id: "A1 S2 Gate Gardpost", name: "A1 S2 Gate Gardpost", src: "assets/backgrounds/A1 S2 Gate Gardpost.png" },
+  { id: "A1 S3 Tavern Harth", name: "A1 S3 Tavern Harth", src: "assets/backgrounds/A1 S3 Tavern Harth.png" },
+  { id: "city-gate", name: "City Gate", src: "assets/maps/city-gate.jpg" },
+  { id: "inn-first-floor", name: "Inn First Floor", src: "assets/maps/inn-first-floor.jpg" },
+  { id: "market", name: "Market", src: "assets/maps/market.jpg" },
+  { id: "town-center", name: "Town Center", src: "assets/maps/town-center.jpg" }
 ];
 
 export const CHARACTERS = [
@@ -30,8 +31,13 @@ export const CHARACTERS = [
   { id: "truf", name: "Truf", src: "assets/characters/heroes/truf.png", category: "hero" },
   { id: "cassian", name: "Cassian", src: "assets/characters/npcs/cassian.png", category: "npc" },
   { id: "dorran", name: "Dorran", src: "assets/characters/npcs/dorran.png", category: "npc" },
+  { id: "grannyEdna1", name: "GrannyEdna1", src: "assets/characters/npcs/grannyEdna1.png", category: "npc" },
+  { id: "hob", name: "Hob", src: "assets/characters/npcs/hob.png", category: "npc" },
+  { id: "marchfamily1", name: "Marchfamily1", src: "assets/characters/npcs/marchfamily1.png", category: "npc" },
+  { id: "marchfamily2", name: "Marchfamily2", src: "assets/characters/npcs/marchfamily2.png", category: "npc" },
   { id: "pip", name: "Pip", src: "assets/characters/npcs/pip.png", category: "npc" },
-  { id: "wick", name: "Wick", src: "assets/characters/npcs/wick.png", category: "npc" }
+  { id: "wick", name: "Wick", src: "assets/characters/npcs/wick.png", category: "npc" },
+  { id: "wren", name: "Wren", src: "assets/characters/npcs/wren.png", category: "npc" }
 ];
 
 export const MUSIC = [

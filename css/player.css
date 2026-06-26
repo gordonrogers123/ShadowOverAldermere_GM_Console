@@ -84,33 +84,35 @@
    covering the center of the stage. */
 .stage .char-layer {
   position: absolute;
-  /* Per-character tuning set by the compositor: --char-scale (default 1) sizes
-     the cutout, --char-flip (1 or -1) mirrors it, and --char-x / --char-y are
-     stage-relative position nudges. y rides on `bottom` so a cutout can be
-     raised to sit on the visible backdrop bottom when a non-16:9 image
-     letterboxes; x rides on left/right (below). These are layout, not
-     transforms, so positioning never drifts during the entrance. */
-  bottom: var(--char-y, 0);
-  height: calc(88% * var(--char-scale, 1));
-  width: auto;
-  max-width: calc(38% * var(--char-scale, 1));
+  /* Character art is full-frame (same canvas as the backgrounds): the subject is
+     already placed within a 16:9 image, transparent elsewhere. So we composite
+     it over the WHOLE stage with object-fit:contain -- exactly like a background
+     layer -- and it lands where the artist put it and tracks the backdrop in any
+     window (the GM preview and the TV always agree). Per-character tuning then
+     just nudges that baseline: --char-scale zooms, --char-flip mirrors, and
+     --char-x / --char-y shift it (x toward center, y up). They compose into one
+     base transform so a flip/scale/offset survives the entrance animation. */
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  object-position: bottom;
+  --char-base: translate(var(--char-x, 0), calc(-1 * var(--char-y, 0))) scale(var(--char-scale, 1)) scaleX(var(--char-flip, 1));
+  transform: var(--char-base);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--char-fade) ease, transform var(--char-slide) ease, filter var(--char-fade) ease;
   will-change: opacity, transform, filter;
 }
-.stage .char-left  { left:  var(--char-x, 0); transform: translateX(-130%) scaleX(var(--char-flip, 1)); }   /* offstage left */
-.stage .char-right { right: var(--char-x, 0); transform: translateX(130%) scaleX(var(--char-flip, 1)); }    /* offstage right */
+.stage .char-left  { transform: translateX(-130%) var(--char-base); }   /* offstage left */
+.stage .char-right { transform: translateX(130%)  var(--char-base); }   /* offstage right */
 /* Fade-in-from-blur: the character does not slide -- it resolves in place from a
-   soft, slightly enlarged blur to sharp (a focus pull), and blurs back out.
-   scaleX(--char-flip) is folded into every transform so a flip composes with
+   soft, slightly enlarged blur to sharp (a focus pull), and blurs back out. The
+   base transform is folded into every state so a flip/scale/offset composes with
    the entrance instead of being overwritten by it. */
-.stage .char-layer.enter-fade { transform: scale(1.06) scaleX(var(--char-flip, 1)); filter: blur(12px); }
+.stage .char-layer.enter-fade { transform: scale(1.06) var(--char-base); filter: blur(12px); }
 /* On stage. (A slide character carries no blur; filter: blur(0) is a no-op for it.) */
-.stage .char-layer.is-shown { opacity: 1; transform: translateX(0) scaleX(var(--char-flip, 1)); filter: blur(0); }
-.stage .char-layer.enter-fade.is-shown { transform: scale(1) scaleX(var(--char-flip, 1)); }
+.stage .char-layer.is-shown { opacity: 1; transform: var(--char-base); filter: blur(0); }
+.stage .char-layer.enter-fade.is-shown { transform: var(--char-base); }
 
 /* Black curtain over the whole stage (scene show/hide). */
 .stage .curtain {
