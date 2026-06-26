@@ -370,18 +370,23 @@ body.view-gm {
 .view-gm .variant-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .view-gm .variant-button { font-size: var(--fs-200); padding: 0.45rem 0.8rem; }
 /* .variant-button active colour now comes from the .btn--toggle role. */
-.view-gm .char-row.row-disabled { opacity: 0.5; }
-.view-gm .char-toggle[disabled],
-.view-gm .char-reset[disabled] { cursor: not-allowed; opacity: 0.6; }
-.view-gm .char-swap { max-width: 12rem; }
-/* Live char rows on ONE line: label | Enter | select (fills + shrinks) | Reset.
-   The shared .control-row wraps; here we forbid that and let the select flex so
-   Reset never drops to a second row. */
-.view-gm .controls-live .char-row { flex-wrap: nowrap; gap: var(--space-2); }
-.view-gm .controls-live .char-row .control-label { flex: 0 0 2.75rem; min-width: 0; }
-.view-gm .controls-live .char-swap { flex: 1 1 0; min-width: 0; max-width: none; }
-.view-gm .controls-live .char-toggle,
-.view-gm .controls-live .char-reset { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
+
+/* ---- Quick actions module (live manual surface) ----
+   Background hot-swap + black out, then Left/Right hot-swap + hide, in tidy rows
+   right under the cue bar. Each row is label | controls on one line. */
+.view-gm .gm-quick {
+  margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3);
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 4px solid var(--control); border-radius: var(--radius-sm);
+}
+.view-gm .quick-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: nowrap; margin-bottom: var(--space-2); }
+.view-gm .quick-row:last-child { margin-bottom: 0; }
+.view-gm .quick-row .control-label { flex: 0 0 6rem; min-width: 0; white-space: nowrap; }
+.view-gm .quick-bg-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
+.view-gm .quick-row .vis-toggle { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
+.view-gm .quick-swap { flex: 1 1 0; min-width: 0; }
+.view-gm .quick-hide { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
+.view-gm .quick-hide[disabled] { cursor: not-allowed; opacity: 0.6; }
 
 /* ---- Cues: one-press stage transitions (the lead control surface) ----
    Cues sit at the top of the rail in a faint inset banner so they read as the
@@ -405,22 +410,31 @@ body.view-gm {
 .view-gm .cue-button.is-sequenced::after { content: ' \25B8'; opacity: 0.7; }
 .view-gm .cue-buttons:empty { flex: 0 0 auto; }
 
-/* Contextual cue controls: only the active cue's aspects, indented under the
-   cue row with a small caption naming the cue. The real control rows relocate
-   here, so they keep their normal look -- just focused to what the cue changes. */
-.view-gm .cue-controls {
-  margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3) 0;
-  border-left: 3px solid var(--control);
+/* ---- Audio mixer module (compact live surface) ----
+   A row of vertical faders (Master / Music / Ambience), each with a mute, then a
+   one-press Fade and the SFX buttons -- the key audio controls for play, kept
+   small. The full per-bed panel lives collapsed below (.gm-audio). */
+.view-gm .gm-mixer {
+  display: flex; align-items: flex-end; gap: var(--space-3) var(--space-4); flex-wrap: wrap;
+  margin-bottom: var(--space-3); padding: var(--space-3);
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 4px solid var(--control); border-radius: var(--radius-sm);
 }
-.view-gm .cue-controls-label {
-  display: block; font-family: var(--font-display); font-weight: 700;
-  font-size: var(--fs-100); letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--neutral); opacity: 0.75; margin-bottom: var(--space-2);
+.view-gm .mixer-faders { display: flex; align-items: flex-end; gap: var(--space-3); }
+.view-gm .mixer-fader { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+.view-gm .mixer-fader-name {
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral);
 }
-.view-gm .cue-controls-label:empty { display: none; }
-/* A relocated row sheds its bottom margin at the foot of the contextual block. */
-.view-gm .cue-controls .control-row:last-child,
-.view-gm .cue-controls .controls-live:last-child .char-row:last-child { margin-bottom: var(--space-2); }
+/* Vertical fader: the GM range inputs are custom-styled (an 8px track), so the
+   robust cross-browser way to stand one up is to rotate a normal horizontal
+   slider inside a fixed-size wrapper that reserves its vertical footprint. */
+.view-gm .mixer-slider-wrap { height: 6rem; width: 1.8rem; display: flex; align-items: center; justify-content: center; }
+.view-gm .mixer-slider { width: 6rem; transform: rotate(-90deg); accent-color: var(--control); }
+.view-gm .mixer-mute { font-size: var(--fs-100); padding: 0.25rem 0.55rem; }
+.view-gm .mixer-extra { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.view-gm .mixer-fade { font-size: var(--fs-200); padding: 0.5rem 0.85rem; }
+.view-gm .mixer-sfx { font-size: var(--fs-100); padding: 0.4rem 0.7rem; }
 
 /* All controls: the full manual set, collapsible. Leads open for cue-less
    scenes, tucked away for cue-led ones (still one click for an off-script tweak). */
@@ -655,6 +669,22 @@ body.view-gm {
   padding: var(--space-4) var(--space-5); margin: 0 0 var(--space-5);
 }
 .view-gm .gm-audio .gm-h3 { margin: 0 0 var(--space-3); }
+/* The full panel is collapsed by default now (the mixer carries live control);
+   its summary reads like a section heading with a rotating caret. */
+.view-gm .gm-audio-summary {
+  cursor: pointer; list-style: none; user-select: none;
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-300); color: var(--ink);
+}
+.view-gm .gm-audio-summary::-webkit-details-marker { display: none; }
+.view-gm .gm-audio-summary::before {
+  content: '\25B8'; display: inline-block; margin-right: var(--space-2);
+  transition: transform 0.15s ease; color: var(--neutral);
+}
+.view-gm .gm-audio[open] > .gm-audio-summary::before { transform: rotate(90deg); }
+.view-gm .gm-audio-summary small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
+.view-gm .gm-audio[open] > .gm-audio-summary { margin-bottom: var(--space-3); }
+/* The per-cue notes textarea in the cue builder. */
+.view-gm .cue-notes { width: 100%; resize: vertical; }
 /* Discoverable empty-state shown when a scene carries no audio yet. */
 .view-gm .audio-empty { margin: 0; color: var(--neutral); font-size: var(--fs-200); }
 .view-gm .audio-empty-cta { margin-left: var(--space-2); font-size: var(--fs-100); }

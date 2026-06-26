@@ -110,7 +110,10 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
     let stopped = false;
     function update(tt, tau) {
       const now = ctx.currentTime;
-      trackGain.gain.setTargetAtTime(clamp01(tt.volume == null ? 0.8 : tt.volume), now, tau || currentTau);
+      // A muted track holds its volume but plays at silence -- the mixer can drop
+      // it without stopping the bed (so unmute snaps it back at the same level).
+      const vol = tt.muted ? 0 : (tt.volume == null ? 0.8 : tt.volume);
+      trackGain.gain.setTargetAtTime(clamp01(vol), now, tau || currentTau);
       panner.pan.setTargetAtTime(clampPan(tt.pan), now, 0.03);
       source.loop = tt.loop !== false;
     }
@@ -163,7 +166,10 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
     const outputting = !!(audio.outputs && audio.outputs[role]);
     if (!outputting) { stopAll(); return; }   // this window is silent: no decode/play work
     currentTau = rampTau(audio);   // a cue can stretch how fast gains move this pass
-    masterGain.gain.setTargetAtTime(clamp01(audio.master), ctx.currentTime, currentTau);
+    // masterMuted drops the whole mix to silence (the mixer's Master mute / Fade)
+    // while keeping the stored master level for an instant un-mute.
+    const effMaster = audio.masterMuted ? 0 : audio.master;
+    masterGain.gain.setTargetAtTime(clamp01(effMaster), ctx.currentTime, currentTau);
 
     const want = new Set();
     for (const [key, t] of Object.entries(audio.tracks || {})) {
@@ -229,9 +235,10 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
         unlocked,
         outputsActive,
         master: audio ? audio.master : null,
+        masterMuted: !!(audio && audio.masterMuted),
         tracks: [...live.keys()].map((k) => {
           const t = audio && audio.tracks && audio.tracks[k];
-          return { key: k, playing: true, volume: t ? t.volume : null, pan: t ? t.pan : null };
+          return { key: k, playing: true, volume: t ? t.volume : null, pan: t ? t.pan : null, muted: !!(t && t.muted) };
         }),
         firedSfx: Object.fromEntries(lastSfx)
       };
