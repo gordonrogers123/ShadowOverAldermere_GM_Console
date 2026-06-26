@@ -21,6 +21,7 @@ import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
 import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
 import { createAudioEngine } from './audioEngine.js';
+import { mountDiceRoller } from './diceRoller.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -1527,4 +1528,7 @@ export function mountGm(root) {
   rebuildSceneList();
   renderUI();
   broadcast();
+
+  // GM-only dice tray, pinned to the lower-left of the console (local UI).
+  mountDiceRoller(root);
 }
