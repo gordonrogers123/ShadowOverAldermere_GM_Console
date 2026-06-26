@@ -52,25 +52,27 @@
 //                        //      ambience:[{src,...}], sfx:[{id,src,volume,pan}] }
 //                        // (a single music object is still accepted for back-compat)
 //
-//      // CUES (optional). One-press stage presets: each is a saved snapshot of
-//      // the whole stage (which variant is up, scene/map mode, the curtain, who
-//      // is on left/right, which audio plays). Pressing a cue transitions every
-//      // aspect at once; an `opening:true` cue fires automatically on select
-//      // (e.g. title card + title music). Captured live in the GM window
-//      // ("Save as cue") and scoped per cue via `affects` so a quick character
-//      // swap leaves the background and music alone. Carried opaquely; old
-//      // scenes without it load fine.
+//      // CUES (optional). One-press stage transitions: each cue AUTHORS a target
+//      // for the stage (which variant is up, scene/map mode, the curtain, who is
+//      // on left/right, which audio + SFX play). Pressing a cue moves every aspect
+//      // it affects to that target; an `opening:true` cue fires automatically on
+//      // select (e.g. title card + title music). Built in the GM scene editor
+//      // ("+ New cue") and scoped per cue via `affects` so a quick character swap
+//      // leaves the background and music alone. Carried opaquely; old scenes
+//      // without it load fine.
 //      cues: [ { id, label, opening:false,
 //                affects:{background,mapMode,curtain,characters,tokens,audio},
 //                snapshot:{ mapState, mapMode, visible,
 //                           left:{shown,srcOverride}, right:{shown,srcOverride},
 //                           tokens:[{castId,kind,label,x,y,visible}],
 //                           audio:{playing:[trackKeys], master, sfx:[ids]} },
-//                // OPTIONAL choreography. With a `timeline`, pressing the cue plays
-//                // its change as a timed sequence (fade to black -> swap backdrop ->
-//                // reveal -> SFX -> characters) instead of all at once. Each lane has
-//                // a start `at` and (where it animates) a `ramp`, in ms; absent =
-//                // instant. Authored via the builder's per-cue "Sequence" editor.
+//                // OPTIONAL per-element keyframes. Any lane present in `timeline`
+//                // ANIMATES on its own Start `at` (+ where it fades, a `ramp`), in
+//                // ms; every affected aspect NOT keyframed snaps at t=0 with the
+//                // press. So the GM keyframes only what should be timed (e.g. a
+//                // character walking in 2s after an instant background swap), or
+//                // keyframes the whole spine (fade to black -> swap -> reveal ->
+//                // SFX -> characters). Authored via each cue's "Timing" editor.
 //                timeline:{ blackout:{at,ramp}, audioOut:{at,ramp}, background:{at,ramp},
 //                           audioIn:{at,ramp}, reveal:{at,ramp}, sfx:{at}, characters:{at,ramp} } } ],
 //

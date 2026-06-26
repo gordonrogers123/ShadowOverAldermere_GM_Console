@@ -383,10 +383,10 @@ body.view-gm {
 .view-gm .controls-live .char-toggle,
 .view-gm .controls-live .char-reset { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
 
-/* ---- Cues: one-press stage presets (the lead control surface) ----
+/* ---- Cues: one-press stage transitions (the lead control surface) ----
    Cues sit at the top of the rail in a faint inset banner so they read as the
-   primary action; each is a .btn--toggle (lit when it is the active cue). The
-   ever-present "Save as cue" is pushed to the right. */
+   primary action; each is a .btn--toggle (lit when it is the active cue). Cues
+   are authored in the scene editor, so the rail shows only when the scene has them. */
 .view-gm .cue-row {
   align-items: center; gap: var(--space-2);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
@@ -403,8 +403,6 @@ body.view-gm {
 .view-gm .cue-button.is-opening.active::before { color: var(--paper); }
 /* A sequenced cue (plays as a timed choreography) wears a small play triangle. */
 .view-gm .cue-button.is-sequenced::after { content: ' \25B8'; opacity: 0.7; }
-.view-gm .cue-save { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; white-space: nowrap; }
-/* When a scene has no cues yet, the row is just the inviting "Save as cue". */
 .view-gm .cue-buttons:empty { flex: 0 0 auto; }
 
 /* Contextual cue controls: only the active cue's aspects, indented under the
@@ -493,13 +491,19 @@ body.view-gm {
   border-radius: 8px; cursor: pointer; color: var(--ink);
 }
 .view-gm .v-remove[disabled] { opacity: 0.4; cursor: not-allowed; }
-/* Builder cue rows: label | Opening | aspect toggles | reorder | remove.
-   Captured live; the builder only renames / re-scopes / reorders them. */
-.view-gm .cue-edit { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 0.5rem; flex-wrap: wrap; }
+/* Builder cue cards: each cue is a collapsible card -- a head (expand | name |
+   Opening | reorder | remove) and, when open, a body that AUTHORS the cue
+   (background / characters / audio / SFX / fade-to-black) plus the per-element
+   keyframe editor. Cues are built here now, not captured live. */
+.view-gm .cue-edit {
+  margin-bottom: 0.5rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--gm-panel);
+}
+.view-gm .cue-edit.is-open { border-left: 4px solid var(--control); }
+.view-gm .cue-edit-head { display: flex; align-items: center; gap: var(--space-2); padding: 0.4rem 0.5rem; flex-wrap: wrap; }
+.view-gm .cue-expand { font-size: var(--fs-200); padding: 0.25rem 0.5rem; line-height: 1; }
 .view-gm .cue-label { flex: 1 1 8rem; min-width: 7rem; }
 .view-gm .cue-opening { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
-.view-gm .cue-affects { display: inline-flex; gap: var(--space-1); flex-wrap: wrap; }
-.view-gm .cue-aff { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
 .view-gm .cue-up, .view-gm .cue-down { font-size: var(--fs-100); padding: 0.3rem 0.5rem; }
 .view-gm .cue-up[disabled], .view-gm .cue-down[disabled] { opacity: 0.4; cursor: not-allowed; }
 .view-gm .cue-remove {
@@ -507,18 +511,44 @@ body.view-gm {
   background: var(--fill); border: 1px solid var(--rule);
   border-radius: 8px; cursor: pointer; color: var(--ink);
 }
-.view-gm .cue-empty-hint { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0 0; }
-.view-gm .cue-seq { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
-/* Per-cue keyframe editor: one lane per row, each with Start / Ramp (seconds).
-   Indented under its cue row with a left accent to read as that cue's timeline. */
+.view-gm .cue-empty-hint { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0 0.4rem; }
+.view-gm .cue-new { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
+
+/* Cue body: stacked content fields. Each field is a label + control(s). */
+.view-gm .cue-edit-body { padding: 0 0.6rem 0.6rem; border-top: 1px solid var(--rule); }
+.view-gm .cue-field { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin: 0.5rem 0; }
+.view-gm .cue-field-label {
+  flex: 0 0 7rem; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral);
+}
+.view-gm .cue-field select { max-width: 16rem; }
+.view-gm .cue-aff-chars, .view-gm .cue-aff-audio, .view-gm .cue-aff-curtain { font-size: var(--fs-100); padding: 0.3rem 0.7rem; }
+.view-gm .cue-sides { display: inline-flex; gap: var(--space-3); flex-wrap: wrap; }
+.view-gm .cue-side { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); }
+.view-gm .cue-side select { max-width: 11rem; }
+.view-gm .cue-checks { display: inline-flex; gap: var(--space-1) var(--space-3); flex-wrap: wrap; }
+.view-gm .cue-checks .roster-item { font-size: var(--fs-100); }
+.view-gm .cue-checks-hint { font-size: var(--fs-100); color: var(--neutral); opacity: 0.8; }
+
+/* Per-element keyframe editor: a Timing block with one lane per applicable
+   element. Each lane leads with a Keyframe checkbox -- off => "instant", on =>
+   Start (+ Ramp) inputs. The GM keyframes only what should be timed. */
 .view-gm .cue-timeline {
-  margin: 0 0 0.6rem 0.5rem; padding: var(--space-2) var(--space-3);
+  margin: 0.5rem 0 0.2rem; padding: var(--space-2) var(--space-3);
   border-left: 3px solid var(--control); background: var(--fill); border-radius: var(--radius-sm);
 }
-.view-gm .cue-tl-controls { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
-.view-gm .cue-tl-test, .view-gm .cue-tl-reset { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .cue-tl-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
+.view-gm .cue-tl-title {
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral); margin-right: auto;
+}
+.view-gm .cue-tl-all, .view-gm .cue-tl-test { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .cue-tl-empty { font-size: var(--fs-100); color: var(--neutral); opacity: 0.8; margin: 0; }
 .view-gm .cue-lane { display: flex; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-1); flex-wrap: wrap; }
-.view-gm .cue-lane-name { flex: 0 0 7rem; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100); }
+.view-gm .cue-lane-kf { display: inline-flex; align-items: center; gap: var(--space-1); flex: 0 0 9rem; cursor: pointer; }
+.view-gm .cue-lane-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100); }
+.view-gm .cue-lane.is-keyed .cue-lane-name { color: var(--control); }
+.view-gm .cue-lane-snap { font-size: var(--fs-100); color: var(--neutral); opacity: 0.6; font-style: italic; }
 .view-gm .cue-lane-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); color: var(--neutral); }
 .view-gm .cue-lane-field input[type="number"] { width: 4rem; padding: 0.25rem 0.4rem; }
 .view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
