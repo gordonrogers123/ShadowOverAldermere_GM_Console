@@ -364,8 +364,27 @@ export function createStageView(root) {
     new ResizeObserver(() => layoutTokens()).observe(stage);
   }
 
+  // Per-cue keyframe ramps: a sequenced cue sets state.stage.fx = { curtain,
+  // crossfade, char } (ms) so each beat's transition runs at the cue's authored
+  // speed. We push them as inline CSS custom properties on the stage (the same
+  // vars app.css defines), and clear them when absent so normal play uses the
+  // defaults. The char ramp drives both the fade and the slide.
+  function applyFx(state) {
+    const fx = (state && state.stage && state.stage.fx) || null;
+    const setVar = (prop, key) => {
+      const v = fx && fx[key];
+      if (v != null && isFinite(+v)) stage.style.setProperty(prop, Math.max(0, +v) + 'ms');
+      else stage.style.removeProperty(prop);
+    };
+    setVar('--curtain-fade', 'curtain');
+    setVar('--crossfade', 'crossfade');
+    setVar('--char-fade', 'char');
+    setVar('--char-slide', 'char');
+  }
+
   function render(state, scene, opts = {}) {
     const instant = !!opts.instant;
+    applyFx(state);
 
     // The background runs its own fade when its image loads; it is not part of
     // the instant wrap. Characters and the curtain are.

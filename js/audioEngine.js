@@ -21,6 +21,14 @@
 const clamp01 = (n) => { n = +n; return !isFinite(n) ? 0 : n < 0 ? 0 : n > 1 ? 1 : n; };
 const clampPan = (n) => { n = +n; return !isFinite(n) ? 0 : n < -1 ? -1 : n > 1 ? 1 : n; };
 
+// A sequenced cue can ask audio to fade over a chosen ramp (state.audio.ramp, in
+// ms) so "audio ramps down/up" honours the cue's timing. Map it to a
+// setTargetAtTime time-constant (~3*tau to settle). Absent -> the snappy default.
+function rampTau(audio) {
+  const r = audio && +audio.ramp;
+  return (isFinite(r) && r > 0) ? Math.min(2, Math.max(0.005, r / 3000)) : 0.03;
+}
+
 // A scene's music as an array of beds, accepting either the new array form or
 // a single legacy `{src,...}` object. Lets cues play different music per cue.
 function musicBeds(a) {
@@ -54,6 +62,7 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
   let unlocked = false;
   let lastState = null;
   let lastScene = null;
+  let currentTau = 0.03;        // gain ramp time-constant; a cue can stretch it
 
   const live = new Map();       // trackKey -> graph handle (currently sounding)
   const starting = new Set();   // trackKeys mid-decode, to avoid double starts
@@ -99,17 +108,21 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
     source.connect(panner); panner.connect(trackGain); trackGain.connect(masterGain);
 
     let stopped = false;
-    function update(tt) {
+    function update(tt, tau) {
       const now = ctx.currentTime;
-      trackGain.gain.setTargetAtTime(clamp01(tt.volume == null ? 0.8 : tt.volume), now, 0.03);
+      trackGain.gain.setTargetAtTime(clamp01(tt.volume == null ? 0.8 : tt.volume), now, tau || currentTau);
       panner.pan.setTargetAtTime(clampPan(tt.pan), now, 0.03);
       source.loop = tt.loop !== false;
     }
     function stop() {
       if (stopped) return; stopped = true;
-      try { trackGain.gain.setTargetAtTime(0, ctx.currentTime, 0.03); } catch (e) {}
-      try { source.stop(ctx.currentTime + 0.15); } catch (e) {}
-      setTimeout(() => { try { source.disconnect(); panner.disconnect(); trackGain.disconnect(); } catch (e) {} }, 250);
+      // Fade out over the active ramp; hold the source alive long enough for the
+      // fade to finish so a slow cue ramp does not get cut off mid-fade.
+      const tau = currentTau;
+      const fade = Math.max(0.15, tau * 3);
+      try { trackGain.gain.setTargetAtTime(0, ctx.currentTime, tau); } catch (e) {}
+      try { source.stop(ctx.currentTime + fade + 0.05); } catch (e) {}
+      setTimeout(() => { try { source.disconnect(); panner.disconnect(); trackGain.disconnect(); } catch (e) {} }, (fade + 0.25) * 1000);
     }
     return { source, update, stop };
   }
@@ -132,7 +145,7 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
       if (!stillOut || !unlocked) return;
       const t = { volume: cfg.volume == null ? 0.8 : cfg.volume, pan: cfg.pan || 0, loop: false };
       const handle = buildTrackGraph(buf, t);
-      handle.update(t);
+      handle.update(t, 0.01);   // one-shots hit sharply, never on a cue's slow ramp
       handle.source.onended = () => handle.stop();
       try { handle.source.start(); } catch (e) {}
     });
@@ -149,7 +162,8 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
 
     const outputting = !!(audio.outputs && audio.outputs[role]);
     if (!outputting) { stopAll(); return; }   // this window is silent: no decode/play work
-    masterGain.gain.setTargetAtTime(clamp01(audio.master), ctx.currentTime, 0.03);
+    currentTau = rampTau(audio);   // a cue can stretch how fast gains move this pass
+    masterGain.gain.setTargetAtTime(clamp01(audio.master), ctx.currentTime, currentTau);
 
     const want = new Set();
     for (const [key, t] of Object.entries(audio.tracks || {})) {

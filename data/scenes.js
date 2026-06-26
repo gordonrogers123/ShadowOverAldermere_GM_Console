@@ -65,7 +65,14 @@
 //                snapshot:{ mapState, mapMode, visible,
 //                           left:{shown,srcOverride}, right:{shown,srcOverride},
 //                           tokens:[{castId,kind,label,x,y,visible}],
-//                           audio:{playing:[trackKeys], master, sfx:[ids]} } } ],
+//                           audio:{playing:[trackKeys], master, sfx:[ids]} },
+//                // OPTIONAL choreography. With a `timeline`, pressing the cue plays
+//                // its change as a timed sequence (fade to black -> swap backdrop ->
+//                // reveal -> SFX -> characters) instead of all at once. Each lane has
+//                // a start `at` and (where it animates) a `ramp`, in ms; absent =
+//                // instant. Authored via the builder's per-cue "Sequence" editor.
+//                timeline:{ blackout:{at,ramp}, audioOut:{at,ramp}, background:{at,ramp},
+//                           audioIn:{at,ramp}, reveal:{at,ramp}, sfx:{at}, characters:{at,ramp} } } ],
 //
 //      gmNotes:  "GM only text."   // shown in the GM window only
 //    }

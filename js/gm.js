@@ -29,6 +29,7 @@ export function mountGm(root) {
   let mapMode = false;              // map mode replaces the live panel for token play
   let activeCueId = null;           // the cue last applied -- lights its rail button
   let railContextKey = null;        // scene|mode|cue key; resets the All-controls open-state only on change
+  let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
   let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
@@ -403,6 +404,7 @@ export function mountGm(root) {
   function selectScene(id) {
     const scene = sceneById(id);
     if (!scene) return;
+    cancelCueTimeline();   // a scene change cancels any in-flight cue sequence
     // A global black-out persists across scene changes, so the GM can cut to
     // black, switch scenes, then reveal when ready.
     const wasBlackedOut = !!(state.stage && state.stage.visible === false);
@@ -626,8 +628,136 @@ export function mountGm(root) {
   function applyCue(cue) {
     const scene = sceneById(state.sceneId);
     if (!scene || !cue) return;
-    applyCueState(cue, scene, { wasBlackedOut: false });
-    commit();
+    cancelCueTimeline();                 // a new press always wins over a running one
+    activeCueId = cue.id;                // light the button immediately
+    if (cue.timeline) { renderUI(); playCueTimeline(cue, scene); }   // choreographed
+    else { applyCueState(cue, scene, { wasBlackedOut: false }); commit(); }   // instant (today)
+  }
+
+  // ============================================================
+  //  Cue keyframes: choreographed (timed) cue playback
+  // ------------------------------------------------------------
+  //  A sequenced cue (cue.timeline present) plays its change as a short timeline
+  //  of beats -- fade to black + audio out -> swap the backdrop behind the black
+  //  -> reveal -> SFX -> characters enter -- instead of one instant commit. Each
+  //  beat mutates a SUBSET of state, sets the transition speed for that element
+  //  (state.stage.fx / state.audio.ramp -> the compositor + engine animate it),
+  //  and commits; the GM authors each lane's Start + Ramp in the builder.
+  // ============================================================
+  function defaultTimeline() {
+    return {
+      blackout:   { at: 0,    ramp: 700 },   // curtain down
+      audioOut:   { at: 0,    ramp: 600 },   // current beds fade down
+      background: { at: 800,  ramp: 400 },   // swap variant behind the black
+      audioIn:    { at: 1000, ramp: 1000 },  // the cue's beds fade up
+      reveal:     { at: 1000, ramp: 700 },   // curtain up
+      sfx:        { at: 1600 },              // one-shot(s)
+      characters: { at: 2000, ramp: 500 }    // left/right enter
+    };
+  }
+  // Validate a timeline for save/export: clamp every lane's start/ramp to a
+  // non-negative integer ms, keeping only known lanes. null when absent/empty.
+  function normalizeTimeline(tl) {
+    if (!tl || typeof tl !== 'object') return null;
+    const def = defaultTimeline();
+    const out = {};
+    for (const k of Object.keys(def)) {
+      const l = tl[k];
+      if (!l || typeof l !== 'object') continue;
+      const at = Math.max(0, Math.round(+l.at || 0));
+      const lane = { at };
+      if (def[k].ramp != null) lane.ramp = Math.max(0, Math.round(l.ramp != null ? +l.ramp : def[k].ramp));
+      out[k] = lane;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+  // Which lanes a cue runs: the curtain spine always, the rest gated by what the
+  // cue affects (and whether it actually carries SFX). Mirrors the builder editor.
+  function cueLanes(cue) {
+    const aff = cueAffects(cue);
+    const snap = cue.snapshot || {};
+    const hasSfx = !!(snap.audio && (snap.audio.sfx || []).length);
+    return [
+      ['blackout', true],
+      ['audioOut', !!aff.audio],
+      ['background', !!aff.background],
+      ['audioIn', !!aff.audio],
+      ['reveal', true],
+      ['sfx', hasSfx],
+      ['characters', !!aff.characters]
+    ].filter(([, on]) => on).map(([k]) => k);
+  }
+  function setStageFx(key, ramp) {
+    if (!state.stage) return;
+    if (!state.stage.fx) state.stage.fx = {};
+    if (ramp != null && isFinite(+ramp)) state.stage.fx[key] = Math.max(0, +ramp);
+  }
+  // Drop the transient ramp hints so ordinary play uses the CSS/engine defaults.
+  function clearCueFx() {
+    if (state.stage && state.stage.fx) delete state.stage.fx;
+    if (state.audio && state.audio.ramp != null) delete state.audio.ramp;
+  }
+  function cancelCueTimeline() {
+    for (const id of cueTimers) clearTimeout(id);
+    cueTimers = [];
+    clearCueFx();
+  }
+  // Apply one lane's change to live state (no commit -- the scheduler commits).
+  function runCueLane(name, lane, cue, scene) {
+    ensureAudio();
+    if (!state.stage) {
+      state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [], mapMode: false };
+    }
+    const snap = cue.snapshot || {};
+    const aff = cueAffects(cue);
+    const tracks = state.audio.tracks || {};
+    if (name === 'blackout') {
+      state.stage.visible = false;
+      setStageFx('curtain', lane.ramp);
+    } else if (name === 'audioOut') {
+      for (const k of Object.keys(tracks)) tracks[k].playing = false;   // everything fades down
+      state.audio.ramp = Math.max(0, +lane.ramp || 0);
+      builtAudioSceneId = null;
+    } else if (name === 'background') {
+      if (snap.mapState != null && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, snap.mapState)) {
+        state.mapState = snap.mapState;
+      }
+      if (aff.mapMode) { const wantMap = !!snap.mapMode && sceneHasMap(scene); mapMode = wantMap; state.stage.mapMode = wantMap; }
+      setStageFx('crossfade', lane.ramp);
+    } else if (name === 'audioIn') {
+      const set = new Set(((snap.audio && snap.audio.playing) || []).map((k) => (k === 'music' ? 'mus:0' : k)));
+      for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
+      if (snap.audio && snap.audio.master != null) state.audio.master = snap.audio.master;
+      state.audio.ramp = Math.max(0, +lane.ramp || 0);
+      builtAudioSceneId = null;
+    } else if (name === 'reveal') {
+      state.stage.visible = !(snap.visible === false);
+      setStageFx('curtain', lane.ramp);
+    } else if (name === 'sfx') {
+      for (const id of ((snap.audio && snap.audio.sfx) || [])) {
+        state.audio.sfxTrigger[id] = (state.audio.sfxTrigger[id] || 0) + 1;
+      }
+    } else if (name === 'characters') {
+      const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
+      state.stage.left = side(snap.left);
+      state.stage.right = side(snap.right);
+      setStageFx('char', lane.ramp);
+    }
+    activeCueId = cue.id;
+  }
+  function playCueTimeline(cue, scene) {
+    const tl = { ...defaultTimeline(), ...(cue.timeline || {}) };
+    const lanes = cueLanes(cue);
+    let lastEnd = 0;
+    for (const name of lanes) {
+      const lane = tl[name] || defaultTimeline()[name];
+      const at = Math.max(0, +lane.at || 0);
+      lastEnd = Math.max(lastEnd, at + (+lane.ramp || 0));
+      cueTimers.push(setTimeout(() => { runCueLane(name, lane, cue, scene); commit(); }, at));
+    }
+    // Once the last beat has settled, drop the transient ramp hints + commit so
+    // any later manual action animates at the normal speed.
+    cueTimers.push(setTimeout(() => { clearCueFx(); commit(); }, lastEnd + 300));
   }
   function renderCueButtons(scene) {
     const cues = (scene && scene.cues) || [];
@@ -1318,13 +1448,18 @@ export function mountGm(root) {
     // Cues ride through opaquely (captured live; renamed/re-scoped/reordered in
     // the builder). Normalize the editable fields; keep the captured snapshot.
     if (Array.isArray(d.cues) && d.cues.length) {
-      scene.cues = d.cues.map((c) => ({
-        id: c.id || slug(c.label || 'cue'),
-        label: (c.label || c.id || 'Cue'),
-        opening: !!c.opening,
-        affects: { ...defaultAffects(), ...(c.affects || {}) },
-        snapshot: c.snapshot || {}
-      }));
+      scene.cues = d.cues.map((c) => {
+        const out = {
+          id: c.id || slug(c.label || 'cue'),
+          label: (c.label || c.id || 'Cue'),
+          opening: !!c.opening,
+          affects: { ...defaultAffects(), ...(c.affects || {}) },
+          snapshot: c.snapshot || {}
+        };
+        const tl = normalizeTimeline(c.timeline);
+        if (tl) out.timeline = tl;   // only sequenced cues carry a timeline
+        return out;
+      });
     }
     const chars = {};
     // Per-character display tuning (size + horizontal flip) rides on the scene's
@@ -1347,6 +1482,7 @@ export function mountGm(root) {
   }
 
   function openBuilder(scene) {
+    cancelCueTimeline();   // stop any running sequence before editing
     draft = scene ? sceneToDraft(scene) : blankDraft();
     renderBuilderInputs();
     renderUI();
@@ -1573,6 +1709,20 @@ export function mountGm(root) {
         affBtn('Curtain', 'curtain', 'Raise or drop the black curtain')
       );
 
+      // "Sequence": play this cue as a timed choreography; its Start/Ramp editor
+      // appears below the row. Off -> the cue applies instantly, as before.
+      const seq = document.createElement('button');
+      seq.className = 'gm-button btn--toggle cue-seq';
+      seq.type = 'button';
+      seq.textContent = 'Sequence';
+      seq.title = 'Play this cue as a timed sequence (fade to black → background → SFX → characters)';
+      const syncSeq = () => { const on = !!cue.timeline; seq.classList.toggle('is-on', on); seq.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+      syncSeq();
+      seq.addEventListener('click', () => {
+        if (cue.timeline) delete cue.timeline; else cue.timeline = defaultTimeline();
+        renderCueRows();
+      });
+
       const move = (from, to) => {
         if (to < 0 || to >= cues.length) return;
         const [c] = cues.splice(from, 1);
@@ -1602,9 +1752,56 @@ export function mountGm(root) {
       rm.title = 'Delete this cue';
       rm.addEventListener('click', () => { cues.splice(i, 1); renderCueRows(); });
 
-      row.append(label, open, affWrap, up, down, rm);
+      row.append(label, open, affWrap, seq, up, down, rm);
       els.cueList.appendChild(row);
+      // The Start/Ramp editor sits in its own block beneath the cue's row.
+      if (cue.timeline) {
+        const tlHost = document.createElement('div');
+        tlHost.className = 'cue-timeline';
+        renderCueTimeline(cue, tlHost);
+        els.cueList.appendChild(tlHost);
+      }
     });
+  }
+
+  // The per-cue keyframe editor (shown when Sequence is on): one row per
+  // applicable lane, each with a Start and (where it animates) a Ramp, in
+  // seconds. Only the lanes the cue actually uses are shown, matching playback.
+  function renderCueTimeline(cue, host) {
+    host.innerHTML = '';
+    const tl = (cue.timeline = { ...defaultTimeline(), ...(cue.timeline || {}) });
+    const aff = { ...defaultAffects(), ...(cue.affects || {}) };
+    const snap = cue.snapshot || {};
+    const hasSfx = !!(snap.audio && (snap.audio.sfx || []).length);
+    const lanes = [
+      ['blackout', 'Fade to black', true, true],
+      ['audioOut', 'Audio out', aff.audio !== false, true],
+      ['background', 'Background', aff.background !== false, true],
+      ['audioIn', 'Audio in', aff.audio !== false, true],
+      ['reveal', 'Reveal', true, true],
+      ['sfx', 'SFX', hasSfx, false],
+      ['characters', 'Characters', aff.characters !== false, true]
+    ];
+    const secField = (laneObj, prop, cap) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'cue-lane-field';
+      const c = document.createElement('span'); c.textContent = cap;
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.className = 'cue-lane-' + prop; inp.min = '0'; inp.step = '0.1';
+      inp.value = ((+laneObj[prop] || 0) / 1000).toFixed(1);
+      inp.addEventListener('input', () => { laneObj[prop] = Math.max(0, Math.round((+inp.value || 0) * 1000)); });
+      wrap.append(c, inp);
+      return wrap;
+    };
+    for (const [key, label, show, hasRamp] of lanes) {
+      if (!show) continue;
+      const laneObj = (tl[key] = tl[key] || defaultTimeline()[key]);
+      const r = document.createElement('div'); r.className = 'cue-lane';
+      const nm = document.createElement('span'); nm.className = 'cue-lane-name'; nm.textContent = label;
+      r.append(nm, secField(laneObj, 'at', 'Start'));
+      if (hasRamp) r.append(secField(laneObj, 'ramp', 'Ramp'));
+      host.append(r);
+    }
   }
 
   function fillEnterSelect(sel, value) {
