@@ -404,6 +404,18 @@ body.view-gm {
   background: var(--gm-panel); color: var(--offense); font-size: 0.95rem; cursor: pointer;
 }
 .view-gm .scene-del:hover { background: var(--paper); }
+/* A pencil to edit the scene -- sits at the right; shifts left of the delete x
+   on saved scenes, which reserve a touch more room on the button. */
+.view-gm .scene-edit {
+  position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--gm-panel); color: var(--control); font-size: 0.85rem; cursor: pointer;
+}
+.view-gm .scene-edit:hover { background: var(--paper); }
+.view-gm .scene-list li:has(.scene-del) .scene-edit { right: 2.2rem; }
+.view-gm .scene-list li:has(.scene-del) .scene-button { padding-right: 4.2rem; }
 .view-gm .rescan-status {
   margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--neutral);
   background: var(--gm-panel); border: 1px solid var(--rule);
@@ -622,7 +634,14 @@ body.view-gm {
 .view-gm .cue-lane-snap { font-size: var(--fs-100); color: var(--neutral); opacity: 0.6; font-style: italic; }
 .view-gm .cue-lane-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); color: var(--neutral); }
 .view-gm .cue-lane-field input[type="number"] { width: 4rem; padding: 0.25rem 0.4rem; }
-.view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
+/* Builder header: the title with the Save / Export / Copy / Cancel icon tools to
+   its right, so the actions sit at the top instead of buried below the form. */
+.view-gm .builder-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.view-gm .builder-head .builder-title { margin: 0; margin-right: auto; }
+.view-gm .builder-tools { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.view-gm .builder-tools .u-icon-btn { width: 2.4rem; height: 2.4rem; font-size: 1.1rem; }
+.view-gm .builder-tools .b-save { border-color: var(--support); color: var(--support); }
+.view-gm .builder-tools .b-cancel { color: var(--offense); }
 /* .b-save colour now comes from the .btn--save role. */
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
 .view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }

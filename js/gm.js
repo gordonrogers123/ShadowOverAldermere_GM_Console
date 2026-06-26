@@ -163,7 +163,15 @@ export function mountGm(root) {
         </details>
 
         <div class="gm-builder" hidden>
-          <h3 class="gm-h3 builder-title">Build a scene</h3>
+          <div class="builder-head">
+            <h3 class="gm-h3 builder-title">Build a scene</h3>
+            <div class="builder-tools">
+              <button class="u-icon-btn b-save" type="button" title="Save scene" aria-label="Save scene">&#128190;</button>
+              <button class="u-icon-btn b-export" type="button" title="Export scene JSON" aria-label="Export scene JSON">&#10515;</button>
+              <button class="u-icon-btn b-copy" type="button" title="Copy export to clipboard" aria-label="Copy export to clipboard" hidden>&#10697;</button>
+              <button class="u-icon-btn b-cancel" type="button" title="Cancel editing" aria-label="Cancel editing">&times;</button>
+            </div>
+          </div>
 
           <div class="builder-grid">
             <div class="builder-col">
@@ -246,14 +254,8 @@ export function mountGm(root) {
             </div>
           </div>
 
-          <div class="builder-actions">
-            <button class="gm-button btn--save b-save" type="button">Save scene</button>
-            <button class="gm-button btn--quiet b-export" type="button">Export</button>
-            <button class="gm-button btn--quiet b-cancel" type="button">Cancel</button>
-          </div>
           <p class="b-export-hint" hidden>Copy this into the SCENES array in data/scenes.js to commit or share it.</p>
           <textarea class="b-export-out" hidden readonly rows="8"></textarea>
-          <button class="gm-button btn--quiet b-copy" type="button" hidden>Copy to clipboard</button>
         </div>
 
         <div class="gm-mapmode" hidden>
@@ -2102,8 +2104,13 @@ export function mountGm(root) {
   }
   // The scene's backdrops, as the canonical keys the cue will reference on apply.
   function cueBackdropOptions() {
-    const maps = draftToScene(draft).maps || {};
-    return Object.keys(maps).map((key) => ({ key, label: humanize(key) + (maps[key] === '' ? ' (title card)' : '') }));
+    const scene = draftToScene(draft);
+    const maps = scene.maps || {};
+    const vm = scene.variantModes || {};
+    return Object.keys(maps).map((key) => ({
+      key, label: humanize(key) + (maps[key] === '' ? ' (title card)' : ''),
+      map: !!(vm[key] && vm[key].map)   // a battle map vs a scene-mode background
+    }));
   }
   // The scene's audio beds as the track keys a cue plays (mus:<i>/amb:<i>), labelled
   // from the asset catalog. Built from the draft so it matches what the scene saves.
@@ -2229,7 +2236,16 @@ export function mountGm(root) {
     const bgF = field('Background');
     const bgSel = document.createElement('select'); bgSel.className = 'cue-bg';
     const none = document.createElement('option'); none.value = ''; none.textContent = '— No change —'; bgSel.append(none);
-    for (const o of cueBackdropOptions()) { const op = document.createElement('option'); op.value = o.key; op.textContent = o.label; bgSel.append(op); }
+    // Group so the GM can tell scene-mode backgrounds from battle maps at a glance.
+    const bgOpts = cueBackdropOptions();
+    const bgGroup = (label, list) => {
+      if (!list.length) return;
+      const g = document.createElement('optgroup'); g.label = label;
+      for (const o of list) { const op = document.createElement('option'); op.value = o.key; op.textContent = o.label; g.append(op); }
+      bgSel.append(g);
+    };
+    bgGroup('Backgrounds', bgOpts.filter((o) => !o.map));
+    bgGroup('Maps', bgOpts.filter((o) => o.map));
     bgSel.value = aff.background ? (snap.mapState || '') : '';
     bgSel.addEventListener('change', () => {
       if (bgSel.value) { aff.background = true; snap.mapState = bgSel.value; }
@@ -2578,6 +2594,15 @@ export function mountGm(root) {
       btn.textContent = scene.name;
       btn.addEventListener('click', () => selectScene(scene.id));
       li.appendChild(btn);
+      // A pencil to open the builder for this scene directly (any scene).
+      const edit = document.createElement('button');
+      edit.className = 'scene-edit';
+      edit.type = 'button';
+      edit.textContent = '✎';
+      edit.title = 'Edit this scene';
+      edit.setAttribute('aria-label', 'Edit ' + scene.name);
+      edit.addEventListener('click', (e) => { e.stopPropagation(); openBuilder(scene); });
+      li.appendChild(edit);
       if (isUserScene(scene.id)) {
         const tag = document.createElement('span');
         tag.className = 'scene-tag';
