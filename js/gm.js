@@ -370,6 +370,7 @@ export function mountGm(root) {
   // preview, cue, quick, mixer, nav). GM notes move to the rail.
   const perfSide = document.createElement('div');
   perfSide.className = 'perf-side';
+  els.perfSide = perfSide;
   els.mixer.before(perfSide);
   perfSide.append(els.quick, els.mixer);   // quick (visual) over the mixer (audio)
   const surface = document.createElement('div');
@@ -377,6 +378,10 @@ export function mountGm(root) {
   els.preview.before(surface);
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
+  // Map mode lays the BOARD on top, a controls strip, then the roster below it.
+  // Lift the roster out of .gm-mapmode (which keeps the board) so the three can be
+  // ordered independently by the .is-map layout.
+  els.mapmode.after(els.mapRoster);
 
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
@@ -1398,7 +1403,16 @@ export function mountGm(root) {
     if (hidden) n.classList.add('is-hidden-name');
     return n;
   }
-  function rosterColumn(label, addAll) {
+  // Batch-set visibility for a group's placed tokens (Reveal all / Hide all).
+  function setGroupVisible(placed, visible) {
+    ensureTokens();
+    for (const p of placed) {
+      const live = state.stage.tokens.find((x) => x.instId === p.instId);
+      if (live) live.visible = visible;
+    }
+    commit();
+  }
+  function rosterColumn(label, addAll, placed) {
     const col = document.createElement('div'); col.className = 'mmr-cat';
     const head = document.createElement('div'); head.className = 'mmr-head';
     const lab = document.createElement('span'); lab.className = 'mmr-label'; lab.textContent = label;
@@ -1406,6 +1420,15 @@ export function mountGm(root) {
     all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
     all.addEventListener('click', addAll);
     head.append(lab, all);
+    // Reveal all / Hide all once at least one of the group is on the board.
+    if (placed && placed.length) {
+      const anyHidden = placed.some((t) => t.visible === false);
+      const rev = document.createElement('button');
+      rev.className = 'gm-button btn--quiet mmr-revealall'; rev.type = 'button';
+      rev.textContent = anyHidden ? 'Reveal all' : 'Hide all';
+      rev.addEventListener('click', () => setGroupVisible(placed, anyHidden));
+      head.append(rev);
+    }
     const list = document.createElement('div'); list.className = 'mmr-list';
     col.append(head, list);
     return { col, list };
@@ -1428,7 +1451,7 @@ export function mountGm(root) {
 
     if (heroes.length) {
       // Add all skips heroes already placed (addToken is a no-op for those).
-      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); });
+      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
       for (const id of heroes) {
         const c = castEntry(id, 'hero'); if (!c) continue;
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
@@ -1443,7 +1466,7 @@ export function mountGm(root) {
 
     if (enemies.length) {
       // Add all drops one copy of each enemy type.
-      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); });
+      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const typeRow = rosterRow('mmr-type');
@@ -2431,6 +2454,8 @@ export function mountGm(root) {
       // swaps in its own controls (variant reveal + Save/Reset layout).
       els.quick.hidden = inMap;
       els.mixer.hidden = inMap || !scene.audio;
+      els.perfSide.hidden = inMap;          // quick+mixer empty in map -> drop the blank panel
+      if (inMap) els.cueRow.hidden = true;  // cues are a scene/cinematic tool; hidden in map
       els.allControls.hidden = !inMap;
       if (inMap) {
         renderVariantButtons(scene);     // the map-reveal chips in the Map controls

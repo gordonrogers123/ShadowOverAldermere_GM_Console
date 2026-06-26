@@ -657,6 +657,29 @@ body.view-gm {
 }
 
 /* ---- Map mode ---- */
+/* The stage is a single column: the BOARD on top, then a tidy controls strip
+   (Exit/Edit + Background reveal + Save/Reset), then the roster (+ initiative).
+   The empty quick/mixer panel, the cue bar and the preview are hidden in map
+   mode (renderUI), so only these three blocks remain -- ordered explicitly. */
+.view-gm .gm-stage.is-map { display: flex; flex-direction: column; gap: var(--space-3); }
+.view-gm .gm-stage.is-map .gm-mapmode { order: 1; }
+.view-gm .gm-stage.is-map .gm-surface { order: 2; }
+.view-gm .gm-stage.is-map .mapmode-roster { order: 3; }
+/* Force-hide the cue bar + empty quick/mixer panel in map mode: their own
+   .control-row / .perf-side display rules would otherwise beat the [hidden]
+   attribute and leave blank boxes in the controls strip. */
+.view-gm .gm-stage.is-map .cue-row,
+.view-gm .gm-stage.is-map .perf-side { display: none; }
+/* The "Map controls" read as an inline strip in map mode, not a collapsible. */
+.view-gm .gm-stage.is-map .all-controls { margin: 0; }
+.view-gm .gm-stage.is-map .all-controls-summary { display: none; }
+.view-gm .gm-stage.is-map .all-controls-body { padding-top: 0; }
+.view-gm .gm-stage.is-map .controls-nav { margin-bottom: var(--space-2); }
+.view-gm .gm-stage.is-map .gm-surface {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
+}
+
 /* .map-mode-btn is a secondary mode switch -- it now uses the neutral .btn--quiet role. */
 .view-gm .gm-mapmode {
   background: var(--gm-panel); border: 1px solid var(--rule);
@@ -685,11 +708,11 @@ body.view-gm {
    under a type row that adds more. Collapses to one column on a narrow rail. */
 .view-gm .mapmode-roster { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
 .view-gm .mmr-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  display: flex; align-items: center; gap: var(--space-2);
   margin-bottom: var(--space-2); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
 }
-.view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
-.view-gm .mmr-addall { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-right: auto; }
+.view-gm .mmr-addall, .view-gm .mmr-revealall { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
 .view-gm .mmr-list { display: flex; flex-direction: column; gap: var(--space-1); }
 .view-gm .mmr-row {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;

@@ -180,7 +180,10 @@ export function createStageView(root) {
     // from a prior backdrop does not bleed onto it. They enter once the GM
     // reveals a real map/background.
     const onTitle = bgDescriptor(state, scene).kind === 'unrevealed';
-    const shown = !onTitle && !!live.shown && !!src;
+    // In map mode the tokens take over the stage -- characters give way, so a
+    // scene NPC does not bleed over the battle map on the TV or the GM board.
+    const inMapMode = !!(state.stage && state.stage.mapMode);
+    const shown = !inMapMode && !onTitle && !!live.shown && !!src;
     const enter = (cfg && cfg.enter) || DEFAULT_ENTER;
     // Per-character display tuning: size multiplier, horizontal flip, and a
     // stage-relative x/y nudge (percent) -- useful for transparent cutouts
