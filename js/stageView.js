@@ -327,6 +327,9 @@ export function createStageView(root) {
     const existing = new Map();
     tokenLayer.querySelectorAll('.token').forEach((el) => existing.set(el.dataset.instId, el));
 
+    // The token whose turn it is (initiative) wears a golden ring -- on the GM
+    // board AND the Player TV, since activeTokenId rides the broadcast.
+    const activeId = state.stage && state.stage.activeTokenId;
     const seen = new Set();
     for (const inst of list) {
       seen.add(inst.instId);
@@ -336,6 +339,7 @@ export function createStageView(root) {
       el.dataset.x = inst.x;
       el.dataset.y = inst.y;
       el.classList.toggle('is-hidden', inst.visible === false);
+      el.classList.toggle('is-active', !!activeId && inst.instId === activeId);
     }
     existing.forEach((el, id) => { if (!seen.has(id)) el.remove(); });
 

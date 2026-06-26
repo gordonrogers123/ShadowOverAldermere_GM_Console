@@ -169,6 +169,12 @@
   -webkit-user-select: none;
   user-select: none;
 }
+/* Initiative: the token whose turn it is wears a golden ring + glow, on the GM
+   board AND the Player TV. Box-shadow only, so it never nudges the position. */
+.stage .token.is-active {
+  box-shadow: 0 0 0 0.06em #f4c95d, 0 0 0.55em 0.14em rgba(244, 201, 93, 0.9), 0 0.04em 0.18em rgba(0, 0, 0, 0.6);
+  z-index: 5;
+}
 .stage .token-portrait,
 .stage .token-fallback {
   position: absolute;

@@ -99,7 +99,10 @@ function normalizeStage(s) {
     visible: s.visible !== false,   // default true
     left: side(s.left),
     right: side(s.right),
-    tokens
+    tokens,
+    // The token whose turn it is (initiative). Broadcast so both the GM board
+    // and the Player TV ring it gold; null when no encounter is running.
+    activeTokenId: s.activeTokenId != null ? String(s.activeTokenId) : null
   };
 }
 
@@ -157,7 +160,8 @@ export function defaultState() {
     sceneId: null,
     mapState: 'hidden',
     stage: normalizeStage(null),
-    audio: normalizeAudio(null)
+    audio: normalizeAudio(null),
+    initiative: null
   };
 }
 
@@ -171,7 +175,10 @@ function migrate(parsed) {
       sceneId: parsed.sceneId != null ? parsed.sceneId : null,
       mapState: parsed.mapState || 'hidden',
       stage: normalizeStage(parsed.stage),
-      audio: normalizeAudio(parsed.audio)
+      audio: normalizeAudio(parsed.audio),
+      // Initiative is GM-only combat state; carried opaquely so a reload mid-fight
+      // keeps the order + current turn. The Player ignores it.
+      initiative: (parsed.initiative && typeof parsed.initiative === 'object') ? parsed.initiative : null
     };
   }
   // Unknown or corrupt: start fresh (safe default).

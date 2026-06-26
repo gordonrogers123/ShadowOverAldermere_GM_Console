@@ -378,10 +378,14 @@ export function mountGm(root) {
   els.preview.before(surface);
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
-  // Map mode lays the BOARD on top, a controls strip, then the roster below it.
-  // Lift the roster out of .gm-mapmode (which keeps the board) so the three can be
-  // ordered independently by the .is-map layout.
+  // Map mode lays the BOARD on top, a controls strip, the roster, then the
+  // initiative tracker. Lift the roster out of .gm-mapmode (which keeps the
+  // board) so the blocks can be ordered independently by the .is-map layout.
   els.mapmode.after(els.mapRoster);
+  const initPanel = document.createElement('div');
+  initPanel.className = 'gm-initiative'; initPanel.hidden = true;
+  els.initiative = initPanel;
+  els.mapRoster.after(initPanel);
 
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
@@ -1318,12 +1322,86 @@ export function mountGm(root) {
   function removeToken(instId) {
     ensureTokens();
     state.stage.tokens = state.stage.tokens.filter((t) => t.instId !== instId);
+    // A removed token leaves the initiative line; the cursor clamps + the active
+    // highlight moves to whoever now sits at that slot.
+    if (state.initiative && state.initiative.rolls) { delete state.initiative.rolls[instId]; rebuildInitOrder(); }
     commit();
   }
   function toggleTokenVisible(instId) {
     ensureTokens();
     const t = state.stage.tokens.find((x) => x.instId === instId);
     if (t) { t.visible = t.visible === false; commit(); }
+  }
+
+  // ---- Initiative tracker (GM-only combat state) -------------------------------
+  //  state.initiative = { mods:{castId:int}, rolls:{instId:int}, order:[instId], idx:int }
+  //  Enemies roll a d20 + their type's modifier; heroes are typed in. The order is
+  //  the placed tokens that have a roll, sorted high-to-low; cycling sets
+  //  state.stage.activeTokenId (broadcast -> the golden ring on BOTH screens).
+  function d20() { return Math.floor(Math.random() * 20) + 1; }   // browser RNG -- fine for dice
+  function ensureInit() {
+    if (!state.initiative || typeof state.initiative !== 'object') state.initiative = {};
+    const i = state.initiative;
+    if (!i.mods || typeof i.mods !== 'object') i.mods = {};
+    if (!i.rolls || typeof i.rolls !== 'object') i.rolls = {};
+    if (!Array.isArray(i.order)) i.order = [];
+    if (typeof i.idx !== 'number' || i.idx < 0) i.idx = 0;
+    return i;
+  }
+  function syncActiveToken() {
+    const i = ensureInit();
+    if (!state.stage) return;
+    state.stage.activeTokenId = i.order.length ? i.order[Math.min(i.idx, i.order.length - 1)] : null;
+  }
+  // Rebuild the order from placed tokens that have a roll, high-to-low.
+  function rebuildInitOrder() {
+    const i = ensureInit();
+    const placed = (state.stage && state.stage.tokens) || [];
+    const have = placed.filter((t) => i.rolls[t.instId] != null);
+    have.sort((a, b) => (i.rolls[b.instId] - i.rolls[a.instId]));
+    i.order = have.map((t) => t.instId);
+    if (i.idx >= i.order.length) i.idx = 0;
+    syncActiveToken();
+  }
+  function rollEnemies(reset) {
+    ensureTokens(); const i = ensureInit();
+    for (const t of state.stage.tokens) {
+      if (t.kind === 'enemy') i.rolls[t.instId] = d20() + (parseInt(i.mods[t.castId], 10) || 0);
+    }
+    if (reset) i.idx = 0;
+    rebuildInitOrder();
+    commit();
+  }
+  function setEnemyMod(castId, val) {
+    const i = ensureInit();
+    const n = parseInt(val, 10);
+    if (val === '' || isNaN(n)) delete i.mods[castId]; else i.mods[castId] = n;
+    saveState(state);   // stored for the next roll; no re-render (keeps input focus)
+  }
+  function setHeroRoll(instId, val) {
+    const i = ensureInit();
+    const n = parseInt(val, 10);
+    if (val === '' || isNaN(n)) delete i.rolls[instId]; else i.rolls[instId] = n;
+    rebuildInitOrder();
+    commit();
+  }
+  function initStep(delta) {
+    const i = ensureInit();
+    if (!i.order.length) return;
+    i.idx = (i.idx + delta + i.order.length) % i.order.length;
+    syncActiveToken();
+    commit();
+  }
+  function setInitIdx(n) {
+    const i = ensureInit();
+    if (n < 0 || n >= i.order.length) return;
+    i.idx = n; syncActiveToken(); commit();
+  }
+  function clearInitiative() {
+    const mods = (state.initiative && state.initiative.mods) || {};
+    state.initiative = { mods, rolls: {}, order: [], idx: 0 };   // keep the type modifiers
+    if (state.stage) state.stage.activeTokenId = null;
+    commit();
   }
 
   function enterMapMode() {
@@ -1394,6 +1472,17 @@ export function mountGm(root) {
     b.addEventListener('click', () => addToken(id, kind));
     return b;
   }
+  // A hero's initiative entry (players roll their own). Commits on change (blur),
+  // not per keystroke, so the re-render does not steal focus mid-type.
+  function heroInitInput(t) {
+    const i = ensureInit();
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.className = 'mmr-init'; inp.placeholder = 'init';
+    inp.title = 'Initiative roll'; inp.setAttribute('aria-label', t.label + ' initiative');
+    inp.value = (i.rolls[t.instId] != null ? i.rolls[t.instId] : '');
+    inp.addEventListener('change', () => setHeroRoll(t.instId, inp.value));
+    return inp;
+  }
   function rosterRow(extraClass) {
     const r = document.createElement('div'); r.className = 'mmr-row' + (extraClass ? ' ' + extraClass : '');
     return r;
@@ -1457,7 +1546,7 @@ export function mountGm(root) {
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
         const row = rosterRow(inst ? 'is-placed' : null);
         row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
-        if (inst) row.append(rosterVisBtn(inst), rosterDelBtn(inst));
+        if (inst) row.append(heroInitInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
         else row.append(rosterAddBtn(id, 'hero'));
         list.append(row);
       }
@@ -1482,12 +1571,86 @@ export function mountGm(root) {
     }
   }
 
+  // The initiative panel (map mode): per-enemy-type modifiers, Roll enemies /
+  // Roll all, then the sorted tracker with prev/next. Active row + active token
+  // ride state.stage.activeTokenId (the gold ring on both screens).
+  function renderInitiative(scene) {
+    if (!els.initiative) return;
+    const host = els.initiative; host.innerHTML = '';
+    const i = ensureInit();
+    const placed = (state.stage && state.stage.tokens) || [];
+    const enemyTypes = [...new Set(placed.filter((t) => t.kind === 'enemy').map((t) => t.castId))];
+
+    const head = document.createElement('div'); head.className = 'init-head';
+    const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
+    const rollE = document.createElement('button'); rollE.className = 'gm-button btn--quiet init-roll'; rollE.type = 'button';
+    rollE.textContent = 'Roll enemies'; rollE.title = 'Roll a d20 + the type modifier for each enemy token';
+    rollE.addEventListener('click', () => rollEnemies(false));
+    const rollA = document.createElement('button'); rollA.className = 'gm-button init-rollall'; rollA.type = 'button';
+    rollA.textContent = 'Roll all'; rollA.title = 'Roll the enemies and start the order from the top';
+    rollA.addEventListener('click', () => rollEnemies(true));
+    const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
+    clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
+    clr.addEventListener('click', clearInitiative);
+    head.append(title, rollE, rollA, clr);
+    host.append(head);
+
+    // Per enemy-type modifier (one input per type placed on the board).
+    if (enemyTypes.length) {
+      const mods = document.createElement('div'); mods.className = 'init-mods';
+      for (const castId of enemyTypes) {
+        const c = castEntry(castId, 'enemy'); if (!c) continue;
+        const lab = document.createElement('label'); lab.className = 'init-mod';
+        const nm = document.createElement('span'); nm.textContent = c.name;
+        const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'init-mod-input';
+        inp.placeholder = '+0'; inp.value = (i.mods[castId] != null ? i.mods[castId] : '');
+        inp.title = c.name + ' initiative modifier (applied to every ' + enemySingular(c) + ')';
+        inp.addEventListener('change', () => setEnemyMod(castId, inp.value));
+        lab.append(nm, inp); mods.append(lab);
+      }
+      host.append(mods);
+    }
+
+    // The tracker.
+    const track = document.createElement('div'); track.className = 'init-track';
+    if (!i.order.length) {
+      const hint = document.createElement('p'); hint.className = 'init-empty';
+      hint.textContent = 'Roll the enemies and type the heroes’ rolls to build the order.';
+      track.append(hint);
+    } else {
+      const nav = document.createElement('div'); nav.className = 'init-nav';
+      const prev = document.createElement('button'); prev.className = 'gm-button btn--quiet init-prev'; prev.type = 'button';
+      prev.textContent = '◀'; prev.title = 'Previous turn'; prev.addEventListener('click', () => initStep(-1));
+      const turn = document.createElement('span'); turn.className = 'init-turn';
+      turn.textContent = 'Turn ' + (i.idx + 1) + ' / ' + i.order.length;
+      const next = document.createElement('button'); next.className = 'gm-button init-next'; next.type = 'button';
+      next.textContent = 'Next ▶'; next.title = 'Next turn'; next.addEventListener('click', () => initStep(1));
+      nav.append(prev, turn, next); track.append(nav);
+
+      const list = document.createElement('ol'); list.className = 'init-list';
+      i.order.forEach((instId, n) => {
+        const t = placed.find((x) => x.instId === instId); if (!t) return;
+        const c = castEntry(t.castId, t.kind);
+        const li = document.createElement('li'); li.className = 'init-row' + (n === i.idx ? ' is-active' : '');
+        const nm = document.createElement('span'); nm.className = 'init-name'; nm.textContent = t.label;
+        const val = document.createElement('span'); val.className = 'init-val'; val.textContent = i.rolls[instId];
+        li.append(rosterSwatch(c ? c.ringColor : '#888'), nm, val);
+        li.title = 'Jump to this turn';
+        li.addEventListener('click', () => setInitIdx(n));
+        list.append(li);
+      });
+      track.append(list);
+    }
+    host.append(track);
+  }
+
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
     renderRoster(scene);
+    renderInitiative(scene);
   }
 
   // ---- Drag a token on the board. The element follows the pointer locally
@@ -2435,6 +2598,7 @@ export function mountGm(root) {
     els.notes.hidden = inMap || building || !scene;
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
+    els.initiative.hidden = !inMap;
     // In the builder, shrink the preview and pin it so it stays visible while
     // scrolling the controls (so "Test in preview" is actually watchable). The
     // is-map class drops the compact 3-zone grid for map mode (board takes over).
