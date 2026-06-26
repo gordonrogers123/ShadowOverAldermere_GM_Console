@@ -360,15 +360,22 @@ export function mountGm(root) {
   // controls sit below. GM notes move to the bottom of the left rail. The markup
   // keeps each as one readable block; we relocate the nodes here, so toggling
   // their .hidden / contents in renderUI works the same wherever they sit.
-  const quickMix = document.createElement('div');
-  quickMix.className = 'quick-mix';
-  els.mixer.before(quickMix);
-  quickMix.append(els.mixer, els.quick);   // mixer left, quick (visual) right
-  els.controls.prepend(quickMix);          // the pair leads; cue bar + nav follow
+  // Compact live: the preview sits in the CENTRE, the control panel (quick-action
+  // + mixer modules, stacked) on the RIGHT at the SAME height as the preview, and
+  // the cue bar as a full-width row directly UNDER the preview, then the Edit/Map
+  // nav. The controls keep their single .gm-controls wrapper (so one .hidden
+  // toggle still shows/hides them as a group); CSS display:contents drops its
+  // pieces -- cue bar / side panel / nav -- straight into the surface grid.
+  // Larger stacks a full-width preview ABOVE the controls (the classic order:
+  // preview, cue, quick, mixer, nav). GM notes move to the rail.
+  const perfSide = document.createElement('div');
+  perfSide.className = 'perf-side';
+  els.mixer.before(perfSide);
+  perfSide.append(els.quick, els.mixer);   // quick (visual) over the mixer (audio)
   const surface = document.createElement('div');
   surface.className = 'gm-surface';
   els.preview.before(surface);
-  surface.append(els.controls, els.preview);   // controls left, preview right
+  surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
 
   const boardView = createStageView(els.mapboard);
@@ -2396,8 +2403,10 @@ export function mountGm(root) {
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
     // In the builder, shrink the preview and pin it so it stays visible while
-    // scrolling the controls (so "Test in preview" is actually watchable).
+    // scrolling the controls (so "Test in preview" is actually watchable). The
+    // is-map class drops the compact 3-zone grid for map mode (board takes over).
     els.stage.classList.toggle('is-building', building);
+    els.stage.classList.toggle('is-map', inMap);
 
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.
