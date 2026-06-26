@@ -352,6 +352,28 @@ body.view-gm {
 .view-gm .controls-live .char-toggle,
 .view-gm .controls-live .char-reset { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
 
+/* ---- Cues: one-press stage presets (the lead control surface) ----
+   Cues sit at the top of the rail in a faint inset banner so they read as the
+   primary action; each is a .btn--toggle (lit when it is the active cue). The
+   ever-present "Save as cue" is pushed to the right. */
+.view-gm .cue-row {
+  align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  background: var(--fill);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--control);
+  border-radius: var(--radius-sm);
+}
+.view-gm .cue-buttons { display: flex; flex-wrap: wrap; gap: var(--space-1); flex: 1 1 auto; min-width: 0; }
+.view-gm .cue-button { font-size: var(--fs-200); padding: 0.5rem 0.85rem; }
+/* The opening cue (fires on select) wears a small gold star. */
+.view-gm .cue-button.is-opening::before { content: '\2605 '; color: #b07d2b; }
+.view-gm .cue-button.is-opening.active::before { color: var(--paper); }
+.view-gm .cue-save { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; white-space: nowrap; }
+/* When a scene has no cues yet, the row is just the inviting "Save as cue". */
+.view-gm .cue-buttons:empty { flex: 0 0 auto; }
+
 /* ---- Scene builder ---- */
 .view-gm .gm-builder {
   background: var(--gm-panel); border: 1px solid var(--rule);
@@ -388,6 +410,21 @@ body.view-gm {
   border-radius: 8px; cursor: pointer; color: var(--ink);
 }
 .view-gm .v-remove[disabled] { opacity: 0.4; cursor: not-allowed; }
+/* Builder cue rows: label | Opening | aspect toggles | reorder | remove.
+   Captured live; the builder only renames / re-scopes / reorders them. */
+.view-gm .cue-edit { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 0.5rem; flex-wrap: wrap; }
+.view-gm .cue-label { flex: 1 1 8rem; min-width: 7rem; }
+.view-gm .cue-opening { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .cue-affects { display: inline-flex; gap: var(--space-1); flex-wrap: wrap; }
+.view-gm .cue-aff { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
+.view-gm .cue-up, .view-gm .cue-down { font-size: var(--fs-100); padding: 0.3rem 0.5rem; }
+.view-gm .cue-up[disabled], .view-gm .cue-down[disabled] { opacity: 0.4; cursor: not-allowed; }
+.view-gm .cue-remove {
+  font-size: 0.85rem; padding: 0.4rem 0.7rem;
+  background: var(--fill); border: 1px solid var(--rule);
+  border-radius: 8px; cursor: pointer; color: var(--ink);
+}
+.view-gm .cue-empty-hint { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0 0; }
 .view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
 /* .b-save colour now comes from the .btn--save role. */
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
