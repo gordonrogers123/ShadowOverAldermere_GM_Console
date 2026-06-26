@@ -112,7 +112,7 @@ export function mountGm(root) {
 
           <div class="control-row controls-nav">
             <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
-            <button class="gm-button btn--quiet edit-scene" type="button">Edit</button>
+            <button class="gm-button btn--quiet edit-scene" type="button" title="Edit this scene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="btn-label">Edit</span></button>
           </div>
 
           <!-- Map-mode controls: reveal the map variant + Save/Reset layout. Shown
@@ -126,8 +126,8 @@ export function mountGm(root) {
               </div>
               <div class="controls-map" hidden>
                 <div class="control-row">
-                  <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
-                  <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
+                  <button class="gm-button btn--save mm-save-layout" type="button" title="Save the current token layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span class="btn-label">Save</span></button>
+                  <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden title="Reset to the last saved layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="btn-label">Reset</span></button>
                 </div>
               </div>
             </div>
@@ -2759,7 +2759,12 @@ export function mountGm(root) {
       els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
       els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit while blacked out
       els.mapModeToggle.hidden = !sceneHasMap(scene);
-      els.mapModeToggle.textContent = inMap ? 'Exit map mode' : 'Map mode';
+      // Icon + label: a folded-map icon to enter, a log-out icon to leave -- the
+      // label says which, so the button reads the same in the live rail and the
+      // map header where it relocates.
+      els.mapModeToggle.innerHTML = inMap
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="btn-label">Exit map mode</span>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg><span class="btn-label">Map mode</span>';
       els.mapModeToggle.classList.toggle('is-on', inMap);
       renderCueButtons(scene);
       // Live: the quick-actions + mixer modules are the manual surface. Map mode

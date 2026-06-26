@@ -330,8 +330,10 @@ body.view-gm {
 .view-gm .controls-nav { gap: var(--space-2); margin-bottom: var(--space-3); }
 .view-gm .controls-nav > button {
   flex: 1 1 auto; min-width: 0; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
   font-size: var(--fs-200); padding: 0.45rem 0.5rem;
 }
+.view-gm .controls-nav > button svg { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
 .view-gm .controls-map { margin-top: var(--space-2); }
 /* (PR 2 removed the standalone .toggle rule -- it was dead, never in the markup.
    The show/hide button now carries the .btn--toggle role for its colour.) */
@@ -708,16 +710,33 @@ body.view-gm {
   gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.8rem;
 }
 .view-gm .mapmode-title { margin: 0; }
-.view-gm .mapmode-head-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-/* The relocated Edit / Exit-map-mode nav reads as tight, natural-width buttons
-   here -- not the stretched flex:1 row it is in the live surface. */
-.view-gm .mapmode-head-actions .controls-nav { margin: 0; gap: var(--space-2); }
+.view-gm .mapmode-head-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+/* One cohesive toolbar: every control is the same height and compact type with a
+   leading icon, on the same quiet fill -- so the row reads as a designed set, not
+   a pile of mismatched buttons. Colour is reserved for meaning: a green accent on
+   Save (the commit action) and the blue fill on the active map (live selection). */
+.view-gm .mapmode-head-actions .gm-button {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: var(--fs-200); font-weight: 600;
+  padding: 0.4rem 0.7rem; border-radius: var(--radius-sm); line-height: 1.1;
+}
+.view-gm .mapmode-head-actions .gm-button svg { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
+.view-gm .mapmode-head-actions .controls-nav { margin: 0; gap: 0.5rem; }
 .view-gm .mapmode-head-actions .controls-nav > button { flex: 0 0 auto; }
-/* The relocated Save/Reset + map-variant rows sit inline in the header too --
-   no row margins, and the "Map" label keeps its natural (small) width. */
 .view-gm .mapmode-head-actions .control-row,
-.view-gm .mapmode-head-actions .controls-map { margin: 0; }
-.view-gm .mapmode-head-actions .control-label { min-width: 0; }
+.view-gm .mapmode-head-actions .controls-map { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+/* The "Map" group heading reads as a quiet caption, not another button. */
+.view-gm .mapmode-head-actions .control-label {
+  min-width: 0; font-size: var(--fs-100); font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--neutral);
+}
+/* Save = the one commit action: a quiet green accent on the shared fill, so it
+   stands out by meaning rather than shouting as a loud filled block. */
+.view-gm .mapmode-head-actions .mm-save-layout { background: var(--fill); color: var(--support); border-color: var(--support); }
+.view-gm .mapmode-head-actions .mm-save-layout:hover { background: var(--paper); filter: none; }
+/* Three logical groups -- Map | Layout | Mode -- parted by a hairline divider. */
+.view-gm .mapmode-head-actions .controls-map,
+.view-gm .mapmode-head-actions .controls-nav { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
 /* .mm-vis is the same show/hide control as .vis-toggle -- colour from .btn--toggle. */
 .view-gm .mapmode-board {
   position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 72vh;
