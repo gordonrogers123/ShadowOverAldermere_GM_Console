@@ -354,6 +354,10 @@ body.view-gm {
 }
 .view-gm .gm-notes .gm-h3 { flex: 0 0 auto; margin-bottom: 0.5rem; }
 .view-gm .notes-body { margin: 0; font-size: 1.02rem; overflow-y: auto; flex: 1 1 auto; white-space: pre-wrap; }
+/* The unconditional display:flex above beats the UA [hidden] rule, so notes
+   would otherwise never hide -- restore it. Lets the stat sheet take its rail
+   slot in map mode (els.notes.hidden = inMap). */
+.view-gm .gm-notes[hidden] { display: none; }
 
 /* ---- Header actions ---- */
 .view-gm .gm-header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
@@ -640,6 +644,7 @@ body.view-gm {
 .view-gm .builder-head .builder-title { margin: 0; margin-right: auto; }
 .view-gm .builder-tools { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .view-gm .builder-tools .u-icon-btn { width: 2.4rem; height: 2.4rem; font-size: 1.1rem; }
+.view-gm .builder-tools .u-icon-btn svg { width: 1.15rem; height: 1.15rem; display: block; }
 .view-gm .builder-tools .b-save { border-color: var(--support); color: var(--support); }
 .view-gm .builder-tools .b-cancel { color: var(--offense); }
 /* .b-save colour now comes from the .btn--save role. */
@@ -683,8 +688,13 @@ body.view-gm {
 .view-gm .gm-stage.is-map { display: flex; flex-direction: column; gap: var(--space-3); }
 .view-gm .gm-stage.is-map .gm-mapmode { order: 1; }
 .view-gm .gm-stage.is-map .gm-surface { order: 2; }
-.view-gm .gm-stage.is-map .mapmode-roster { order: 3; }
-.view-gm .gm-stage.is-map .gm-initiative { order: 4; }
+.view-gm .gm-stage.is-map .mapmode-combat { order: 3; }
+/* Roster (left, wider -- it's itself two columns) + initiative tracker (right)
+   side by side, so the tracker sits beside the roster instead of buried far
+   below it. Hidden entirely in live mode (the roster has no [hidden] toggle). */
+.view-gm .mapmode-combat { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.view-gm .gm-stage:not(.is-map) .mapmode-combat { display: none; }
+@media (max-width: 1100px) { .view-gm .mapmode-combat { grid-template-columns: 1fr; } }
 /* Force-hide the cue bar + empty quick/mixer panel in map mode: their own
    .control-row / .perf-side display rules would otherwise beat the [hidden]
    attribute and leave blank boxes in the controls strip. */
@@ -694,7 +704,6 @@ body.view-gm {
 .view-gm .gm-stage.is-map .all-controls { margin: 0; }
 .view-gm .gm-stage.is-map .all-controls-summary { display: none; }
 .view-gm .gm-stage.is-map .all-controls-body { padding-top: 0; }
-.view-gm .gm-stage.is-map .controls-nav { margin-bottom: var(--space-2); }
 .view-gm .gm-stage.is-map .gm-surface {
   background: var(--gm-panel); border: 1px solid var(--rule);
   border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
@@ -711,10 +720,10 @@ body.view-gm {
 }
 .view-gm .mapmode-title { margin: 0; }
 .view-gm .mapmode-head-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-/* One-line explainer + a background picker, so map mode reads as its own clear
-   token-placement mode rather than a surprising switch. */
-.view-gm .mapmode-intro { margin: 0 0 var(--space-3); color: var(--neutral); font-size: var(--fs-200); }
-.view-gm .mapmode-variant-row { margin-bottom: var(--space-3); }
+/* The relocated Edit / Exit-map-mode nav reads as tight, natural-width buttons
+   here -- not the stretched flex:1 row it is in the live surface. */
+.view-gm .mapmode-head-actions .controls-nav { margin: 0; gap: var(--space-2); }
+.view-gm .mapmode-head-actions .controls-nav > button { flex: 0 0 auto; }
 /* .mm-vis is the same show/hide control as .vis-toggle -- colour from .btn--toggle. */
 .view-gm .mapmode-board {
   position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 72vh;
@@ -760,9 +769,6 @@ body.view-gm {
 .view-gm .init-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
 .view-gm .init-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-right: auto; }
 .view-gm .init-roll, .view-gm .init-rollall, .view-gm .init-clear { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
-.view-gm .init-mods { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
-.view-gm .init-mod { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-200); }
-.view-gm .init-mod-input { width: 3.4rem; padding: 0.25rem 0.4rem; text-align: center; }
 .view-gm .init-nav { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
 .view-gm .init-turn { font-size: var(--fs-200); color: var(--neutral); margin-left: auto; }
 .view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
@@ -784,9 +790,13 @@ body.view-gm {
 .view-gm .init-row.is-active .init-val { color: #8a5a16; }
 
 /* ---- Enemy stat sheet (map mode, left rail) ---- */
+/* In map mode the stat sheet REPLACES GM notes in the rail: same lower-2/3 slot
+   (flex:2, matching .gm-notes), directly under the scene list. No author
+   `display` here, so the UA [hidden] keeps hiding it in live mode. */
 .view-gm .gm-statsheet {
   background: var(--gm-panel); border: 1px solid var(--rule);
-  border-left: 6px solid var(--offense); border-radius: 8px; padding: 0.8rem 1rem; margin-top: var(--space-3);
+  border-left: 6px solid var(--offense); border-radius: 8px; padding: 0.8rem 1rem;
+  flex: 2 1 0; min-height: 6rem; overflow-y: auto;
 }
 .view-gm .gm-statsheet .stat-name { margin: 0 0 0.5rem; }
 .view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }

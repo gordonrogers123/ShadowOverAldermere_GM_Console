@@ -165,11 +165,22 @@ export function mountGm(root) {
         <div class="gm-builder" hidden>
           <div class="builder-head">
             <h3 class="gm-h3 builder-title">Build a scene</h3>
+            <!-- Inline SVG icons (one shared 24x24 viewBox, stroke=currentColor) so
+                 the four buttons read as an even, equally-weighted set -- the old
+                 mix of a colour emoji (save) and thin text glyphs looked uneven. -->
             <div class="builder-tools">
-              <button class="u-icon-btn b-save" type="button" title="Save scene" aria-label="Save scene">&#128190;</button>
-              <button class="u-icon-btn b-export" type="button" title="Export scene JSON" aria-label="Export scene JSON">&#10515;</button>
-              <button class="u-icon-btn b-copy" type="button" title="Copy export to clipboard" aria-label="Copy export to clipboard" hidden>&#10697;</button>
-              <button class="u-icon-btn b-cancel" type="button" title="Cancel editing" aria-label="Cancel editing">&times;</button>
+              <button class="u-icon-btn b-save" type="button" title="Save scene" aria-label="Save scene">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+              </button>
+              <button class="u-icon-btn b-export" type="button" title="Export scene JSON" aria-label="Export scene JSON">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              </button>
+              <button class="u-icon-btn b-copy" type="button" title="Copy export to clipboard" aria-label="Copy export to clipboard" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button class="u-icon-btn b-cancel" type="button" title="Cancel editing" aria-label="Cancel editing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
             </div>
           </div>
 
@@ -261,8 +272,10 @@ export function mountGm(root) {
         <div class="gm-mapmode" hidden>
           <div class="mapmode-head">
             <h3 class="gm-h3 mapmode-title"></h3>
+            <!-- The Edit / Exit-map-mode nav is relocated here (next to the title)
+                 in map mode by renderUI, so it's reachable without scrolling. -->
+            <div class="mapmode-head-actions"></div>
           </div>
-          <p class="mapmode-intro">Place and move tokens on the map; they show on the TV <strong>only while you are in map mode</strong>. The rail keeps <strong>Background</strong> (reveal the map), <strong>Save layout</strong>, and <strong>Exit map mode</strong> right where they were &mdash; nothing jumps.</p>
           <div class="mapmode-board"></div>
           <div class="mapmode-roster"></div>
         </div>
@@ -283,6 +296,7 @@ export function mountGm(root) {
     previewName:  root.querySelector('.preview-name'),
     badge:        root.querySelector('.badge'),
     controls:     root.querySelector('.gm-controls'),
+    controlsNav:  root.querySelector('.controls-nav'),
     cueRow:       root.querySelector('.cue-row'),
     cueButtons:   root.querySelector('.cue-buttons'),
     quick:        root.querySelector('.gm-quick'),
@@ -328,6 +342,7 @@ export function mountGm(root) {
     mapmode:      root.querySelector('.gm-mapmode'),
     mapboard:     root.querySelector('.mapmode-board'),
     mapmodeTitle: root.querySelector('.mapmode-title'),
+    mapmodeHeadActions: root.querySelector('.mapmode-head-actions'),
     mmSaveLayout: root.querySelector('.mm-save-layout'),
     mmResetLayout: root.querySelector('.mm-reset-layout'),
     mapRoster:    root.querySelector('.mapmode-roster'),
@@ -380,14 +395,17 @@ export function mountGm(root) {
   els.preview.before(surface);
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
-  // Map mode lays the BOARD on top, a controls strip, the roster, then the
-  // initiative tracker. Lift the roster out of .gm-mapmode (which keeps the
-  // board) so the blocks can be ordered independently by the .is-map layout.
-  els.mapmode.after(els.mapRoster);
+  // Map mode lays the BOARD on top, a controls strip, then the roster + the
+  // initiative tracker SIDE BY SIDE. Lift the roster out of .gm-mapmode and pair
+  // it with the initiative panel in one .mapmode-combat row, so the tracker sits
+  // beside the roster (not far below it); the .is-map layout orders the blocks.
+  const combat = document.createElement('div');
+  combat.className = 'mapmode-combat';
+  els.mapmode.after(combat);
   const initPanel = document.createElement('div');
   initPanel.className = 'gm-initiative'; initPanel.hidden = true;
   els.initiative = initPanel;
-  els.mapRoster.after(initPanel);
+  combat.append(els.mapRoster, initPanel);
   // The active enemy's stat sheet sits in the left rail (where GM notes are),
   // shown only in map mode.
   const statSheet = document.createElement('div');
@@ -1496,6 +1514,20 @@ export function mountGm(root) {
     inp.addEventListener('change', () => setHeroRoll(t.instId, inp.value));
     return inp;
   }
+  // An enemy TYPE's initiative modifier: one per type, applied to every token of
+  // that type when rolled. Inline on the type row to match the hero init field;
+  // commits via setEnemyMod (saves without a focus-stealing re-render).
+  function enemyModInput(castId) {
+    const i = ensureInit();
+    const c = castEntry(castId, 'enemy');
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.className = 'mmr-init'; inp.placeholder = '+0';
+    inp.title = 'Initiative modifier (applied to every ' + (c ? enemySingular(c) : 'token') + ' of this type)';
+    inp.setAttribute('aria-label', (c ? c.name : 'enemy') + ' initiative modifier');
+    inp.value = (i.mods[castId] != null ? i.mods[castId] : '');
+    inp.addEventListener('change', () => setEnemyMod(castId, inp.value));
+    return inp;
+  }
   function rosterRow(extraClass) {
     const r = document.createElement('div'); r.className = 'mmr-row' + (extraClass ? ' ' + extraClass : '');
     return r;
@@ -1572,7 +1604,7 @@ export function mountGm(root) {
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const typeRow = rosterRow('mmr-type');
-        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), rosterAddBtn(id, 'enemy'));
+        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), enemyModInput(id), rosterAddBtn(id, 'enemy'));
         list.append(typeRow);
         for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) {
           const row = rosterRow('mmr-copy');
@@ -1592,7 +1624,6 @@ export function mountGm(root) {
     const host = els.initiative; host.innerHTML = '';
     const i = ensureInit();
     const placed = (state.stage && state.stage.tokens) || [];
-    const enemyTypes = [...new Set(placed.filter((t) => t.kind === 'enemy').map((t) => t.castId))];
 
     const head = document.createElement('div'); head.className = 'init-head';
     const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
@@ -1607,22 +1638,8 @@ export function mountGm(root) {
     clr.addEventListener('click', clearInitiative);
     head.append(title, rollE, rollA, clr);
     host.append(head);
-
-    // Per enemy-type modifier (one input per type placed on the board).
-    if (enemyTypes.length) {
-      const mods = document.createElement('div'); mods.className = 'init-mods';
-      for (const castId of enemyTypes) {
-        const c = castEntry(castId, 'enemy'); if (!c) continue;
-        const lab = document.createElement('label'); lab.className = 'init-mod';
-        const nm = document.createElement('span'); nm.textContent = c.name;
-        const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'init-mod-input';
-        inp.placeholder = '+0'; inp.value = (i.mods[castId] != null ? i.mods[castId] : '');
-        inp.title = c.name + ' initiative modifier (applied to every ' + enemySingular(c) + ')';
-        inp.addEventListener('change', () => setEnemyMod(castId, inp.value));
-        lab.append(nm, inp); mods.append(lab);
-      }
-      host.append(mods);
-    }
+    // The per-enemy-type modifier now lives inline on each roster type row
+    // (enemyModInput); the panel is just the head + the tracker.
 
     // The tracker.
     const track = document.createElement('div'); track.className = 'init-track';
@@ -2698,6 +2715,16 @@ export function mountGm(root) {
     // is-map class drops the compact 3-zone grid for map mode (board takes over).
     els.stage.classList.toggle('is-building', building);
     els.stage.classList.toggle('is-map', inMap);
+
+    // In map mode the Edit / Exit-map-mode nav rides in the board header (next to
+    // the title) so it's reachable without scrolling; in live mode it sits back in
+    // the surface nav row (before the Map controls). Idempotent -- only moves when
+    // the parent is wrong, so repeated renders don't thrash the DOM.
+    if (inMap) {
+      if (els.controlsNav.parentElement !== els.mapmodeHeadActions) els.mapmodeHeadActions.appendChild(els.controlsNav);
+    } else if (els.controlsNav.nextElementSibling !== els.allControls) {
+      els.controls.insertBefore(els.controlsNav, els.allControls);
+    }
 
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.
