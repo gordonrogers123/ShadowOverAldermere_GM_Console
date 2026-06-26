@@ -31,6 +31,7 @@ export function mountGm(root) {
   let railContextKey = null;        // scene|mode|cue key; resets the All-controls open-state only on change
   let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
   let testTimers = [];              // pending setTimeouts for a builder "Test in preview" run
+  let previewLarge = false;         // GM preview size toggle (small default, large for map work)
   let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
@@ -139,6 +140,7 @@ export function mountGm(root) {
           <figcaption class="preview-cap">
             <span class="preview-name"></span>
             <span class="badge"></span>
+            <button class="gm-button btn--quiet preview-size" type="button" title="Toggle preview size (larger for map building)">⤢ Larger</button>
           </figcaption>
         </figure>
 
@@ -267,6 +269,7 @@ export function mountGm(root) {
     empty:        root.querySelector('.gm-empty'),
     preview:      root.querySelector('.gm-preview'),
     previewFrame: root.querySelector('.preview-frame'),
+    previewSize:  root.querySelector('.preview-size'),
     previewName:  root.querySelector('.preview-name'),
     badge:        root.querySelector('.badge'),
     controls:     root.querySelector('.gm-controls'),
@@ -466,6 +469,11 @@ export function mountGm(root) {
     captureCue(label);
   });
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
+  els.previewSize.addEventListener('click', () => {
+    previewLarge = !previewLarge;
+    els.preview.classList.toggle('is-large', previewLarge);
+    els.previewSize.textContent = previewLarge ? '⤡ Smaller' : '⤢ Larger';
+  });
   els.mapModeToggle.addEventListener('click', () => { if (mapMode) exitMapMode(); else enterMapMode(); });
   els.mmSaveLayout.addEventListener('click', saveLayout);
   els.mmResetLayout.addEventListener('click', resetLayout);

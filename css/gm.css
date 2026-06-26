@@ -234,6 +234,10 @@ body.view-gm {
   gap: 0.8rem;
   margin-top: 0.6rem;
 }
+/* Preview size toggle, pushed to the right of the caption. Enlarging overrides
+   the builder's small/pinned preview so a map scene can be built at full size. */
+.view-gm .preview-size { margin-left: auto; font-size: var(--fs-100); padding: 0.3rem 0.6rem; white-space: nowrap; }
+.view-gm .gm-stage.is-building .gm-preview.is-large { position: static; max-width: none; }
 .view-gm .preview-name {
   font-family: var(--font-display);
   font-size: 1.25rem;
