@@ -48,8 +48,9 @@
 //      // Audio (Phase 4): a music bed + ambience loops + one-shot SFX, each
 //      // with volume, pan, and loop. null = silent. Picked in the builder; tuned
 //      // live in the audio panel and captured with "Save audio to scene".
-//      audio:    null,   // or { music:{src,volume,pan,loop},
+//      audio:    null,   // or { music:[{src,volume,pan,loop}...],   // beds; cues pick which plays
 //                        //      ambience:[{src,...}], sfx:[{id,src,volume,pan}] }
+//                        // (a single music object is still accepted for back-compat)
 //
 //      // CUES (optional). One-press stage presets: each is a saved snapshot of
 //      // the whole stage (which variant is up, scene/map mode, the curtain, who

@@ -21,11 +21,26 @@
 const clamp01 = (n) => { n = +n; return !isFinite(n) ? 0 : n < 0 ? 0 : n > 1 ? 1 : n; };
 const clampPan = (n) => { n = +n; return !isFinite(n) ? 0 : n < -1 ? -1 : n > 1 ? 1 : n; };
 
-// Which scene track a live track key refers to: 'music' or 'amb:<index>'.
+// A scene's music as an array of beds, accepting either the new array form or
+// a single legacy `{src,...}` object. Lets cues play different music per cue.
+function musicBeds(a) {
+  if (!a) return [];
+  const m = a.music;
+  if (Array.isArray(m)) return m.filter((x) => x && x.src);
+  return (m && m.src) ? [m] : [];
+}
+
+// Which scene track a live track key refers to: 'mus:<i>' (a music bed),
+// 'amb:<i>' (an ambience loop), or the legacy 'music' key (-> first bed).
 function resolveTrackSrc(scene, key) {
   const a = scene && scene.audio;
   if (!a) return null;
-  if (key === 'music') return (a.music && a.music.src) || null;
+  if (key === 'music') { const beds = musicBeds(a); return beds.length ? beds[0].src : null; }
+  if (key.indexOf('mus:') === 0) {
+    const i = parseInt(key.slice(4), 10);
+    const beds = musicBeds(a);
+    return (beds[i] && beds[i].src) || null;
+  }
   if (key.indexOf('amb:') === 0) {
     const i = parseInt(key.slice(4), 10);
     return (a.ambience && a.ambience[i] && a.ambience[i].src) || null;
