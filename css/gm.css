@@ -202,18 +202,65 @@ body.view-gm {
   text-align: center;
 }
 
-/* The GM preview defaults to a compact size in BOTH the live performance view
-   and the builder, so the controls below it (cues, quick actions, mixer) stay on
-   screen without scrolling. The caption's Larger/Smaller toggle flips .is-large
-   to expand it to the full column for detail or map work. */
-.view-gm .gm-preview { margin: 0 0 var(--space-4); max-width: 560px; }
-.view-gm .gm-preview.is-large { max-width: none; }
-/* While editing a scene, also pin the (compact) preview to the top so it stays
-   on screen as you scroll the controls -- "Test in preview" stays watchable. */
+/* Performance surface. The control surface keeps its single .gm-controls wrapper
+   (one .hidden toggle), and display:contents drops its pieces -- cue bar / side
+   panel / nav -- straight into the surface layout. */
+.view-gm .gm-preview { margin: 0; }
+.view-gm .gm-surface { display: block; }
+.view-gm .gm-surface > .gm-controls { display: contents; }
+.view-gm .gm-surface > .gm-controls[hidden] { display: none; }   /* build mode: hide as a group */
+
+/* Compact (default, not larger / building / map): a 3-zone grid -- the preview
+   in the centre, the control panel (quick + mixer) on the RIGHT at the same
+   height, and the cue bar as a FULL-WIDTH row under both, then the Edit/Map nav. */
+.view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface {
+  display: grid;
+  /* Fixed side width (not a min/max range): ~20% narrower than before for a
+     bigger preview, but ALWAYS wide enough to keep the four mixer columns on one
+     row at any window width (a range let it shrink and wrap the SFX column). */
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  grid-template-areas: "preview side" "cue cue" "nav nav";
+  gap: var(--space-3) var(--space-4);
+  align-items: stretch;
+}
+/* On a stage too narrow for side-by-side, stack: preview on top, controls below. */
+@media (max-width: 1180px) {
+  .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface {
+    grid-template-columns: 1fr;
+    grid-template-areas: "preview" "side" "cue" "nav";
+  }
+}
+.view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface > .gm-preview { grid-area: preview; align-self: start; }
+.view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .perf-side { grid-area: side; }
+.view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .cue-row { grid-area: cue; }
+.view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .controls-nav { grid-area: nav; }
+
+/* The right control panel: quick-action + mixer modules stacked, matching the
+   preview's height (it stretches to the grid row). */
+.view-gm .perf-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.view-gm .perf-side > .gm-quick,
+.view-gm .perf-side > .gm-mixer { margin: 0; }
+/* Legibility in the narrow side panel: the Background label takes its own line so
+   the variant chips never crowd it; the char-row labels shrink; the chips compact
+   -- so every button reads in full and nothing overlaps its label. */
+.view-gm .perf-side .quick-row { flex-wrap: wrap; align-items: center; }
+.view-gm .perf-side .quick-bg-row .control-label { flex: 0 0 100%; min-width: 0; margin-bottom: var(--space-1); }
+.view-gm .perf-side .quick-char-row .control-label { flex: 0 0 3.25rem; }
+.view-gm .perf-side .variant-button { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
+.view-gm .perf-side .quick-swap { flex: 1 1 7rem; }
+
+/* Larger: a full-width preview stacked ABOVE the controls (preview, cue, quick,
+   mixer, nav -- the classic order, via DOM order in the block flow). */
+.view-gm .gm-stage.is-large .gm-preview { max-width: none; margin: 0 0 var(--space-3); }
+.view-gm .gm-stage.is-large .perf-side { gap: var(--space-3); }
+
+/* Map mode / builder: plain block flow. The builder pins the compact preview at
+   the top so Test-in-preview stays watchable while scrolling the editor. */
 .view-gm .gm-stage.is-building .gm-preview {
   position: sticky; top: var(--space-3); z-index: 5;
   max-width: 420px; margin: 0 0 var(--space-3);
 }
+.view-gm .gm-stage.is-building.is-large .gm-preview { position: static; max-width: none; }
 .view-gm .preview-frame {
   position: relative;
   width: 100%;
@@ -251,7 +298,6 @@ body.view-gm {
 /* Preview size toggle, pushed to the right of the caption. Enlarging overrides
    the builder's small/pinned preview so a map scene can be built at full size. */
 .view-gm .preview-size { margin-left: auto; font-size: var(--fs-100); padding: 0.3rem 0.6rem; white-space: nowrap; }
-.view-gm .gm-stage.is-building .gm-preview.is-large { position: static; max-width: none; }
 .view-gm .preview-name {
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -334,7 +380,7 @@ body.view-gm {
 .view-gm .gm-scenes-head .gm-h2 { margin: 0; }
 .view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
 .view-gm .scene-list li { position: relative; }
-.view-gm .scene-button { padding-left: 2.6rem; padding-right: 3.5rem; }
+.view-gm .scene-button { padding-left: 2.6rem; padding-right: 2.4rem; }
 /* Pin/star toggle on the left: hollow when idle, a warm gold star when pinned.
    Sits over the scene button's padding so the row stays one clickable surface. */
 .view-gm .scene-pin {
@@ -353,9 +399,9 @@ body.view-gm {
 .view-gm .scene-del {
   position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
   display: inline-flex; align-items: center; justify-content: center;
-  width: 2.75rem; height: 2.75rem; padding: 0; line-height: 1;
+  width: 1.6rem; height: 1.6rem; padding: 0; line-height: 1;
   border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--gm-panel); color: var(--offense); font-size: 1.2rem; cursor: pointer;
+  background: var(--gm-panel); color: var(--offense); font-size: 0.95rem; cursor: pointer;
 }
 .view-gm .scene-del:hover { background: var(--paper); }
 .view-gm .rescan-status {
@@ -376,8 +422,8 @@ body.view-gm {
 /* .variant-button active colour now comes from the .btn--toggle role. */
 
 /* ---- Quick actions module (live manual surface) ----
-   Background hot-swap + black out, then Left/Right hot-swap + hide, in tidy rows
-   right under the cue bar. Each row is label | controls on one line. */
+   Background hot-swap + black out, then Left/Right hot-swap + hide, in tidy rows.
+   Each row is label | controls on one line. */
 .view-gm .gm-quick {
   margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3);
   background: var(--gm-panel); border: 1px solid var(--rule);
@@ -389,7 +435,9 @@ body.view-gm {
 .view-gm .quick-bg-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
 .view-gm .quick-row .vis-toggle { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
 .view-gm .quick-swap { flex: 1 1 0; min-width: 0; }
-.view-gm .quick-hide { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
+/* Fixed width so the button does not resize as its label flips Hide <-> Show
+   (min-width exceeds the wider "Show" so both states render identically). */
+.view-gm .quick-hide { flex: 0 0 auto; min-width: 4.4rem; text-align: center; font-size: var(--fs-200); padding: 0.45rem 0.6rem; }
 .view-gm .quick-hide[disabled] { cursor: not-allowed; opacity: 0.6; }
 
 /* ---- Cues: one-press stage transitions (the lead control surface) ----
@@ -415,30 +463,35 @@ body.view-gm {
 .view-gm .cue-buttons:empty { flex: 0 0 auto; }
 
 /* ---- Audio mixer module (compact live surface) ----
-   A row of vertical faders (Master / Music / Ambience), each with a mute, then a
-   one-press Fade and the SFX buttons -- the key audio controls for play, kept
-   small. The full per-bed panel lives collapsed below (.gm-audio). */
+   A row of vertical faders (Master / Music / Ambience), each with a mute, plus an
+   SFX column (label + one-shot buttons stacked), then a one-press Fade on its own
+   row. The full per-bed panel lives collapsed below (.gm-audio). */
 .view-gm .gm-mixer {
-  display: flex; align-items: flex-end; gap: var(--space-3) var(--space-4); flex-wrap: wrap;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2);
   margin-bottom: var(--space-3); padding: var(--space-3);
   background: var(--gm-panel); border: 1px solid var(--rule);
   border-left: 4px solid var(--control); border-radius: var(--radius-sm);
 }
-.view-gm .mixer-faders { display: flex; align-items: flex-end; gap: var(--space-3); }
+/* Columns top-align so every label (incl. SFX) sits on one line. Compact gaps +
+   labels keep Master / Music / Ambience / SFX side by side in the narrow panel. */
+.view-gm .mixer-faders { display: flex; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; }
 .view-gm .mixer-fader { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
 .view-gm .mixer-fader-name {
-  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
-  text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral);
+  font-family: var(--font-display); font-weight: 700; font-size: 0.66rem;
+  text-transform: uppercase; letter-spacing: 0.01em; color: var(--neutral); white-space: nowrap;
 }
 /* Vertical fader: the GM range inputs are custom-styled (an 8px track), so the
    robust cross-browser way to stand one up is to rotate a normal horizontal
    slider inside a fixed-size wrapper that reserves its vertical footprint. */
-.view-gm .mixer-slider-wrap { height: 6rem; width: 1.8rem; display: flex; align-items: center; justify-content: center; }
-.view-gm .mixer-slider { width: 6rem; transform: rotate(-90deg); accent-color: var(--control); }
-.view-gm .mixer-mute { font-size: var(--fs-100); padding: 0.25rem 0.55rem; }
+.view-gm .mixer-slider-wrap { height: 4.5rem; width: 1.3rem; display: flex; align-items: center; justify-content: center; }
+.view-gm .mixer-slider { width: 4.5rem; transform: rotate(-90deg); accent-color: var(--control); }
+.view-gm .mixer-mute { font-size: 0.66rem; padding: 0.18rem 0.4rem; }
+/* SFX column: the label, then its one-shot buttons stacked under it. */
+.view-gm .mixer-sfx-col { align-items: stretch; }
+.view-gm .mixer-sfx-buttons { display: flex; flex-direction: column; gap: var(--space-1); }
+.view-gm .mixer-sfx { font-size: 0.7rem; padding: 0.25rem 0.45rem; white-space: nowrap; }
 .view-gm .mixer-extra { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.view-gm .mixer-fade { font-size: var(--fs-200); padding: 0.5rem 0.85rem; }
-.view-gm .mixer-sfx { font-size: var(--fs-100); padding: 0.4rem 0.7rem; }
+.view-gm .mixer-fade { font-size: var(--fs-200); padding: 0.45rem 0.8rem; }
 
 /* All controls: the full manual set, collapsible. Leads open for cue-less
    scenes, tucked away for cue-led ones (still one click for an off-script tweak). */
