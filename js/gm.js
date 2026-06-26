@@ -195,8 +195,8 @@ export function mountGm(root) {
             </div>
 
             <div class="builder-col">
-              <div class="field">
-                <span>Roster <small>(who can be placed on the map)</small></span>
+              <details class="field builder-collapse">
+                <summary>Roster <small>(map tokens &mdash; who can be placed on the map)</small></summary>
                 <div class="roster-pick">
                   <div class="roster-group">
                     <div class="roster-group-head">
@@ -213,16 +213,16 @@ export function mountGm(root) {
                     <div class="roster-enemies"></div>
                   </div>
                 </div>
-              </div>
+              </details>
 
-              <div class="field">
-                <span>Audio <small>(music beds, ambience loops, one-shot SFX)</small></span>
+              <details class="field builder-collapse">
+                <summary>Audio <small>(music beds, ambience loops, one-shot SFX)</small></summary>
                 <div class="audio-pick">
                   <div class="audio-pick-group"><span class="audio-pick-label">Music <small>(one or more beds; cues choose which plays)</small></span><div class="b-music"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
                 </div>
-              </div>
+              </details>
 
               <div class="field">
                 <span>Cues <small>(one-press stage presets &mdash; capture them live, manage here)</small></span>
@@ -2110,6 +2110,9 @@ export function mountGm(root) {
     els.notes.hidden = inMap || building || !scene;
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
+    // In the builder, shrink the preview and pin it so it stays visible while
+    // scrolling the controls (so "Test in preview" is actually watchable).
+    if (els.preview.parentElement) els.preview.parentElement.classList.toggle('is-building', building);
 
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.

@@ -193,6 +193,13 @@ body.view-gm {
 }
 
 .view-gm .gm-preview { margin: 0 0 var(--space-4); }
+/* While editing a scene, shrink the preview and pin it to the top so it stays
+   on screen as you scroll the controls -- so "Test in preview" is watchable and
+   the controls aren't pushed far down the page. */
+.view-gm .gm-stage.is-building .gm-preview {
+  position: sticky; top: var(--space-3); z-index: 5;
+  max-width: 420px; margin: 0 0 var(--space-3);
+}
 .view-gm .preview-frame {
   position: relative;
   width: 100%;
@@ -425,6 +432,21 @@ body.view-gm {
 .view-gm .field { display: block; margin-bottom: 0.9rem; }
 .view-gm .field > span { display: block; font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem; }
 .view-gm .field > span small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
+/* Collapsible builder sections (Roster, Audio): a <details> whose summary reads
+   like a field label, with a rotating caret. Collapsed by default to cut clutter
+   -- the GM opens just what they need. */
+.view-gm .builder-collapse { margin-bottom: 0.9rem; }
+.view-gm .builder-collapse > summary {
+  cursor: pointer; list-style: none; user-select: none;
+  font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem;
+}
+.view-gm .builder-collapse > summary::-webkit-details-marker { display: none; }
+.view-gm .builder-collapse > summary::before {
+  content: '\25B8'; display: inline-block; margin-right: var(--space-2);
+  transition: transform 0.15s ease; color: var(--control);
+}
+.view-gm .builder-collapse[open] > summary::before { transform: rotate(90deg); }
+.view-gm .builder-collapse > summary small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
 .view-gm .b-name { width: 100%; }
 .view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
 /* Per-character size + flip controls under each character picker. */
