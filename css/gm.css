@@ -573,74 +573,83 @@ body.view-gm {
 }
 
 /* ============================================================
-   Dice roller -- GM-only, pinned to the lower-left. A launcher opens a
-   compact tray: tap dice to build a pool, set a modifier, Roll, and read
-   a result card (per-die faces + total, crit highlight on a d20).
+   Dice roller -- GM-only, pinned to the lower-left. A standout circular
+   launcher opens a dark "dice-felt" tray: tap polyhedral dice (the count
+   shows on the die), Roll, read a clear breakdown + big total. A
+   deliberate dark surface with gold lines so it stands out from the
+   parchment console; crit/fumble highlight on a d20. No modifier/history.
    ============================================================ */
-.view-gm .dice-roller { position: fixed; left: var(--space-4); bottom: var(--space-4); z-index: 60; }
-.view-gm .dice-launcher {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200);
-  letter-spacing: 0.04em; padding: 0.5rem 0.9rem; cursor: pointer;
-  color: var(--paper); background: var(--control); border: 1px solid var(--control);
-  border-radius: var(--radius-pill); box-shadow: var(--shadow-2);
+.view-gm .dice-roller {
+  position: fixed; left: var(--space-4); bottom: var(--space-4); z-index: 60;
+  /* a self-contained dark-felt palette for the dice tray */
+  --dice-bg: #241d15; --dice-edge: #4a3c2a; --dice-line: #caa64f;
+  --dice-ink: #efe4cb; --dice-dim: #b9a884;
 }
-.view-gm .dice-launcher:hover { filter: brightness(1.08); }
-.view-gm .dice-launcher-face { font-size: 1.2rem; line-height: 1; }
-.view-gm .dice-roller.is-open .dice-launcher { border-radius: var(--radius-md); }
+
+/* Standout circular launcher with a gold d20. */
+.view-gm .dice-launcher {
+  width: 3.4rem; height: 3.4rem; padding: 0; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--dice-bg); border: 2px solid var(--dice-line);
+  box-shadow: var(--shadow-2);
+}
+.view-gm .dice-launcher:hover { filter: brightness(1.12); }
+.view-gm .dice-launcher svg { width: 2rem; height: 2rem; }
+.view-gm .dice-launcher svg polygon { fill: none; stroke: var(--dice-line); stroke-width: 2; stroke-linejoin: round; }
+.view-gm .dice-launcher svg .facet { fill: rgba(202, 166, 79, 0.18); }
+.view-gm .dice-launcher svg text { fill: var(--dice-ink); font-family: var(--font-display); font-weight: 700; font-size: 15px; }
 
 .view-gm .dice-panel {
-  position: absolute; left: 0; bottom: calc(100% + var(--space-2));
-  width: 19rem; max-height: 70vh; overflow-y: auto;
-  background: var(--gm-panel); border: 1px solid var(--rule);
-  border-radius: var(--radius-md); box-shadow: var(--shadow-2); padding: var(--space-3);
+  position: absolute; left: 0; bottom: calc(100% + var(--space-2)); width: 17rem;
+  background: var(--dice-bg); color: var(--dice-ink);
+  border: 1px solid var(--dice-edge); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2); padding: var(--space-3);
 }
 .view-gm .dice-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
-.view-gm .dice-title { font-family: var(--font-display); font-weight: 700; }
-.view-gm .dice-close { border: none; background: transparent; cursor: pointer; color: var(--neutral); font-size: 1.3rem; line-height: 1; padding: 0 0.2rem; }
-.view-gm .dice-close:hover { color: var(--ink); }
+.view-gm .dice-title { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em; color: var(--dice-line); }
+.view-gm .dice-close { border: none; background: transparent; color: var(--dice-dim); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 0.2rem; }
+.view-gm .dice-close:hover { color: var(--dice-ink); }
 
-.view-gm .dice-tray { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-1); margin-bottom: var(--space-2); }
-.view-gm .die-btn { font-family: var(--font-display); font-size: var(--fs-200); padding: 0.45rem 0; }
-
-.view-gm .dice-pool {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1);
-  min-height: 2.2rem; padding: var(--space-1); margin-bottom: var(--space-2);
-  border: 1px dashed var(--rule); border-radius: var(--radius-sm);
+.view-gm .dice-tray { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
+.view-gm .die { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: var(--space-1) 0; background: transparent; border: none; cursor: pointer; }
+.view-gm .die-shape { width: 2.5rem; height: 2.5rem; }
+.view-gm .die-shape svg { width: 100%; height: 100%; display: block; }
+.view-gm .die-shape svg polygon, .view-gm .die-shape svg rect { fill: rgba(202, 166, 79, 0.06); stroke: var(--dice-line); stroke-width: 2; stroke-linejoin: round; }
+.view-gm .die-shape svg .facet { fill: rgba(202, 166, 79, 0.16); stroke-width: 1.2; }
+.view-gm .die:hover .die-shape svg polygon, .view-gm .die:hover .die-shape svg rect { fill: rgba(202, 166, 79, 0.18); }
+.view-gm .die-label { font-family: var(--font-display); font-size: var(--fs-100); letter-spacing: 0.04em; color: var(--dice-dim); }
+.view-gm .die-count {
+  position: absolute; top: var(--space-1); left: 0; width: 100%; height: 2.5rem;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+  color: var(--dice-ink); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
-.view-gm .dice-pool-empty { font-size: var(--fs-100); color: var(--neutral); opacity: 0.7; padding: 0 var(--space-1); }
-.view-gm .dice-chip { font-family: var(--font-display); font-size: var(--fs-100); padding: 0.25rem 0.55rem; }
-.view-gm .dice-chip::after { content: " \00d7"; opacity: 0.6; }
+.view-gm .die.is-selected .die-shape svg polygon, .view-gm .die.is-selected .die-shape svg rect { fill: var(--dice-line); }
+.view-gm .die.is-selected .die-shape svg .facet { fill: rgba(36, 29, 21, 0.25); }
+.view-gm .die.is-selected .die-count { color: var(--dice-bg); text-shadow: none; }
+.view-gm .die.is-selected .die-label { color: var(--dice-line); }
 
-.view-gm .dice-mod-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-.view-gm .dice-mod-label { font-size: var(--fs-200); color: var(--neutral); }
-.view-gm .dice-mod-dec, .view-gm .dice-mod-inc {
-  width: 1.9rem; height: 1.9rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--paper); cursor: pointer; font-size: 1.1rem; line-height: 1;
+.view-gm .dice-actions { display: flex; gap: var(--space-2); }
+.view-gm .dice-roll {
+  flex: 1 1 auto; font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em;
+  color: var(--dice-bg); background: var(--dice-line); border: 1px solid var(--dice-line);
+  border-radius: var(--radius-sm); padding: 0.5rem; cursor: pointer; font-size: var(--fs-300);
 }
-.view-gm .dice-mod-val { min-width: 2.5rem; text-align: center; font-family: var(--font-display); font-weight: 700; }
-
-.view-gm .dice-actions { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); }
-.view-gm .dice-roll { flex: 1 1 auto; }
-
-.view-gm .dice-result { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: var(--space-2); margin-bottom: var(--space-2); }
-.view-gm .dice-result-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.view-gm .dice-result-note { font-size: var(--fs-100); color: var(--neutral); }
-.view-gm .dice-dismiss { border: none; background: transparent; cursor: pointer; color: var(--neutral); font-size: 1.1rem; line-height: 1; }
-.view-gm .dice-dismiss:hover { color: var(--ink); }
-.view-gm .dice-result-dice { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: var(--space-2) 0; }
-.view-gm .die-face {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 1.9rem; height: 1.9rem; padding: 0 0.35rem;
-  border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--gm-panel); font-family: var(--font-display); font-weight: 700;
+.view-gm .dice-roll:hover { filter: brightness(1.08); }
+.view-gm .dice-clear {
+  background: transparent; color: var(--dice-dim); border: 1px solid var(--dice-edge);
+  border-radius: var(--radius-sm); padding: 0.5rem 0.9rem; cursor: pointer; font-size: var(--fs-200);
 }
-.view-gm .die-face.is-crit { background: var(--support); color: var(--paper); border-color: var(--support); }
-.view-gm .die-face.is-fumble { background: var(--offense); color: var(--paper); border-color: var(--offense); }
-.view-gm .dice-total { display: flex; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--rule); padding-top: var(--space-2); }
-.view-gm .dice-total-label { font-size: var(--fs-100); letter-spacing: 0.08em; text-transform: uppercase; color: var(--neutral); }
-.view-gm .dice-total-val { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-500); color: var(--control); }
+.view-gm .dice-clear:hover { color: var(--dice-ink); border-color: var(--dice-dim); }
 
-.view-gm .dice-history { border-top: 1px solid var(--rule); padding-top: var(--space-2); }
-.view-gm .dice-history-label { font-size: var(--fs-100); letter-spacing: 0.06em; text-transform: uppercase; color: var(--neutral); opacity: 0.8; margin-bottom: var(--space-1); }
-.view-gm .dice-history-row { font-size: var(--fs-200); color: var(--ink); opacity: 0.85; padding: 0.1rem 0; }
+.view-gm .dice-result { position: relative; margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--dice-edge); }
+.view-gm .dr-dismiss { position: absolute; top: var(--space-2); right: 0; border: none; background: transparent; color: var(--dice-dim); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.view-gm .dr-dismiss:hover { color: var(--dice-ink); }
+.view-gm .dr-notation { font-size: var(--fs-100); letter-spacing: 0.04em; color: var(--dice-dim); margin-bottom: var(--space-1); }
+.view-gm .dr-math { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.view-gm .dr-breakdown { color: var(--dice-ink); font-size: var(--fs-300); }
+.view-gm .dr-die.is-crit { color: #7bd88f; font-weight: 700; }
+.view-gm .dr-die.is-fumble { color: #e98b8b; font-weight: 700; }
+.view-gm .dr-eq { color: var(--dice-dim); }
+.view-gm .dr-total { margin-left: auto; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-600); color: var(--dice-line); }
+.view-gm .dice-hint { margin: var(--space-2) 0 0; font-size: var(--fs-100); color: var(--dice-dim); opacity: 0.7; text-align: center; }

@@ -1,44 +1,54 @@
 // ============================================================
-//  diceRoller.js  --  a GM-only dice tray (lower-left of the console)
+//  diceRoller.js  --  GM-only dice tray (lower-left of the console)
 // ------------------------------------------------------------
-//  Build a pool of polyhedral dice + a modifier, roll, and read a
-//  result card: per-die breakdown, summed total, and a crit highlight
-//  on a d20 (nat 20 / nat 1). Keeps a short history; the result stays
-//  until you dismiss it.
+//  A compact, styled roller in the spirit of D&D Beyond: tap polyhedral
+//  dice to set how many of each (the count shows ON the die), Roll, and
+//  read a clear result -- the per-die breakdown and a big total, with a
+//  crit highlight on a d20. No modifier, no history: just dice + result.
 //
 //  Local UI only -- it lives in the GM window and broadcasts nothing to
 //  the Player TV (no dice on the board, by design).
 // ============================================================
 
 const DICE = [4, 6, 8, 10, 12, 20, 100];
-const HISTORY_MAX = 5;
+
+// Flat polyhedral silhouettes (viewBox 0 0 48 48). The die TYPE reads from the
+// shape + its caption; the COUNT renders as a number over the die.
+const SHAPES = {
+  4:   '<polygon points="24,5 43,41 5,41"/>',
+  6:   '<rect x="9" y="9" width="30" height="30" rx="5"/>',
+  8:   '<polygon points="24,4 44,24 24,44 4,24"/>',
+  10:  '<polygon points="24,44 5,18 14,5 34,5 43,18"/>',
+  12:  '<polygon points="24,4 43,18 35,42 13,42 5,18"/>',
+  20:  '<polygon points="24,4 42,14 42,34 24,44 6,34 6,14"/><polygon class="facet" points="24,4 42,34 6,34"/>',
+  100: '<polygon points="24,4 42,14 42,34 24,44 6,34 6,14"/><polygon class="facet" points="6,14 42,14 24,44"/>'
+};
+const dieSvg = (d) => `<svg viewBox="0 0 48 48" aria-hidden="true">${SHAPES[d]}</svg>`;
+const dieLabel = (d) => 'd' + d;
 
 export function mountDiceRoller(root) {
   const host = document.createElement('div');
   host.className = 'dice-roller';
   host.innerHTML = `
-    <button class="dice-launcher" type="button" aria-expanded="false" title="Dice roller">
-      <span class="dice-launcher-face" aria-hidden="true">&#127922;</span> Dice
+    <button class="dice-launcher" type="button" aria-label="Dice roller" aria-expanded="false" title="Dice roller">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <polygon points="24,3 43,14 43,34 24,45 5,34 5,14"/>
+        <polygon class="facet" points="24,3 43,34 5,34"/>
+        <text x="24" y="30" text-anchor="middle">20</text>
+      </svg>
     </button>
     <div class="dice-panel" hidden>
       <div class="dice-head">
-        <span class="dice-title">Dice roller</span>
+        <span class="dice-title">Dice</span>
         <button class="dice-close" type="button" aria-label="Close dice roller">&times;</button>
       </div>
       <div class="dice-tray"></div>
-      <div class="dice-pool"></div>
-      <div class="dice-mod-row">
-        <span class="dice-mod-label">Modifier</span>
-        <button class="dice-mod-dec" type="button" aria-label="Decrease modifier">&minus;</button>
-        <span class="dice-mod-val">+0</span>
-        <button class="dice-mod-inc" type="button" aria-label="Increase modifier">+</button>
-      </div>
       <div class="dice-actions">
-        <button class="dice-roll gm-button btn--primary" type="button">Roll</button>
-        <button class="dice-clear gm-button btn--quiet" type="button">Clear</button>
+        <button class="dice-roll" type="button">Roll</button>
+        <button class="dice-clear" type="button">Clear</button>
       </div>
       <div class="dice-result" hidden></div>
-      <div class="dice-history" hidden></div>
+      <p class="dice-hint">Tap to add &middot; right-click to remove</p>
     </div>`;
   root.appendChild(host);
 
@@ -46,138 +56,101 @@ export function mountDiceRoller(root) {
   const launcher = q('.dice-launcher');
   const panel = q('.dice-panel');
   const tray = q('.dice-tray');
-  const poolEl = q('.dice-pool');
-  const modVal = q('.dice-mod-val');
   const resultEl = q('.dice-result');
-  const historyEl = q('.dice-history');
 
-  let pool = {};        // sides -> count
-  let modifier = 0;
-  const history = [];
+  const counts = {};      // sides -> count
+  const dieEls = {};
 
   for (const d of DICE) {
-    const b = document.createElement('button');
-    b.className = 'die-btn gm-button';
-    b.type = 'button';
-    b.dataset.d = String(d);
-    b.textContent = 'd' + d;
-    b.addEventListener('click', () => { pool[d] = (pool[d] || 0) + 1; renderPool(); });
-    tray.appendChild(b);
+    const die = document.createElement('button');
+    die.className = 'die';
+    die.type = 'button';
+    die.dataset.d = String(d);
+    die.setAttribute('aria-label', dieLabel(d));
+    die.innerHTML =
+      '<span class="die-shape">' + dieSvg(d) + '</span>' +
+      '<span class="die-count" hidden></span>' +
+      '<span class="die-label">' + dieLabel(d) + '</span>';
+    die.addEventListener('click', () => bump(d, +1));
+    die.addEventListener('contextmenu', (e) => { e.preventDefault(); bump(d, -1); });
+    tray.appendChild(die);
+    dieEls[d] = die;
   }
 
-  function modText(m) { return (m >= 0 ? '+' : '−') + Math.abs(m); }
-  function notation() {
-    const parts = DICE.filter((d) => pool[d]).map((d) => pool[d] + 'd' + d);
-    let n = parts.join(' + ');
-    if (modifier) n += ' ' + modText(modifier);
-    return n || '—';
+  function bump(d, by) {
+    const c = Math.max(0, (counts[d] || 0) + by);
+    counts[d] = c;
+    const die = dieEls[d];
+    const badge = die.querySelector('.die-count');
+    badge.hidden = c === 0;
+    badge.textContent = c ? String(c) : '';
+    die.classList.toggle('is-selected', c > 0);
   }
 
-  function renderPool() {
-    poolEl.innerHTML = '';
-    const active = DICE.filter((d) => pool[d]);
-    if (!active.length) {
-      const e = document.createElement('span');
-      e.className = 'dice-pool-empty';
-      e.textContent = 'Tap dice above to build a roll';
-      poolEl.appendChild(e);
-      return;
-    }
-    for (const d of active) {
-      const chip = document.createElement('button');
-      chip.className = 'dice-chip gm-button';
-      chip.type = 'button';
-      chip.textContent = pool[d] + 'd' + d;
-      chip.title = 'Remove one d' + d;
-      chip.setAttribute('aria-label', 'Remove one d' + d);
-      chip.addEventListener('click', () => { pool[d] -= 1; if (pool[d] <= 0) delete pool[d]; renderPool(); });
-      poolEl.appendChild(chip);
-    }
+  function clearAll() {
+    for (const d of DICE) if (counts[d]) bump(d, -counts[d]);
   }
-
-  function setMod(m) { modifier = m; modVal.textContent = modText(modifier); }
 
   function roll() {
-    const active = DICE.filter((d) => pool[d]);
+    const active = DICE.filter((d) => counts[d]);
     if (!active.length) return;
-    const groups = [];
+    const flat = [];   // { d, r } per individual die, in tray order
     let total = 0;
     for (const d of active) {
-      const rolls = [];
-      for (let i = 0; i < pool[d]; i++) {
+      for (let i = 0; i < counts[d]; i++) {
         const r = Math.floor(Math.random() * d) + 1;   // browser RNG -- fine for dice
-        rolls.push(r);
+        flat.push({ d, r });
         total += r;
       }
-      groups.push({ d, rolls });
     }
-    total += modifier;
-    const entry = { notation: notation(), groups, modifier, total };
-    history.unshift(entry);
-    if (history.length > HISTORY_MAX) history.pop();
-    renderResult(entry);
-    renderHistory();
+    const notation = active.map((d) => counts[d] + 'd' + d).join(' + ');
+    renderResult(flat, total, notation);
   }
 
-  function renderResult(entry) {
+  function renderResult(flat, total, notation) {
     resultEl.hidden = false;
     resultEl.innerHTML = '';
 
-    const head = document.createElement('div');
-    head.className = 'dice-result-head';
-    const note = document.createElement('span');
-    note.className = 'dice-result-note';
-    note.textContent = entry.notation;
     const dismiss = document.createElement('button');
-    dismiss.className = 'dice-dismiss';
+    dismiss.className = 'dr-dismiss';
     dismiss.type = 'button';
     dismiss.textContent = '×';
     dismiss.title = 'Dismiss';
     dismiss.setAttribute('aria-label', 'Dismiss result');
     dismiss.addEventListener('click', () => { resultEl.hidden = true; });
-    head.append(note, dismiss);
 
-    const dice = document.createElement('div');
-    dice.className = 'dice-result-dice';
-    for (const g of entry.groups) {
-      for (const r of g.rolls) {
-        const face = document.createElement('span');
-        face.className = 'die-face';
-        if (g.d === 20 && r === 20) face.classList.add('is-crit');     // nat 20
-        if (g.d === 20 && r === 1) face.classList.add('is-fumble');    // nat 1
-        face.textContent = String(r);
-        face.title = 'd' + g.d;
-        dice.appendChild(face);
+    const note = document.createElement('div');
+    note.className = 'dr-notation';
+    note.textContent = notation;
+
+    const math = document.createElement('div');
+    math.className = 'dr-math';
+    const breakdown = document.createElement('span');
+    breakdown.className = 'dr-breakdown';
+    flat.forEach((x, i) => {
+      if (i) {
+        const plus = document.createElement('span');
+        plus.className = 'dr-plus';
+        plus.textContent = ' + ';
+        breakdown.appendChild(plus);
       }
-    }
+      const v = document.createElement('span');
+      v.className = 'dr-die';
+      if (x.d === 20 && x.r === 20) v.classList.add('is-crit');     // nat 20
+      if (x.d === 20 && x.r === 1) v.classList.add('is-fumble');    // nat 1
+      v.textContent = String(x.r);
+      v.title = 'd' + x.d;
+      breakdown.appendChild(v);
+    });
+    const eq = document.createElement('span');
+    eq.className = 'dr-eq';
+    eq.textContent = '=';
+    const totalEl = document.createElement('span');
+    totalEl.className = 'dr-total';
+    totalEl.textContent = String(total);
+    math.append(breakdown, eq, totalEl);
 
-    const totalEl = document.createElement('div');
-    totalEl.className = 'dice-total';
-    const lab = document.createElement('span');
-    lab.className = 'dice-total-label';
-    lab.textContent = 'Total';
-    const val = document.createElement('span');
-    val.className = 'dice-total-val';
-    val.textContent = String(entry.total);
-    totalEl.append(lab, val);
-
-    resultEl.append(head, dice, totalEl);
-  }
-
-  function renderHistory() {
-    if (!history.length) { historyEl.hidden = true; return; }
-    historyEl.hidden = false;
-    historyEl.innerHTML = '';
-    const label = document.createElement('div');
-    label.className = 'dice-history-label';
-    label.textContent = 'Recent';
-    historyEl.appendChild(label);
-    for (const e of history) {
-      const row = document.createElement('div');
-      row.className = 'dice-history-row';
-      row.textContent = e.notation + ' = ' + e.total;
-      historyEl.appendChild(row);
-    }
+    resultEl.append(dismiss, note, math);
   }
 
   function setOpen(open) {
@@ -188,10 +161,6 @@ export function mountDiceRoller(root) {
 
   launcher.addEventListener('click', () => setOpen(panel.hidden));
   q('.dice-close').addEventListener('click', () => setOpen(false));
-  q('.dice-mod-dec').addEventListener('click', () => setMod(modifier - 1));
-  q('.dice-mod-inc').addEventListener('click', () => setMod(modifier + 1));
   q('.dice-roll').addEventListener('click', roll);
-  q('.dice-clear').addEventListener('click', () => { pool = {}; setMod(0); renderPool(); resultEl.hidden = true; });
-
-  renderPool();
+  q('.dice-clear').addEventListener('click', () => { clearAll(); resultEl.hidden = true; });
 }
