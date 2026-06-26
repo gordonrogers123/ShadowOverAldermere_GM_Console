@@ -460,6 +460,17 @@ body.view-gm {
   border-radius: 8px; cursor: pointer; color: var(--ink);
 }
 .view-gm .cue-empty-hint { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0 0; }
+.view-gm .cue-seq { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+/* Per-cue keyframe editor: one lane per row, each with Start / Ramp (seconds).
+   Indented under its cue row with a left accent to read as that cue's timeline. */
+.view-gm .cue-timeline {
+  margin: 0 0 0.6rem 0.5rem; padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--control); background: var(--fill); border-radius: var(--radius-sm);
+}
+.view-gm .cue-lane { display: flex; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-1); flex-wrap: wrap; }
+.view-gm .cue-lane-name { flex: 0 0 7rem; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100); }
+.view-gm .cue-lane-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); color: var(--neutral); }
+.view-gm .cue-lane-field input[type="number"] { width: 4rem; padding: 0.25rem 0.4rem; }
 .view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
 /* .b-save colour now comes from the .btn--save role. */
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
