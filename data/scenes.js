@@ -61,6 +61,7 @@
 //      // leaves the background and music alone. Carried opaquely; old scenes
 //      // without it load fine.
 //      cues: [ { id, label, opening:false,
+//                notes:"Shown live while this cue is active (else the scene note)",
 //                affects:{background,mapMode,curtain,characters,tokens,audio},
 //                snapshot:{ mapState, mapMode, visible,
 //                           left:{shown,srcOverride}, right:{shown,srcOverride},

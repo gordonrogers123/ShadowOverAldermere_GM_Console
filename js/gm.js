@@ -28,7 +28,6 @@ export function mountGm(root) {
   let draft = null;                 // the in-progress scene while building
   let mapMode = false;              // map mode replaces the live panel for token play
   let activeCueId = null;           // the cue last applied -- lights its rail button
-  let railContextKey = null;        // scene|mode|cue key; resets the All-controls open-state only on change
   let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
   let testTimers = [];              // pending setTimeouts for a builder "Test in preview" run
   const cueOpen = new Set();        // ids of cue cards expanded in the builder
@@ -72,54 +71,58 @@ export function mountGm(root) {
         <ul class="scene-list"></ul>
         <p class="rescan-status" role="status" aria-live="polite" hidden></p>
 
-        <!-- Live controls live in the rail so they stay put (and visible) whether
-             you are directing the scene or in map mode: nothing jumps. The nav
-             row (Black out + Map<->Exit + Edit) is shown in BOTH modes at one
-             fixed spot, so the three quick actions sit together and never move. -->
+        <!-- The performance surface: the controls the GM needs at their fingertips
+             while running a scene, in a fixed order below the preview -- cue bar,
+             quick actions (background + characters), then a compact audio mixer.
+             Quick + Mixer are the live manual surface; map mode swaps in its own
+             controls. Nothing jumps between live and map. -->
         <div class="gm-controls" hidden>
-          <!-- Cues lead: one press transitions the whole stage (background, who is
-               on stage, audio) at once. Cues are authored in the scene editor. -->
+          <!-- Cue bar: the numerous one-press transitions, a row below the preview. -->
           <div class="control-row cue-row" hidden>
             <div class="cue-buttons"></div>
           </div>
+
+          <!-- Quick actions (live): background hot-swap + black out, and Left/Right
+               character hot-swap + hide -- the common live tweaks, always one tap. -->
+          <div class="gm-quick" hidden>
+            <div class="quick-row quick-bg-row">
+              <span class="control-label">Background</span>
+              <div class="quick-bg-buttons"></div>
+              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)">Black out</button>
+            </div>
+            <div class="quick-row quick-char-row" data-side="left">
+              <span class="control-label">Left</span>
+              <select class="quick-swap" data-side="left" aria-label="Left character (hot-swap)"></select>
+              <button class="gm-button btn--toggle quick-hide" data-side="left" type="button">Hide</button>
+            </div>
+            <div class="quick-row quick-char-row" data-side="right">
+              <span class="control-label">Right</span>
+              <select class="quick-swap" data-side="right" aria-label="Right character (hot-swap)"></select>
+              <button class="gm-button btn--toggle quick-hide" data-side="right" type="button">Hide</button>
+            </div>
+          </div>
+
+          <!-- Audio mixer (live): compact vertical faders (Master/Music/Ambience)
+               with a mute each, a one-press Fade in/out, and the SFX buttons.
+               Built by renderMixer(); the full per-bed panel sits collapsed below. -->
+          <div class="gm-mixer" hidden>
+            <div class="mixer-faders"></div>
+            <div class="mixer-extra"></div>
+          </div>
+
           <div class="control-row controls-nav">
-            <button class="gm-button btn--toggle vis-toggle" type="button">Black out</button>
             <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
             <button class="gm-button btn--quiet edit-scene" type="button">Edit</button>
           </div>
 
-          <!-- Contextual cue controls: when a cue is active, the manual controls
-               for JUST that cue's aspects surface here, so a quick change shows
-               only what it changes. Driven by the active cue's affects set; the
-               rows are the real controls, relocated here (not copies). -->
-          <div class="cue-controls" hidden>
-            <span class="cue-controls-label"></span>
-          </div>
-
-          <!-- The full manual set, collapsible. Leads OPEN for scenes without cues
-               (the classic workflow) and tucks away for cue-led scenes -- still one
-               click from an off-script tweak. The Background + character rows live
-               here and move up into Cue controls when the active cue affects them. -->
-          <details class="all-controls">
-            <summary class="all-controls-summary">All controls</summary>
+          <!-- Map-mode controls: reveal the map variant + Save/Reset layout. Shown
+               only in map mode; the quick + mixer modules take over in live. -->
+          <details class="all-controls" hidden>
+            <summary class="all-controls-summary">Map controls</summary>
             <div class="all-controls-body">
               <div class="control-row variant-row">
                 <span class="control-label">Background</span>
                 <div class="variant-buttons"></div>
-              </div>
-              <div class="controls-live">
-                <div class="control-row char-row" data-side="left">
-                  <span class="control-label">Left</span>
-                  <button class="gm-button char-toggle" data-side="left" type="button">Enter</button>
-                  <select class="char-swap" data-side="left" aria-label="Left character"></select>
-                  <button class="gm-button char-reset" data-side="left" type="button">Reset</button>
-                </div>
-                <div class="control-row char-row" data-side="right">
-                  <span class="control-label">Right</span>
-                  <button class="gm-button char-toggle" data-side="right" type="button">Enter</button>
-                  <select class="char-swap" data-side="right" aria-label="Right character"></select>
-                  <button class="gm-button char-reset" data-side="right" type="button">Reset</button>
-                </div>
               </div>
               <div class="controls-map" hidden>
                 <div class="control-row">
@@ -151,10 +154,13 @@ export function mountGm(root) {
           <p class="notes-body"></p>
         </div>
 
-        <div class="gm-audio" hidden>
-          <h3 class="gm-h3">Audio</h3>
+        <!-- The full per-bed audio panel (outputs, per-track Vol/Pan/Play, Save).
+             Collapsed by default now that the compact mixer carries the live
+             controls -- this is the setup/detail view, one click away. -->
+        <details class="gm-audio" hidden>
+          <summary class="gm-audio-summary">Audio &mdash; full panel <small>(per-bed Vol/Pan, outputs, save)</small></summary>
           <div class="audio-body"></div>
-        </div>
+        </details>
 
         <div class="gm-builder" hidden>
           <h3 class="gm-h3 builder-title">Build a scene</h3>
@@ -276,8 +282,11 @@ export function mountGm(root) {
     controls:     root.querySelector('.gm-controls'),
     cueRow:       root.querySelector('.cue-row'),
     cueButtons:   root.querySelector('.cue-buttons'),
-    cueControls:  root.querySelector('.cue-controls'),
-    cueControlsLabel: root.querySelector('.cue-controls-label'),
+    quick:        root.querySelector('.gm-quick'),
+    quickBgButtons: root.querySelector('.quick-bg-buttons'),
+    mixer:        root.querySelector('.gm-mixer'),
+    mixerFaders:  root.querySelector('.mixer-faders'),
+    mixerExtra:   root.querySelector('.mixer-extra'),
     allControls:  root.querySelector('.all-controls'),
     allControlsBody: root.querySelector('.all-controls-body'),
     visToggle:    root.querySelector('.vis-toggle'),
@@ -311,7 +320,6 @@ export function mountGm(root) {
     bCopy:        root.querySelector('.b-copy'),
     modeChip:     root.querySelector('.gm-mode-chip'),
     mapModeToggle: root.querySelector('.map-mode-toggle'),
-    controlsLive: root.querySelector('.controls-live'),
     controlsMap:  root.querySelector('.controls-map'),
     mapmode:      root.querySelector('.gm-mapmode'),
     mapboard:     root.querySelector('.mapmode-board'),
@@ -331,21 +339,13 @@ export function mountGm(root) {
     cueList:      root.querySelector('.cue-list'),
     cueEmptyHint: root.querySelector('.cue-empty-hint'),
     cueNew:       root.querySelector('.cue-new'),
-    charToggle: {
-      left:  root.querySelector('.char-toggle[data-side="left"]'),
-      right: root.querySelector('.char-toggle[data-side="right"]')
+    quickSwap: {
+      left:  root.querySelector('.quick-swap[data-side="left"]'),
+      right: root.querySelector('.quick-swap[data-side="right"]')
     },
-    charSwap: {
-      left:  root.querySelector('.char-swap[data-side="left"]'),
-      right: root.querySelector('.char-swap[data-side="right"]')
-    },
-    charReset: {
-      left:  root.querySelector('.char-reset[data-side="left"]'),
-      right: root.querySelector('.char-reset[data-side="right"]')
-    },
-    charRow: {
-      left:  root.querySelector('.char-row[data-side="left"]'),
-      right: root.querySelector('.char-row[data-side="right"]')
+    quickHide: {
+      left:  root.querySelector('.quick-hide[data-side="left"]'),
+      right: root.querySelector('.quick-hide[data-side="right"]')
     }
   };
 
@@ -460,16 +460,15 @@ export function mountGm(root) {
     state.stage[side].shown = !state.stage[side].shown;
     commit();
   }
-  function swapSide(side, src) {
-    // Selecting a character only ARMS it -- the Enter button triggers the
-    // entrance. Picking from the dropdown never makes someone pop onto the
-    // stage (and never shows them over a title screen); visibility is left
-    // exactly as it was, so a live swap of an already-shown character is still
-    // instant while a hidden side stays hidden until you press Enter.
+  // Quick hot-swap: picking someone from the dropdown brings them on INSTANTLY
+  // (overriding the scene default). Choosing "Scene default" clears the override
+  // and shows the scene's own character there -- or hides the side if it has none.
+  function quickSwap(side, src) {
+    const scene = sceneById(state.sceneId);
     state.stage[side].srcOverride = src || null;
+    state.stage[side].shown = !!src || !!(scene && scene.characters && scene.characters[side]);
     commit();
   }
-  function resetSide(side) { state.stage[side].srcOverride = null; commit(); }
 
   els.visToggle.addEventListener('click', toggleVisible);
   els.cueNew.addEventListener('click', () => addCue());
@@ -483,9 +482,8 @@ export function mountGm(root) {
   els.mmSaveLayout.addEventListener('click', saveLayout);
   els.mmResetLayout.addEventListener('click', resetLayout);
   for (const side of ['left', 'right']) {
-    els.charToggle[side].addEventListener('click', () => toggleSide(side));
-    els.charReset[side].addEventListener('click', () => resetSide(side));
-    els.charSwap[side].addEventListener('change', () => swapSide(side, els.charSwap[side].value));
+    els.quickHide[side].addEventListener('click', () => toggleSide(side));
+    els.quickSwap[side].addEventListener('change', () => quickSwap(side, els.quickSwap[side].value));
   }
 
   // Build the background-variant buttons into a container; shared by the live
@@ -836,34 +834,112 @@ export function mountGm(root) {
     // editor now, not captured live, so there is no always-on Save button here).
     els.cueRow.hidden = cues.length === 0;
   }
-  // Reorganize the manual control rows for the current context. When a cue is
-  // active in live mode, the rows for its affected aspects move up into the
-  // contextual Cue controls; everything else lives in the collapsible All
-  // controls. appendChild MOVES a node (keeping its handlers + select values),
-  // so the SAME real controls relocate -- nothing is duplicated. The All-controls
-  // open-state is set only when the context changes, never fighting a manual toggle.
-  function placeManualControls(scene, inMap) {
-    const cue = (!inMap && scene) ? (scene.cues || []).find((c) => c.id === activeCueId) : null;
-    const aff = cue ? cueAffects(cue) : null;
-    const contextual = [];
-    if (aff) {
-      if (aff.background && !els.variantRow.hidden) contextual.push(els.variantRow);
-      if (aff.characters) contextual.push(els.controlsLive);
+  // ---- Quick actions (live manual surface): background + characters ----
+  // The always-on row of common live tweaks, below the cue bar. Background chips
+  // switch the backdrop instantly; each character side has a hot-swap dropdown
+  // (picking someone brings them on at once) and a Hide/Show toggle.
+  function renderQuick(scene) {
+    buildVariantButtons(els.quickBgButtons, scene);   // cinematic variants; lights the active one
+    for (const side of ['left', 'right']) {
+      const hasChar = !!(scene.characters && scene.characters[side]) || !!state.stage[side].srcOverride;
+      fillCharSelect(els.quickSwap[side], state.stage[side].srcOverride || '', true);   // first option = Scene default
+      const shown = state.stage[side].shown;
+      els.quickHide[side].textContent = shown ? 'Hide' : 'Show';
+      els.quickHide[side].classList.toggle('is-on', !shown);   // lit while that side is hidden
+      els.quickHide[side].disabled = !hasChar;
     }
-    for (const node of contextual) els.cueControls.appendChild(node);
-    for (const node of [els.variantRow, els.controlsLive, els.controlsMap]) {
-      if (!contextual.includes(node)) els.allControlsBody.appendChild(node);
+  }
+
+  // ---- Audio mixer (compact live surface): faders + mute + fade + SFX ----
+  // The live track keys for a category ('mus'/'amb'); 'master' is special-cased.
+  function mixerTrackKeys(kind) {
+    ensureAudio();
+    const t = state.audio.tracks || {};
+    return Object.keys(t).filter((k) => k.indexOf(kind + ':') === 0);
+  }
+  function mixerGroupMuted(kind) {
+    const keys = mixerTrackKeys(kind);
+    return keys.length > 0 && keys.every((k) => state.audio.tracks[k].muted);
+  }
+  // A labelled vertical fader + a mute. kind: 'master' | 'mus' | 'amb'. The group
+  // faders drive every bed in their category together (one live level), with the
+  // first bed as the representative reading.
+  function buildFader(label, kind) {
+    const col = document.createElement('div'); col.className = 'mixer-fader';
+    const name = document.createElement('span'); name.className = 'mixer-fader-name'; name.textContent = label;
+    const sliderWrap = document.createElement('div'); sliderWrap.className = 'mixer-slider-wrap';
+    const slider = document.createElement('input');
+    slider.type = 'range'; slider.className = 'mixer-slider'; slider.min = 0; slider.max = 1; slider.step = 0.01;
+    sliderWrap.append(slider);
+    const groupVal = () => {
+      if (kind === 'master') return state.audio.master == null ? 0.8 : state.audio.master;
+      const keys = mixerTrackKeys(kind);
+      return keys.length ? state.audio.tracks[keys[0]].volume : 0.8;
+    };
+    slider.value = groupVal();
+    slider.addEventListener('input', () => {
+      ensureAudio();
+      const v = +slider.value;
+      if (kind === 'master') state.audio.master = v;
+      else for (const k of mixerTrackKeys(kind)) state.audio.tracks[k].volume = v;
+      commitAudio();
+    });
+    const mute = document.createElement('button');
+    mute.className = 'gm-button btn--toggle mixer-mute'; mute.type = 'button'; mute.textContent = 'Mute';
+    mute.dataset.kind = kind;
+    const isMuted = () => kind === 'master' ? !!state.audio.masterMuted : mixerGroupMuted(kind);
+    mute.classList.toggle('is-on', isMuted());
+    mute.addEventListener('click', () => {
+      ensureAudio();
+      if (kind === 'master') state.audio.masterMuted = !state.audio.masterMuted;
+      else { const want = !isMuted(); for (const k of mixerTrackKeys(kind)) state.audio.tracks[k].muted = want; }
+      mute.classList.toggle('is-on', isMuted());
+      commitAudio();
+    });
+    col.append(name, sliderWrap, mute);
+    return col;
+  }
+  // Fade the whole mix out (or back in) over a slow ramp -- one toggle button.
+  // Rides masterMuted (so it shares the Master mute state) but with a long ramp.
+  function fadeAudio() {
+    ensureAudio();
+    state.audio.ramp = 1800;                              // slow gain ramp for the fade
+    state.audio.masterMuted = !state.audio.masterMuted;
+    commitAudio();
+    renderMixer(sceneById(state.sceneId));               // refresh Fade + Master-mute lit states
+    setTimeout(() => { if (state.audio) { delete state.audio.ramp; commitAudio(); } }, 2100);
+  }
+  function renderMixer(scene) {
+    ensureAudio();
+    els.mixerFaders.innerHTML = '';
+    els.mixerExtra.innerHTML = '';
+    const a = (scene && scene.audio) || {};
+    els.mixerFaders.append(buildFader('Master', 'master'));
+    if (musicBeds(a).length) els.mixerFaders.append(buildFader('Music', 'mus'));
+    if ((a.ambience || []).length) els.mixerFaders.append(buildFader('Ambience', 'amb'));
+
+    const fade = document.createElement('button');
+    fade.className = 'gm-button btn--toggle mixer-fade'; fade.type = 'button';
+    fade.textContent = state.audio.masterMuted ? 'Fade in' : 'Fade out';
+    fade.classList.toggle('is-on', !!state.audio.masterMuted);
+    fade.title = 'Fade all audio out / back in';
+    fade.addEventListener('click', fadeAudio);
+    els.mixerExtra.append(fade);
+
+    for (const s of (a.sfx || [])) {
+      const b = document.createElement('button');
+      b.className = 'gm-button mixer-sfx'; b.type = 'button'; b.dataset.sfx = s.id; b.textContent = humanize(s.id);
+      b.addEventListener('click', () => { ensureAudio(); state.audio.sfxTrigger[s.id] = (state.audio.sfxTrigger[s.id] || 0) + 1; commitAudio(); });
+      els.mixerExtra.append(b);
     }
-    els.cueControls.hidden = contextual.length === 0;
-    els.cueControlsLabel.textContent = (cue && contextual.length) ? (cue.label || cue.id) : '';
-    // Open All controls for the classic no-cue live workflow and in map mode
-    // (Save/Reset live there); collapse it for a cue-led scene -- but only when
-    // the context actually changes, so a manual expand/collapse sticks.
-    const key = (scene ? scene.id : '') + '|' + (inMap ? 'map' : 'live') + '|' + (cue ? cue.id : '');
-    if (key !== railContextKey) {
-      railContextKey = key;
-      els.allControls.open = inMap || !cue;
-    }
+  }
+
+  // GM notes shown live: a cue's own notes when it is the active cue (so blocking
+  // text follows the beat), otherwise the scene's default note.
+  function activeCueNotes(scene) {
+    const cue = scene && (scene.cues || []).find((c) => c.id === activeCueId);
+    if (cue && (cue.notes || '').trim()) return cue.notes;
+    return scene ? (scene.gmNotes || '') : '';
   }
 
   // Category label + order for the grouped left/right character pickers.
@@ -903,16 +979,8 @@ export function mountGm(root) {
     els.badge.textContent = (scene.maps && scene.maps[state.mapState] === '') ? 'Title screen' : humanize(state.mapState);
     els.badge.classList.toggle('badge-revealed', keys.length > 1 && state.mapState !== keys[0]);
 
-    for (const side of ['left', 'right']) {
-      const hasChar = !!(scene.characters && scene.characters[side]) || !!state.stage[side].srcOverride;
-      els.charToggle[side].textContent = state.stage[side].shown ? 'Exit' : 'Enter';
-      els.charToggle[side].disabled = !hasChar;
-      els.charReset[side].disabled = !state.stage[side].srcOverride;
-      els.charRow[side].classList.toggle('row-disabled', !hasChar);
-      fillCharSelect(els.charSwap[side], state.stage[side].srcOverride || '', true);
-    }
-
-    els.notesBody.textContent = scene.gmNotes || '';
+    // GM notes follow the active cue (its own notes when set), else the scene's.
+    els.notesBody.textContent = activeCueNotes(scene);
   }
 
   // ============================================================
@@ -1515,6 +1583,7 @@ export function mountGm(root) {
           affects: { ...defaultAffects(), ...(c.affects || {}) },
           snapshot: c.snapshot || {}
         };
+        if ((c.notes || '').trim()) out.notes = c.notes.trim();   // per-cue GM note (optional)
         const tl = normalizeTimeline(c.timeline);
         if (tl) out.timeline = tl;   // only sequenced cues carry a timeline
         return out;
@@ -1726,6 +1795,7 @@ export function mountGm(root) {
       id: uniqueCueId(cues, slug(label)),
       label,
       opening: false,
+      notes: '',
       affects: { background: false, characters: false, audio: false, mapMode: false, curtain: false, tokens: false },
       snapshot: { mapState: null, mapMode: false, visible: true,
         left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null },
@@ -1967,6 +2037,17 @@ export function mountGm(root) {
     cuToggle.classList.toggle('is-on', !!aff.curtain);
     cuToggle.addEventListener('click', () => { aff.curtain = !aff.curtain; if (aff.curtain) snap.visible = true; renderCueRows(); });
     cuF.append(cuToggle); host.append(cuF);
+
+    // Per-cue GM notes: shown live in place of the scene note while this cue is
+    // the active one, so the blocking text follows the beat. Empty -> the scene
+    // default note shows instead.
+    const noteF = field('Notes');
+    const ta = document.createElement('textarea');
+    ta.className = 'cue-notes'; ta.rows = 2;
+    ta.placeholder = 'Shown while this cue is live (falls back to the scene note)';
+    ta.value = cue.notes || '';
+    ta.addEventListener('input', () => { cue.notes = ta.value; });
+    noteF.append(ta); host.append(noteF);
 
     // Reference of what side carries which char (keeps the snapshot consistent
     // when characters is on but a side was never touched).
@@ -2290,7 +2371,6 @@ export function mountGm(root) {
     els.preview.hidden = inMap || !(building || scene);
     // Controls live in the rail and stay in ONE place across live <-> map mode.
     els.controls.hidden = building || !scene;     // shown in live AND map
-    els.controlsLive.hidden = inMap;              // character + edit rows: live only
     els.controlsMap.hidden = !inMap;              // save/reset layout: map only
     els.notes.hidden = inMap || building || !scene;
     els.builder.hidden = !building;
@@ -2307,9 +2387,19 @@ export function mountGm(root) {
       els.mapModeToggle.hidden = !sceneHasMap(scene);
       els.mapModeToggle.textContent = inMap ? 'Exit map mode' : 'Map mode';
       els.mapModeToggle.classList.toggle('is-on', inMap);
-      renderVariantButtons(scene);
       renderCueButtons(scene);
-      placeManualControls(scene, inMap);
+      // Live: the quick-actions + mixer modules are the manual surface. Map mode
+      // swaps in its own controls (variant reveal + Save/Reset layout).
+      els.quick.hidden = inMap;
+      els.mixer.hidden = inMap || !scene.audio;
+      els.allControls.hidden = !inMap;
+      if (inMap) {
+        renderVariantButtons(scene);     // the map-reveal chips in the Map controls
+        els.allControls.open = true;
+      } else {
+        renderQuick(scene);
+        if (scene.audio) renderMixer(scene);
+      }
     }
 
     // Surface audio for every selected scene: the full panel when the scene

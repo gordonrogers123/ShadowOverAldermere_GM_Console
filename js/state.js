@@ -117,7 +117,8 @@ function normalizeTrack(t) {
     playing: !!t.playing,
     volume: clamp01(t.volume == null ? 0.8 : t.volume),
     pan: clampPan(t.pan),
-    loop: t.loop !== false
+    loop: t.loop !== false,
+    muted: !!t.muted          // mixer mute: silent but still "playing"
   };
 }
 
@@ -143,6 +144,7 @@ function normalizeAudio(a) {
   }
   return {
     master: clamp01(a.master == null ? 0.8 : a.master),
+    masterMuted: !!a.masterMuted,   // mixer Master mute / Fade -> whole mix silent
     outputs: { player: o.player !== false, gm: !!o.gm },
     tracks,
     sfxTrigger
