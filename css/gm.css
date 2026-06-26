@@ -215,10 +215,20 @@ body.view-gm {
    height, and the cue bar as a FULL-WIDTH row under both, then the Edit/Map nav. */
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);   /* side ~20% narrower -> bigger preview */
+  /* Fixed side width (not a min/max range): ~20% narrower than before for a
+     bigger preview, but ALWAYS wide enough to keep the four mixer columns on one
+     row at any window width (a range let it shrink and wrap the SFX column). */
+  grid-template-columns: minmax(0, 1fr) 20rem;
   grid-template-areas: "preview side" "cue cue" "nav nav";
   gap: var(--space-3) var(--space-4);
   align-items: stretch;
+}
+/* On a stage too narrow for side-by-side, stack: preview on top, controls below. */
+@media (max-width: 1180px) {
+  .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface {
+    grid-template-columns: 1fr;
+    grid-template-areas: "preview" "side" "cue" "nav";
+  }
 }
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface > .gm-preview { grid-area: preview; align-self: start; }
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .perf-side { grid-area: side; }
