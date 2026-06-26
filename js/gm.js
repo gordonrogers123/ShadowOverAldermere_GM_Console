@@ -28,6 +28,7 @@ export function mountGm(root) {
   let draft = null;                 // the in-progress scene while building
   let mapMode = false;              // map mode replaces the live panel for token play
   let activeCueId = null;           // the cue last applied -- lights its rail button
+  let railContextKey = null;        // scene|mode|cue key; resets the All-controls open-state only on change
   let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
@@ -83,30 +84,48 @@ export function mountGm(root) {
             <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
             <button class="gm-button btn--quiet edit-scene" type="button">Edit</button>
           </div>
-          <div class="control-row variant-row">
-            <span class="control-label">Background</span>
-            <div class="variant-buttons"></div>
+
+          <!-- Contextual cue controls: when a cue is active, the manual controls
+               for JUST that cue's aspects surface here, so a quick change shows
+               only what it changes. Driven by the active cue's affects set; the
+               rows are the real controls, relocated here (not copies). -->
+          <div class="cue-controls" hidden>
+            <span class="cue-controls-label"></span>
           </div>
-          <div class="controls-live">
-            <div class="control-row char-row" data-side="left">
-              <span class="control-label">Left</span>
-              <button class="gm-button char-toggle" data-side="left" type="button">Enter</button>
-              <select class="char-swap" data-side="left" aria-label="Left character"></select>
-              <button class="gm-button char-reset" data-side="left" type="button">Reset</button>
+
+          <!-- The full manual set, collapsible. Leads OPEN for scenes without cues
+               (the classic workflow) and tucks away for cue-led scenes -- still one
+               click from an off-script tweak. The Background + character rows live
+               here and move up into Cue controls when the active cue affects them. -->
+          <details class="all-controls">
+            <summary class="all-controls-summary">All controls</summary>
+            <div class="all-controls-body">
+              <div class="control-row variant-row">
+                <span class="control-label">Background</span>
+                <div class="variant-buttons"></div>
+              </div>
+              <div class="controls-live">
+                <div class="control-row char-row" data-side="left">
+                  <span class="control-label">Left</span>
+                  <button class="gm-button char-toggle" data-side="left" type="button">Enter</button>
+                  <select class="char-swap" data-side="left" aria-label="Left character"></select>
+                  <button class="gm-button char-reset" data-side="left" type="button">Reset</button>
+                </div>
+                <div class="control-row char-row" data-side="right">
+                  <span class="control-label">Right</span>
+                  <button class="gm-button char-toggle" data-side="right" type="button">Enter</button>
+                  <select class="char-swap" data-side="right" aria-label="Right character"></select>
+                  <button class="gm-button char-reset" data-side="right" type="button">Reset</button>
+                </div>
+              </div>
+              <div class="controls-map" hidden>
+                <div class="control-row">
+                  <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
+                  <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
+                </div>
+              </div>
             </div>
-            <div class="control-row char-row" data-side="right">
-              <span class="control-label">Right</span>
-              <button class="gm-button char-toggle" data-side="right" type="button">Enter</button>
-              <select class="char-swap" data-side="right" aria-label="Right character"></select>
-              <button class="gm-button char-reset" data-side="right" type="button">Reset</button>
-            </div>
-          </div>
-          <div class="controls-map" hidden>
-            <div class="control-row">
-              <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
-              <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
-            </div>
-          </div>
+          </details>
         </div>
       </aside>
 
@@ -252,6 +271,10 @@ export function mountGm(root) {
     cueRow:       root.querySelector('.cue-row'),
     cueButtons:   root.querySelector('.cue-buttons'),
     cueSave:      root.querySelector('.cue-save'),
+    cueControls:  root.querySelector('.cue-controls'),
+    cueControlsLabel: root.querySelector('.cue-controls-label'),
+    allControls:  root.querySelector('.all-controls'),
+    allControlsBody: root.querySelector('.all-controls-body'),
     visToggle:    root.querySelector('.vis-toggle'),
     editScene:    root.querySelector('.edit-scene'),
     variantRow:   root.querySelector('.variant-row'),
@@ -621,6 +644,35 @@ export function mountGm(root) {
     // Always offer the row for a selected scene: the buttons (if any) plus the
     // ever-present "Save as cue" that authors the first one.
     els.cueRow.hidden = false;
+  }
+  // Reorganize the manual control rows for the current context. When a cue is
+  // active in live mode, the rows for its affected aspects move up into the
+  // contextual Cue controls; everything else lives in the collapsible All
+  // controls. appendChild MOVES a node (keeping its handlers + select values),
+  // so the SAME real controls relocate -- nothing is duplicated. The All-controls
+  // open-state is set only when the context changes, never fighting a manual toggle.
+  function placeManualControls(scene, inMap) {
+    const cue = (!inMap && scene) ? (scene.cues || []).find((c) => c.id === activeCueId) : null;
+    const aff = cue ? cueAffects(cue) : null;
+    const contextual = [];
+    if (aff) {
+      if (aff.background && !els.variantRow.hidden) contextual.push(els.variantRow);
+      if (aff.characters) contextual.push(els.controlsLive);
+    }
+    for (const node of contextual) els.cueControls.appendChild(node);
+    for (const node of [els.variantRow, els.controlsLive, els.controlsMap]) {
+      if (!contextual.includes(node)) els.allControlsBody.appendChild(node);
+    }
+    els.cueControls.hidden = contextual.length === 0;
+    els.cueControlsLabel.textContent = (cue && contextual.length) ? (cue.label || cue.id) : '';
+    // Open All controls for the classic no-cue live workflow and in map mode
+    // (Save/Reset live there); collapse it for a cue-led scene -- but only when
+    // the context actually changes, so a manual expand/collapse sticks.
+    const key = (scene ? scene.id : '') + '|' + (inMap ? 'map' : 'live') + '|' + (cue ? cue.id : '');
+    if (key !== railContextKey) {
+      railContextKey = key;
+      els.allControls.open = inMap || !cue;
+    }
   }
 
   // Category label + order for the grouped left/right character pickers.
@@ -1775,6 +1827,7 @@ export function mountGm(root) {
       els.mapModeToggle.classList.toggle('is-on', inMap);
       renderVariantButtons(scene);
       renderCueButtons(scene);
+      placeManualControls(scene, inMap);
     }
 
     // Surface audio for every selected scene: the full panel when the scene
