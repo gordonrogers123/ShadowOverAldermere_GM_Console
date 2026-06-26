@@ -214,9 +214,9 @@ export function mountGm(root) {
               </div>
 
               <div class="field">
-                <span>Audio <small>(music bed, ambience loops, one-shot SFX)</small></span>
+                <span>Audio <small>(music beds, ambience loops, one-shot SFX)</small></span>
                 <div class="audio-pick">
-                  <label class="audio-pick-row"><span class="audio-pick-label">Music</span><select class="b-music"></select></label>
+                  <div class="audio-pick-group"><span class="audio-pick-label">Music <small>(one or more beds; cues choose which plays)</small></span><div class="b-music"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
                 </div>
@@ -611,7 +611,9 @@ export function mountGm(root) {
     // engine cross-fades both ways); fire any authored SFX; rebuild the panel.
     if (aff.audio && snap.audio) {
       const tracks = state.audio.tracks || {};
-      const set = new Set(snap.audio.playing || []);
+      // Map the legacy single-music key to the first bed so cues captured before
+      // the music library still play (tracks are 'mus:<i>' now).
+      const set = new Set((snap.audio.playing || []).map((k) => (k === 'music' ? 'mus:0' : k)));
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
       if (snap.audio.master != null) state.audio.master = snap.audio.master;
       for (const id of (snap.audio.sfx || [])) {
@@ -749,13 +751,21 @@ export function mountGm(root) {
       loop: cfg.loop !== false
     };
   }
+  // A scene's music as an array of beds, accepting either the new array form or
+  // a single legacy `{src,...}` object. Multiple beds let cues vary the music.
+  function musicBeds(a) {
+    if (!a) return [];
+    const m = a.music;
+    if (Array.isArray(m)) return m.filter((x) => x && x.src);
+    return (m && m.src) ? [m] : [];
+  }
   // Seed live tracks from a scene's audio config, preserving the GM's session
   // master/outputs. Music/ambience start NOT playing (cued deliberately).
   function seedAudioFromScene(scene, prev) {
     prev = prev || {};
     const a = (scene && scene.audio) || {};
     const tracks = {};
-    if (a.music && a.music.src) tracks.music = trackFromCfg(a.music);
+    musicBeds(a).forEach((m, i) => { tracks['mus:' + i] = trackFromCfg(m); });
     (a.ambience || []).forEach((amb, i) => { if (amb && amb.src) tracks['amb:' + i] = trackFromCfg(amb); });
     const sfxTrigger = {};
     (a.sfx || []).forEach((s) => { if (s && s.id) sfxTrigger[s.id] = 0; });
@@ -774,7 +784,10 @@ export function mountGm(root) {
     const a = JSON.parse(JSON.stringify(scene.audio));
     const tr = (state.audio && state.audio.tracks) || {};
     const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false });
-    if (a.music && tr.music) Object.assign(a.music, tune(tr.music));
+    // Tune each music bed in place, preserving the stored shape (array or the
+    // single legacy object) so existing scenes are not reshaped on a Save.
+    if (Array.isArray(a.music)) a.music.forEach((m, i) => { const t = tr['mus:' + i]; if (t && m) Object.assign(m, tune(t)); });
+    else if (a.music && a.music.src) { const t = tr['mus:0']; if (t) Object.assign(a.music, tune(t)); }
     (a.ambience || []).forEach((amb, i) => { const t = tr['amb:' + i]; if (t) Object.assign(amb, tune(t)); });
     const updated = { ...scene, audio: a };
     addUserScene(updated);
@@ -822,7 +835,10 @@ export function mountGm(root) {
     top.append(aSub('Output'), outWrap);
     els.audioBody.append(top);
 
-    if (a.music && a.music.src) els.audioBody.append(buildTrackBlock('music', 'Music', a.music));
+    const beds = musicBeds(a);
+    beds.forEach((m, i) => {
+      els.audioBody.append(buildTrackBlock('mus:' + i, beds.length > 1 ? 'Music ' + (i + 1) : 'Music', m));
+    });
     (a.ambience || []).forEach((amb, i) => {
       if (amb && amb.src) els.audioBody.append(buildTrackBlock('amb:' + i, 'Ambience ' + (i + 1), amb));
     });
@@ -902,10 +918,14 @@ export function mountGm(root) {
     }
   }
   function renderAudioPick() {
-    els.bMusic.innerHTML = '';
-    const none = document.createElement('option'); none.value = ''; none.textContent = 'None'; els.bMusic.append(none);
-    for (const m of audioMusic) { const o = document.createElement('option'); o.value = m.src; o.textContent = m.name; els.bMusic.append(o); }
-    els.bMusic.value = (draft.audio.music && draft.audio.music.src) || '';
+    // Music is now a LIBRARY of beds (checkbox list, like Ambience); cues pick
+    // which bed plays. draft.audio.music is an array of {src,volume,pan,loop}.
+    buildAudioChecks(els.bMusic, audioMusic,
+      (item) => draft.audio.music.some((x) => x.src === item.src),
+      (item, on) => {
+        if (on) { if (!draft.audio.music.some((x) => x.src === item.src)) draft.audio.music.push({ src: item.src, volume: 0.8, pan: 0, loop: true }); }
+        else draft.audio.music = draft.audio.music.filter((x) => x.src !== item.src);
+      });
     buildAudioChecks(els.bAmbience, audioAmbience,
       (item) => draft.audio.ambience.some((x) => x.src === item.src),
       (item, on) => {
@@ -922,10 +942,11 @@ export function mountGm(root) {
   // Build a scene.audio object from the draft, or null when nothing is chosen.
   function buildSceneAudio(da) {
     da = da || {};
-    const music = (da.music && da.music.src) ? da.music : null;
+    // Music is a library of beds now; accept the new array or a legacy single.
+    const music = (Array.isArray(da.music) ? da.music : (da.music ? [da.music] : [])).filter((x) => x && x.src);
     const ambience = (da.ambience || []).filter((x) => x && x.src);
     const sfx = (da.sfx || []).filter((x) => x && x.id && x.src);
-    if (!music && !ambience.length && !sfx.length) return null;
+    if (!music.length && !ambience.length && !sfx.length) return null;
     return { music, ambience, sfx };
   }
 
@@ -1217,7 +1238,7 @@ export function mountGm(root) {
       roster: { heroes: [], enemies: [] },
       savedLayout: [],
       cues: [],
-      audio: { music: null, ambience: [], sfx: [] }
+      audio: { music: [], ambience: [], sfx: [] }
     };
   }
   function sceneToDraft(scene) {
@@ -1252,10 +1273,10 @@ export function mountGm(root) {
       // Captured live; the builder only renames / re-scopes / reorders them.
       cues: Array.isArray(scene.cues) ? JSON.parse(JSON.stringify(scene.cues)) : [],
       audio: scene.audio
-        ? { music: scene.audio.music || null,
+        ? { music: musicBeds(scene.audio).map((m) => ({ ...m })),   // normalize legacy single bed -> array
             ambience: Array.isArray(scene.audio.ambience) ? JSON.parse(JSON.stringify(scene.audio.ambience)) : [],
             sfx: Array.isArray(scene.audio.sfx) ? JSON.parse(JSON.stringify(scene.audio.sfx)) : [] }
-        : { music: null, ambience: [], sfx: [] }
+        : { music: [], ambience: [], sfx: [] }
     };
   }
 
@@ -1636,12 +1657,7 @@ export function mountGm(root) {
   els.bRightY.addEventListener('input', () => { draft.right.y = +els.bRightY.value; renderBuilderPreview(); });
   els.bLeftFlip.addEventListener('click', () => { draft.left.flip = !draft.left.flip; els.bLeftFlip.classList.toggle('is-on', draft.left.flip); renderBuilderPreview(); });
   els.bRightFlip.addEventListener('click', () => { draft.right.flip = !draft.right.flip; els.bRightFlip.classList.toggle('is-on', draft.right.flip); renderBuilderPreview(); });
-  els.bMusic.addEventListener('change', () => {
-    const src = els.bMusic.value;
-    draft.audio.music = src
-      ? ((draft.audio.music && draft.audio.music.src === src) ? draft.audio.music : { src, volume: 0.8, pan: 0, loop: true })
-      : null;
-  });
+  // Music is a checkbox library now (see renderAudioPick) -- no <select> handler.
   els.bCancel.addEventListener('click', closeBuilder);
   els.newScene.addEventListener('click', () => openBuilder(null));
 

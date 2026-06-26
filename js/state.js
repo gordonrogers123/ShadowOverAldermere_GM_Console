@@ -29,7 +29,7 @@
 //      audio: {                       // live audio, driven by the GM, mirrored
 //        master: 0.8,                 //   master volume [0,1]
 //        outputs: { player, gm },     //   which windows actually SOUND (selectable)
-//        tracks: {                    //   keyed 'music' | 'amb:<i>'
+//        tracks: {                    //   keyed 'mus:<i>' | 'amb:<i>' (legacy 'music')
 //          "<key>": { playing, volume, pan, loop } },
 //        sfxTrigger: { "<sfxId>": n } //   bump the counter to fire a one-shot
 //      }
