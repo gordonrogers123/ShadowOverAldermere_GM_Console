@@ -642,7 +642,7 @@ body.view-gm {
    its right, so the actions sit at the top instead of buried below the form. */
 .view-gm .builder-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .view-gm .builder-head .builder-title { margin: 0; margin-right: auto; }
-.view-gm .builder-tools { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.view-gm .builder-tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .view-gm .builder-tools .u-icon-btn { width: 2.4rem; height: 2.4rem; font-size: 1.1rem; }
 .view-gm .builder-tools .u-icon-btn svg { width: 1.15rem; height: 1.15rem; display: block; }
 .view-gm .builder-tools .b-save { border-color: var(--support); color: var(--support); }
@@ -650,7 +650,6 @@ body.view-gm {
 /* .b-save colour now comes from the .btn--save role. */
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
 .view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }
-.view-gm .b-copy { margin-top: var(--space-2); font-size: var(--fs-200); }
 
 /* ---- Roster picker (builder) ---- */
 .view-gm .roster-pick { display: flex; gap: 1.5rem; flex-wrap: wrap; }
@@ -681,33 +680,23 @@ body.view-gm {
 }
 
 /* ---- Map mode ---- */
-/* The stage is a single column: the BOARD on top, then a tidy controls strip
-   (Exit/Edit + Background reveal + Save/Reset), then the roster (+ initiative).
-   The empty quick/mixer panel, the cue bar and the preview are hidden in map
-   mode (renderUI), so only these three blocks remain -- ordered explicitly. */
+/* The stage is a single column: the BOARD on top (its header carries Edit/Exit +
+   the Map-variant reveal + Save/Reset), then the roster + initiative tracker row.
+   The whole performance surface (preview + live controls + the old controls strip)
+   is hidden in map mode, so only those two blocks remain -- ordered explicitly. */
 .view-gm .gm-stage.is-map { display: flex; flex-direction: column; gap: var(--space-3); }
 .view-gm .gm-stage.is-map .gm-mapmode { order: 1; }
-.view-gm .gm-stage.is-map .gm-surface { order: 2; }
-.view-gm .gm-stage.is-map .mapmode-combat { order: 3; }
+.view-gm .gm-stage.is-map .mapmode-combat { order: 2; }
 /* Roster (left, wider -- it's itself two columns) + initiative tracker (right)
    side by side, so the tracker sits beside the roster instead of buried far
    below it. Hidden entirely in live mode (the roster has no [hidden] toggle). */
 .view-gm .mapmode-combat { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
 .view-gm .gm-stage:not(.is-map) .mapmode-combat { display: none; }
 @media (max-width: 1100px) { .view-gm .mapmode-combat { grid-template-columns: 1fr; } }
-/* Force-hide the cue bar + empty quick/mixer panel in map mode: their own
-   .control-row / .perf-side display rules would otherwise beat the [hidden]
-   attribute and leave blank boxes in the controls strip. */
-.view-gm .gm-stage.is-map .cue-row,
-.view-gm .gm-stage.is-map .perf-side { display: none; }
-/* The "Map controls" read as an inline strip in map mode, not a collapsible. */
-.view-gm .gm-stage.is-map .all-controls { margin: 0; }
-.view-gm .gm-stage.is-map .all-controls-summary { display: none; }
-.view-gm .gm-stage.is-map .all-controls-body { padding-top: 0; }
-.view-gm .gm-stage.is-map .gm-surface {
-  background: var(--gm-panel); border: 1px solid var(--rule);
-  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
-}
+/* In map mode the whole performance surface (preview + live controls + the old
+   map-controls strip) is gone -- the map-variant reveal and Save/Reset layout now
+   ride the board header, so there is no separate strip below the board. */
+.view-gm .gm-stage.is-map .gm-surface { display: none; }
 
 /* .map-mode-btn is a secondary mode switch -- it now uses the neutral .btn--quiet role. */
 .view-gm .gm-mapmode {
@@ -719,11 +708,16 @@ body.view-gm {
   gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.8rem;
 }
 .view-gm .mapmode-title { margin: 0; }
-.view-gm .mapmode-head-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.view-gm .mapmode-head-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 /* The relocated Edit / Exit-map-mode nav reads as tight, natural-width buttons
    here -- not the stretched flex:1 row it is in the live surface. */
 .view-gm .mapmode-head-actions .controls-nav { margin: 0; gap: var(--space-2); }
 .view-gm .mapmode-head-actions .controls-nav > button { flex: 0 0 auto; }
+/* The relocated Save/Reset + map-variant rows sit inline in the header too --
+   no row margins, and the "Map" label keeps its natural (small) width. */
+.view-gm .mapmode-head-actions .control-row,
+.view-gm .mapmode-head-actions .controls-map { margin: 0; }
+.view-gm .mapmode-head-actions .control-label { min-width: 0; }
 /* .mm-vis is the same show/hide control as .vis-toggle -- colour from .btn--toggle. */
 .view-gm .mapmode-board {
   position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 72vh;
@@ -741,7 +735,7 @@ body.view-gm {
   margin-bottom: var(--space-2); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
 }
 .view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-right: auto; }
-.view-gm .mmr-addall, .view-gm .mmr-revealall { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-addall, .view-gm .mmr-revealall, .view-gm .mmr-rollenemies { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
 .view-gm .mmr-list { display: flex; flex-direction: column; gap: var(--space-1); }
 .view-gm .mmr-row { display: flex; align-items: center; gap: var(--space-2); }
 .view-gm .mmr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -768,7 +762,7 @@ body.view-gm {
 }
 .view-gm .init-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
 .view-gm .init-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-right: auto; }
-.view-gm .init-roll, .view-gm .init-rollall, .view-gm .init-clear { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
+.view-gm .init-apply, .view-gm .init-clear { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
 .view-gm .init-nav { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
 .view-gm .init-turn { font-size: var(--fs-200); color: var(--neutral); margin-left: auto; }
 .view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
@@ -790,14 +784,19 @@ body.view-gm {
 .view-gm .init-row.is-active .init-val { color: #8a5a16; }
 
 /* ---- Enemy stat sheet (map mode, left rail) ---- */
-/* In map mode the stat sheet REPLACES GM notes in the rail: same lower-2/3 slot
-   (flex:2, matching .gm-notes), directly under the scene list. No author
-   `display` here, so the UA [hidden] keeps hiding it in live mode. */
+/* In map mode the stat sheet REPLACES GM notes in the rail, sized to its own
+   content (not a stretched 2/3 panel) and sitting directly under the scene list
+   (which shrinks to content in map mode, below). No author `display` here, so
+   the UA [hidden] keeps hiding it in live mode. */
 .view-gm .gm-statsheet {
   background: var(--gm-panel); border: 1px solid var(--rule);
   border-left: 6px solid var(--offense); border-radius: 8px; padding: 0.8rem 1rem;
-  flex: 2 1 0; min-height: 6rem; overflow-y: auto;
+  flex: 0 0 auto; max-height: 60vh; overflow-y: auto;
 }
+/* In map mode (the stat sheet is showing) the scene list shrinks to its content
+   so the content-height stat card sits right beneath it instead of being pushed
+   to the rail bottom by a stretched list. */
+.view-gm .gm-scenes:has(.gm-statsheet:not([hidden])) .scene-list { flex: 0 1 auto; max-height: 45vh; }
 .view-gm .gm-statsheet .stat-name { margin: 0 0 0.5rem; }
 .view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
 .view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }

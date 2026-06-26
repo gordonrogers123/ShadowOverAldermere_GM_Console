@@ -121,7 +121,7 @@ export function mountGm(root) {
             <summary class="all-controls-summary">Map controls</summary>
             <div class="all-controls-body">
               <div class="control-row variant-row">
-                <span class="control-label">Background</span>
+                <span class="control-label">Map</span>
                 <div class="variant-buttons"></div>
               </div>
               <div class="controls-map" hidden>
@@ -406,6 +406,12 @@ export function mountGm(root) {
   initPanel.className = 'gm-initiative'; initPanel.hidden = true;
   els.initiative = initPanel;
   combat.append(els.mapRoster, initPanel);
+  // The map-mode controls (the map-variant reveal + Save/Reset layout) ride ON the
+  // board header row, next to the title and the Edit/Exit nav -- so the separate
+  // controls strip is gone entirely. They're map-only (inside .gm-mapmode, hidden
+  // in live mode), so this one-time move needs no per-render toggle; the now-empty
+  // .gm-surface is hidden in map mode (CSS).
+  els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
   // The active enemy's stat sheet sits in the left rail (where GM notes are),
   // shown only in map mode.
   const statSheet = document.createElement('div');
@@ -1354,8 +1360,12 @@ export function mountGm(root) {
     ensureTokens();
     state.stage.tokens = state.stage.tokens.filter((t) => t.instId !== instId);
     // A removed token leaves the initiative line; the cursor clamps + the active
-    // highlight moves to whoever now sits at that slot.
-    if (state.initiative && state.initiative.rolls) { delete state.initiative.rolls[instId]; rebuildInitOrder(); }
+    // highlight moves to whoever now sits at that slot. Only re-sort an EXISTING
+    // order (built by Apply) -- don't build one from a half-entered set.
+    if (state.initiative && state.initiative.rolls) {
+      delete state.initiative.rolls[instId];
+      if (Array.isArray(state.initiative.order) && state.initiative.order.length) rebuildInitOrder();
+    }
     commit();
   }
   function toggleTokenVisible(instId) {
@@ -1394,14 +1404,14 @@ export function mountGm(root) {
     if (i.idx >= i.order.length) i.idx = 0;
     syncActiveToken();
   }
-  function rollEnemies(reset) {
+  // Roll every placed enemy into its own initiative field (d20 + the type
+  // modifier). Fills the fields only -- the GM presses Apply to build the order.
+  function rollEnemies() {
     ensureTokens(); const i = ensureInit();
     for (const t of state.stage.tokens) {
       if (t.kind === 'enemy') i.rolls[t.instId] = d20() + (parseInt(i.mods[t.castId], 10) || 0);
     }
-    if (reset) i.idx = 0;
-    rebuildInitOrder();
-    commit();
+    commit();   // show the rolled values in the roster fields; no re-sort yet
   }
   function setEnemyMod(castId, val) {
     const i = ensureInit();
@@ -1409,10 +1419,19 @@ export function mountGm(root) {
     if (val === '' || isNaN(n)) delete i.mods[castId]; else i.mods[castId] = n;
     saveState(state);   // stored for the next roll; no re-render (keeps input focus)
   }
-  function setHeroRoll(instId, val) {
+  // A single token's initiative value (typed for heroes, rolled-or-overridden for
+  // enemies). Stores the value only; Apply builds the sorted order from the values.
+  function setTokenRoll(instId, val) {
     const i = ensureInit();
     const n = parseInt(val, 10);
     if (val === '' || isNaN(n)) delete i.rolls[instId]; else i.rolls[instId] = n;
+    commit();
+  }
+  // Build (or rebuild) the turn order from the entered values, high-to-low, and
+  // start at the top. This is the GM's explicit "sort now" action.
+  function applyInitiative() {
+    const i = ensureInit();
+    i.idx = 0;
     rebuildInitOrder();
     commit();
   }
@@ -1503,15 +1522,17 @@ export function mountGm(root) {
     b.addEventListener('click', () => addToken(id, kind));
     return b;
   }
-  // A hero's initiative entry (players roll their own). Commits on change (blur),
-  // not per keystroke, so the re-render does not steal focus mid-type.
-  function heroInitInput(t) {
+  // A token's initiative value field -- typed for a hero (players roll their own),
+  // filled by "Roll enemies" for an enemy (and still editable to override). Stores
+  // the value only; the GM presses Apply to sort. Commits on change (blur), not per
+  // keystroke, so the re-render does not steal focus mid-type.
+  function tokenRollInput(t) {
     const i = ensureInit();
     const inp = document.createElement('input');
     inp.type = 'number'; inp.className = 'mmr-init'; inp.placeholder = 'init';
     inp.title = 'Initiative roll'; inp.setAttribute('aria-label', t.label + ' initiative');
     inp.value = (i.rolls[t.instId] != null ? i.rolls[t.instId] : '');
-    inp.addEventListener('change', () => setHeroRoll(t.instId, inp.value));
+    inp.addEventListener('change', () => setTokenRoll(t.instId, inp.value));
     return inp;
   }
   // An enemy TYPE's initiative modifier: one per type, applied to every token of
@@ -1591,7 +1612,7 @@ export function mountGm(root) {
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
         const row = rosterRow(inst ? 'is-placed' : null);
         row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
-        if (inst) row.append(heroInitInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
+        if (inst) row.append(tokenRollInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
         else row.append(rosterAddBtn(id, 'hero'));
         list.append(row);
       }
@@ -1601,6 +1622,15 @@ export function mountGm(root) {
     if (enemies.length) {
       // Add all drops one copy of each enemy type.
       const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
+      // "Roll enemies" lives over the enemies roster: it fills each enemy's own
+      // initiative field (d20 + the type modifier). The GM then presses Apply to
+      // sort -- rolling does not build the order on its own.
+      const rollBtn = document.createElement('button');
+      rollBtn.className = 'gm-button btn--quiet mmr-rollenemies'; rollBtn.type = 'button';
+      rollBtn.textContent = 'Roll enemies';
+      rollBtn.title = "Roll a d20 + the type modifier into every enemy's initiative field";
+      rollBtn.addEventListener('click', () => rollEnemies());
+      col.querySelector('.mmr-head').append(rollBtn);
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const typeRow = rosterRow('mmr-type');
@@ -1608,7 +1638,7 @@ export function mountGm(root) {
         list.append(typeRow);
         for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) {
           const row = rosterRow('mmr-copy');
-          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), rosterVisBtn(t), rosterDelBtn(t));
+          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), tokenRollInput(t), rosterVisBtn(t), rosterDelBtn(t));
           list.append(row);
         }
       }
@@ -1627,25 +1657,22 @@ export function mountGm(root) {
 
     const head = document.createElement('div'); head.className = 'init-head';
     const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
-    const rollE = document.createElement('button'); rollE.className = 'gm-button btn--quiet init-roll'; rollE.type = 'button';
-    rollE.textContent = 'Roll enemies'; rollE.title = 'Roll a d20 + the type modifier for each enemy token';
-    rollE.addEventListener('click', () => rollEnemies(false));
-    const rollA = document.createElement('button'); rollA.className = 'gm-button init-rollall'; rollA.type = 'button';
-    rollA.textContent = 'Roll all'; rollA.title = 'Roll the enemies and start the order from the top';
-    rollA.addEventListener('click', () => rollEnemies(true));
+    const apply = document.createElement('button'); apply.className = 'gm-button init-apply'; apply.type = 'button';
+    apply.textContent = 'Apply'; apply.title = 'Sort the order from the entered initiative values (highest first)';
+    apply.addEventListener('click', applyInitiative);
     const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
     clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
     clr.addEventListener('click', clearInitiative);
-    head.append(title, rollE, rollA, clr);
+    head.append(title, apply, clr);
     host.append(head);
-    // The per-enemy-type modifier now lives inline on each roster type row
-    // (enemyModInput); the panel is just the head + the tracker.
+    // Heroes type their value, "Roll enemies" (over the enemies roster) fills the
+    // enemy fields, then Apply sorts -- so the panel is just the head + the tracker.
 
     // The tracker.
     const track = document.createElement('div'); track.className = 'init-track';
     if (!i.order.length) {
       const hint = document.createElement('p'); hint.className = 'init-empty';
-      hint.textContent = 'Roll the enemies and type the heroes’ rolls to build the order.';
+      hint.textContent = 'Type the heroes’ rolls, Roll enemies, then Apply to build the order.';
       track.append(hint);
     } else {
       const nav = document.createElement('div'); nav.className = 'init-nav';
