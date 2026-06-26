@@ -349,6 +349,14 @@ export function mountGm(root) {
   };
 
   const previewView = createStageView(els.previewFrame);
+
+  // Layout: the live controls move under the preview (the performance surface),
+  // and GM notes move to the bottom of the left rail beneath the scene list. The
+  // markup keeps each as one readable block; we relocate the nodes here. Toggling
+  // their .hidden / contents in renderUI works the same wherever they sit.
+  els.preview.after(els.controls);                          // controls below the preview
+  root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
+
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
   boardView.el.addEventListener('pointerdown', onBoardPointerDown);

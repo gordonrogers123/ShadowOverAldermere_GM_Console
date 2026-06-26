@@ -131,10 +131,20 @@ body.view-gm {
   margin: 0 auto;
 }
 
-/* ---- Scene list ---- */
+/* ---- Scene list + GM notes (left rail) ----
+   The rail fills the viewport beside the stage and splits into a compact scene
+   list (~1/3) up top and GM notes (~2/3) below, so the notes are always in view
+   during play. Sticky so it stays put while the center performance surface
+   scrolls. */
 .view-gm .gm-scenes {
   min-width: 0;
+  position: sticky;
+  top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 7.5rem);
 }
+.view-gm .gm-scenes-head { flex: 0 0 auto; }
 .view-gm .gm-h2,
 .view-gm .gm-h3 {
   font-family: var(--font-display);
@@ -158,19 +168,19 @@ body.view-gm {
 /* Height-capped + scrollable so the live controls beneath the list never get
    pushed down as scenes accumulate; pinned scenes float to the top (see below)
    so the ones in play this session stay in view without scrolling. */
-.view-gm .scene-list { list-style: none; margin: 0; padding: 0; max-height: 21rem; overflow-y: auto; }
-.view-gm .scene-list li { margin: 0 0 0.6rem; }
+.view-gm .scene-list { list-style: none; margin: 0; padding: 0 2px 0 0; flex: 1 1 0; min-height: 5rem; overflow-y: auto; }
+.view-gm .scene-list li { margin: 0 0 0.4rem; }
 .view-gm .scene-button {
   width: 100%;
   text-align: left;
   font-family: var(--font-body);
-  font-size: 1.15rem;
+  font-size: 0.98rem;
   color: var(--ink);
   background: var(--gm-panel);
   border: 1px solid var(--rule);
-  border-left: 6px solid var(--rule);
+  border-left: 5px solid var(--rule);
   border-radius: 8px;
-  padding: 0.9rem 1rem;
+  padding: 0.5rem 0.8rem;
   cursor: pointer;
 }
 .view-gm .scene-button:hover { background: var(--paper); }
@@ -254,13 +264,14 @@ body.view-gm {
 }
 .view-gm .badge.badge-revealed { background: var(--support); }
 
-.view-gm .gm-controls { margin: 0 0 var(--space-5); }
-/* The live controls sit in the rail beneath the scene list. A divider sets them
-   off, and the nav row (Black out + Map<->Exit) stays put in both modes. */
-.view-gm .gm-scenes .gm-controls {
-  margin: var(--space-4) 0 0;
-  padding-top: var(--space-4);
-  border-top: 2px solid var(--rule);
+/* The live controls -- the performance surface -- sit in the center under the
+   preview now (cues lead, then the contextual + collapsible manual controls). */
+.view-gm .gm-controls { margin: 0 0 var(--space-4); }
+.view-gm .gm-stage .gm-controls {
+  background: var(--gm-panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
 }
 /* The persistent nav row -- Black out | Map<->Exit | Edit -- shares the rail
    width on one line. The buttons flex to fit (and wrap gracefully only on the
@@ -275,15 +286,24 @@ body.view-gm {
 /* (PR 2 removed the standalone .toggle rule -- it was dead, never in the markup.
    The show/hide button now carries the .btn--toggle role for its colour.) */
 
-/* ---- GM notes (never leaves this window) ---- */
+/* ---- GM notes (never leaves this window) ----
+   Lives at the bottom of the left rail now, filling the lower ~2/3 and scrolling
+   its own body so long notes never push anything off-screen during play. */
 .view-gm .gm-notes {
   background: var(--gm-panel);
   border: 1px solid var(--rule);
   border-left: 6px solid var(--offense);
   border-radius: 8px;
-  padding: 1rem 1.2rem;
+  padding: 0.8rem 1rem;
+  flex: 2 1 0;
+  min-height: 6rem;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-.view-gm .notes-body { margin: 0; font-size: 1.1rem; }
+.view-gm .gm-notes .gm-h3 { flex: 0 0 auto; margin-bottom: 0.5rem; }
+.view-gm .notes-body { margin: 0; font-size: 1.02rem; overflow-y: auto; flex: 1 1 auto; white-space: pre-wrap; }
 
 /* ---- Header actions ---- */
 .view-gm .gm-header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
