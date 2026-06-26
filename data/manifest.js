@@ -15,10 +15,15 @@ export const BACKGROUNDS = [
   { id: "A1 S2 City Gates", name: "A1 S2 City Gates", src: "assets/backgrounds/A1 S2 City Gates.png" },
   { id: "A1 S2 Gate Gardpost", name: "A1 S2 Gate Gardpost", src: "assets/backgrounds/A1 S2 Gate Gardpost.png" },
   { id: "A1 S3 Tavern Harth", name: "A1 S3 Tavern Harth", src: "assets/backgrounds/A1 S3 Tavern Harth.png" },
-  { id: "city-gate", name: "City Gate", src: "assets/maps/city-gate.jpg" },
-  { id: "inn-first-floor", name: "Inn First Floor", src: "assets/maps/inn-first-floor.jpg" },
-  { id: "market", name: "Market", src: "assets/maps/market.jpg" },
-  { id: "town-center", name: "Town Center", src: "assets/maps/town-center.jpg" }
+  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png" },
+  { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png" },
+  { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png" },
+  { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png" },
+  { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png" },
+  { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png" },
+  { id: "A1 S3 Town Center -- Night", name: "A1 S3 Town Center Night", src: "assets/maps/A1 S3 Town Center -- Night.png" },
+  { id: "A1 S3 Town Center", name: "A1 S3 Town Center", src: "assets/maps/A1 S3 Town Center.png" },
+  { id: "A1 S4 Market", name: "A1 S4 Market", src: "assets/maps/A1 S4 Market.png" }
 ];
 
 export const CHARACTERS = [

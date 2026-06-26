@@ -404,6 +404,18 @@ body.view-gm {
   background: var(--gm-panel); color: var(--offense); font-size: 0.95rem; cursor: pointer;
 }
 .view-gm .scene-del:hover { background: var(--paper); }
+/* A pencil to edit the scene -- sits at the right; shifts left of the delete x
+   on saved scenes, which reserve a touch more room on the button. */
+.view-gm .scene-edit {
+  position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; padding: 0; line-height: 1;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--gm-panel); color: var(--control); font-size: 0.85rem; cursor: pointer;
+}
+.view-gm .scene-edit:hover { background: var(--paper); }
+.view-gm .scene-list li:has(.scene-del) .scene-edit { right: 2.2rem; }
+.view-gm .scene-list li:has(.scene-del) .scene-button { padding-right: 4.2rem; }
 .view-gm .rescan-status {
   margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--neutral);
   background: var(--gm-panel); border: 1px solid var(--rule);
@@ -622,7 +634,14 @@ body.view-gm {
 .view-gm .cue-lane-snap { font-size: var(--fs-100); color: var(--neutral); opacity: 0.6; font-style: italic; }
 .view-gm .cue-lane-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); color: var(--neutral); }
 .view-gm .cue-lane-field input[type="number"] { width: 4rem; padding: 0.25rem 0.4rem; }
-.view-gm .builder-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
+/* Builder header: the title with the Save / Export / Copy / Cancel icon tools to
+   its right, so the actions sit at the top instead of buried below the form. */
+.view-gm .builder-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.view-gm .builder-head .builder-title { margin: 0; margin-right: auto; }
+.view-gm .builder-tools { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.view-gm .builder-tools .u-icon-btn { width: 2.4rem; height: 2.4rem; font-size: 1.1rem; }
+.view-gm .builder-tools .b-save { border-color: var(--support); color: var(--support); }
+.view-gm .builder-tools .b-cancel { color: var(--offense); }
 /* .b-save colour now comes from the .btn--save role. */
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
 .view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }
@@ -657,6 +676,30 @@ body.view-gm {
 }
 
 /* ---- Map mode ---- */
+/* The stage is a single column: the BOARD on top, then a tidy controls strip
+   (Exit/Edit + Background reveal + Save/Reset), then the roster (+ initiative).
+   The empty quick/mixer panel, the cue bar and the preview are hidden in map
+   mode (renderUI), so only these three blocks remain -- ordered explicitly. */
+.view-gm .gm-stage.is-map { display: flex; flex-direction: column; gap: var(--space-3); }
+.view-gm .gm-stage.is-map .gm-mapmode { order: 1; }
+.view-gm .gm-stage.is-map .gm-surface { order: 2; }
+.view-gm .gm-stage.is-map .mapmode-roster { order: 3; }
+.view-gm .gm-stage.is-map .gm-initiative { order: 4; }
+/* Force-hide the cue bar + empty quick/mixer panel in map mode: their own
+   .control-row / .perf-side display rules would otherwise beat the [hidden]
+   attribute and leave blank boxes in the controls strip. */
+.view-gm .gm-stage.is-map .cue-row,
+.view-gm .gm-stage.is-map .perf-side { display: none; }
+/* The "Map controls" read as an inline strip in map mode, not a collapsible. */
+.view-gm .gm-stage.is-map .all-controls { margin: 0; }
+.view-gm .gm-stage.is-map .all-controls-summary { display: none; }
+.view-gm .gm-stage.is-map .all-controls-body { padding-top: 0; }
+.view-gm .gm-stage.is-map .controls-nav { margin-bottom: var(--space-2); }
+.view-gm .gm-stage.is-map .gm-surface {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
+}
+
 /* .map-mode-btn is a secondary mode switch -- it now uses the neutral .btn--quiet role. */
 .view-gm .gm-mapmode {
   background: var(--gm-panel); border: 1px solid var(--rule);
@@ -685,17 +728,15 @@ body.view-gm {
    under a type row that adds more. Collapses to one column on a narrow rail. */
 .view-gm .mapmode-roster { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
 .view-gm .mmr-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  display: flex; align-items: center; gap: var(--space-2);
   margin-bottom: var(--space-2); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
 }
-.view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
-.view-gm .mmr-addall { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-right: auto; }
+.view-gm .mmr-addall, .view-gm .mmr-revealall { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
 .view-gm .mmr-list { display: flex; flex-direction: column; gap: var(--space-1); }
-.view-gm .mmr-row {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center; gap: var(--space-2);
-}
-.view-gm .mmr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-gm .mmr-row { display: flex; align-items: center; gap: var(--space-2); }
+.view-gm .mmr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-gm .mmr-init { flex: 0 0 3.6rem; width: 3.6rem; padding: 0.25rem 0.4rem; text-align: center; }
 .view-gm .mmr-name.is-hidden-name { opacity: 0.55; font-style: italic; }   /* staged, not yet revealed */
 .view-gm .mmr-copy { margin-left: var(--space-4); }                        /* numbered copies under their type */
 .view-gm .mmr-copy .mmr-name { font-style: italic; }
@@ -710,6 +751,59 @@ body.view-gm {
 .view-gm .mmr-del:hover { background: var(--paper); }
 .view-gm .mmr-empty { grid-column: 1 / -1; font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.3rem 0; }
 @media (max-width: 900px) { .view-gm .mapmode-roster { grid-template-columns: 1fr; } }
+
+/* ---- Initiative tracker (map mode) ---- */
+.view-gm .gm-initiative {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 6px solid #b07d2b; border-radius: 8px; padding: 0.8rem 1rem;
+}
+.view-gm .init-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.view-gm .init-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-right: auto; }
+.view-gm .init-roll, .view-gm .init-rollall, .view-gm .init-clear { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
+.view-gm .init-mods { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+.view-gm .init-mod { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-200); }
+.view-gm .init-mod-input { width: 3.4rem; padding: 0.25rem 0.4rem; text-align: center; }
+.view-gm .init-nav { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.view-gm .init-turn { font-size: var(--fs-200); color: var(--neutral); margin-left: auto; }
+.view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
+.view-gm .init-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.view-gm .init-row {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0.35rem 0.6rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  background: var(--fill); cursor: pointer;
+}
+.view-gm .init-row .init-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-gm .init-row .init-val {
+  flex: 0 0 auto; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+  min-width: 1.6rem; text-align: right;
+}
+/* The active turn: a warm gold band that matches the token's golden ring. */
+.view-gm .init-row.is-active {
+  background: #fbf1da; border-color: #b07d2b; box-shadow: inset 3px 0 0 #b07d2b;
+}
+.view-gm .init-row.is-active .init-val { color: #8a5a16; }
+
+/* ---- Enemy stat sheet (map mode, left rail) ---- */
+.view-gm .gm-statsheet {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 6px solid var(--offense); border-radius: 8px; padding: 0.8rem 1rem; margin-top: var(--space-3);
+}
+.view-gm .gm-statsheet .stat-name { margin: 0 0 0.5rem; }
+.view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
+.view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }
+.view-gm .stat-line .stat-k { color: var(--neutral); }
+.view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
+.view-gm .stat-abils { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
+.view-gm .stat-abil {
+  display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.3rem 0.2rem; background: var(--fill);
+}
+.view-gm .stat-abil-k { font-size: var(--fs-100); letter-spacing: 0.05em; color: var(--neutral); }
+.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+.view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
+.view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
+.view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
+.view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
 
 /* Interactive board: tokens are grabbable; a hidden token shows as a ghost so
    the GM sees what the Player does not (the Player keeps it fully hidden). */

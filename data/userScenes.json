@@ -4,42 +4,322 @@
     "name": "The Road to Aldermere",
     "maps": {
       "hidden": "",
-      "revealed": "assets/backgrounds/A1 S1 Road to Aldermere.png"
+      "the-road": "assets/backgrounds/A1 S1 Road to Aldermere.png",
+      "road-battle": "assets/maps/A1 S1 Road to Aldermere.png"
     },
     "variantModes": {
       "hidden": {
         "scene": true,
         "map": false
       },
-      "revealed": {
+      "the-road": {
         "scene": true,
         "map": false
+      },
+      "road-battle": {
+        "scene": false,
+        "map": true
       }
     },
     "defaultMapState": "hidden",
-    "tokens": null,
+    "tokens": {
+      "heroes": [
+        "lysander",
+        "telstar",
+        "thraka",
+        "khaleesi",
+        "sai",
+        "samsara",
+        "truf"
+      ],
+      "enemies": [
+        "brigands"
+      ]
+    },
     "music": null,
     "ambience": [],
-    "audio": {
-      "music": [
-        {
-          "src": "assets/audio/music/theme-calm.wav",
-          "volume": 0.8,
-          "pan": 0,
-          "loop": true
-        }
-      ],
-      "ambience": [
-        {
-          "src": "assets/audio/ambience/wind.wav",
-          "volume": 0.8,
-          "pan": 0,
-          "loop": true
-        }
-      ],
-      "sfx": []
-    },
+    "audio": null,
     "gmNotes": "",
+    "savedLayout": [
+      {
+        "castId": "lysander",
+        "kind": "hero",
+        "label": "Lysander",
+        "x": 0.8440860215053764,
+        "y": 0.7617689906964364,
+        "visible": true
+      },
+      {
+        "castId": "telstar",
+        "kind": "hero",
+        "label": "Telstar",
+        "x": 0.495300797885359,
+        "y": 0.5090033144518822,
+        "visible": true
+      },
+      {
+        "castId": "thraka",
+        "kind": "hero",
+        "label": "Thraka",
+        "x": 0.8101473395663028,
+        "y": 0.8844071521336091,
+        "visible": true
+      },
+      {
+        "castId": "khaleesi",
+        "kind": "hero",
+        "label": "Khaleesi",
+        "x": 0.24311028439962798,
+        "y": 0.26091848406370843,
+        "visible": true
+      },
+      {
+        "castId": "sai",
+        "kind": "hero",
+        "label": "Sai",
+        "x": 0.5308058805293129,
+        "y": 0.5661096338997259,
+        "visible": true
+      },
+      {
+        "castId": "samsara",
+        "kind": "hero",
+        "label": "Samsara",
+        "x": 0.1950739961166316,
+        "y": 0.2178547021850066,
+        "visible": true
+      },
+      {
+        "castId": "truf",
+        "kind": "hero",
+        "label": "Truf",
+        "x": 0.6002496451123402,
+        "y": 0.5689181414135542,
+        "visible": true
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 1",
+        "x": 0.4383882389413742,
+        "y": 0.7804923741219589,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 2",
+        "x": 0.39557328634131217,
+        "y": 0.7542796373262274,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 3",
+        "x": 0.3553690015827174,
+        "y": 0.6953009795358314,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 4",
+        "x": 0.3219524532119373,
+        "y": 0.5735989872699349,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 5",
+        "x": 0.2498980207874427,
+        "y": 0.4397267957774487,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 6",
+        "x": 0.28488096986310313,
+        "y": 0.5071309761093299,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 7",
+        "x": 0.18880839329711033,
+        "y": 0.2983652509147535,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 8",
+        "x": 0.14703770783363518,
+        "y": 0.23470574726797688,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 9",
+        "x": 0.2927129733875047,
+        "y": 0.19538664207437956,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 10",
+        "x": 0.2394553494215739,
+        "y": 0.14670584516802093,
+        "visible": false
+      }
+    ],
+    "cues": [
+      {
+        "id": "cue-1",
+        "label": "Granny Edna",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "the-road",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/grannyEdna1.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 1000
+          }
+        }
+      },
+      {
+        "id": "cue-2",
+        "label": "Wren",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/wren.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        }
+      },
+      {
+        "id": "cue-3",
+        "label": "Marsh Family",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/marchfamily1.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        }
+      },
+      {
+        "id": "cue-4",
+        "label": "Road Battle",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "road-battle",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "background": {
+            "at": 800,
+            "ramp": 400
+          }
+        }
+      }
+    ],
     "defaults": {
       "visible": true,
       "leftShown": false,

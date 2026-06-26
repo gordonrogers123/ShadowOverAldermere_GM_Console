@@ -163,7 +163,15 @@ export function mountGm(root) {
         </details>
 
         <div class="gm-builder" hidden>
-          <h3 class="gm-h3 builder-title">Build a scene</h3>
+          <div class="builder-head">
+            <h3 class="gm-h3 builder-title">Build a scene</h3>
+            <div class="builder-tools">
+              <button class="u-icon-btn b-save" type="button" title="Save scene" aria-label="Save scene">&#128190;</button>
+              <button class="u-icon-btn b-export" type="button" title="Export scene JSON" aria-label="Export scene JSON">&#10515;</button>
+              <button class="u-icon-btn b-copy" type="button" title="Copy export to clipboard" aria-label="Copy export to clipboard" hidden>&#10697;</button>
+              <button class="u-icon-btn b-cancel" type="button" title="Cancel editing" aria-label="Cancel editing">&times;</button>
+            </div>
+          </div>
 
           <div class="builder-grid">
             <div class="builder-col">
@@ -246,14 +254,8 @@ export function mountGm(root) {
             </div>
           </div>
 
-          <div class="builder-actions">
-            <button class="gm-button btn--save b-save" type="button">Save scene</button>
-            <button class="gm-button btn--quiet b-export" type="button">Export</button>
-            <button class="gm-button btn--quiet b-cancel" type="button">Cancel</button>
-          </div>
           <p class="b-export-hint" hidden>Copy this into the SCENES array in data/scenes.js to commit or share it.</p>
           <textarea class="b-export-out" hidden readonly rows="8"></textarea>
-          <button class="gm-button btn--quiet b-copy" type="button" hidden>Copy to clipboard</button>
         </div>
 
         <div class="gm-mapmode" hidden>
@@ -370,6 +372,7 @@ export function mountGm(root) {
   // preview, cue, quick, mixer, nav). GM notes move to the rail.
   const perfSide = document.createElement('div');
   perfSide.className = 'perf-side';
+  els.perfSide = perfSide;
   els.mixer.before(perfSide);
   perfSide.append(els.quick, els.mixer);   // quick (visual) over the mixer (audio)
   const surface = document.createElement('div');
@@ -377,6 +380,20 @@ export function mountGm(root) {
   els.preview.before(surface);
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
+  // Map mode lays the BOARD on top, a controls strip, the roster, then the
+  // initiative tracker. Lift the roster out of .gm-mapmode (which keeps the
+  // board) so the blocks can be ordered independently by the .is-map layout.
+  els.mapmode.after(els.mapRoster);
+  const initPanel = document.createElement('div');
+  initPanel.className = 'gm-initiative'; initPanel.hidden = true;
+  els.initiative = initPanel;
+  els.mapRoster.after(initPanel);
+  // The active enemy's stat sheet sits in the left rail (where GM notes are),
+  // shown only in map mode.
+  const statSheet = document.createElement('div');
+  statSheet.className = 'gm-statsheet'; statSheet.hidden = true;
+  els.statsheet = statSheet;
+  root.querySelector('.gm-scenes').appendChild(statSheet);
 
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
@@ -763,8 +780,13 @@ export function mountGm(root) {
       }
     } else if (name === 'characters') {
       const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
-      state.stage.left = side(snap.left);
-      state.stage.right = side(snap.right);
+      // Carry a bumped entrance nonce so the compositor replays the transition
+      // even if the side is already on stage from an earlier (instant) cue.
+      const bump = (prev) => ((prev && +prev.enterSeq) || 0) + 1;
+      const nl = side(snap.left); nl.enterSeq = bump(state.stage.left);
+      const nr = side(snap.right); nr.enterSeq = bump(state.stage.right);
+      state.stage.left = nl;
+      state.stage.right = nr;
       setStageFx('char', lane.ramp);
     }
     activeCueId = cue.id;
@@ -1313,12 +1335,86 @@ export function mountGm(root) {
   function removeToken(instId) {
     ensureTokens();
     state.stage.tokens = state.stage.tokens.filter((t) => t.instId !== instId);
+    // A removed token leaves the initiative line; the cursor clamps + the active
+    // highlight moves to whoever now sits at that slot.
+    if (state.initiative && state.initiative.rolls) { delete state.initiative.rolls[instId]; rebuildInitOrder(); }
     commit();
   }
   function toggleTokenVisible(instId) {
     ensureTokens();
     const t = state.stage.tokens.find((x) => x.instId === instId);
     if (t) { t.visible = t.visible === false; commit(); }
+  }
+
+  // ---- Initiative tracker (GM-only combat state) -------------------------------
+  //  state.initiative = { mods:{castId:int}, rolls:{instId:int}, order:[instId], idx:int }
+  //  Enemies roll a d20 + their type's modifier; heroes are typed in. The order is
+  //  the placed tokens that have a roll, sorted high-to-low; cycling sets
+  //  state.stage.activeTokenId (broadcast -> the golden ring on BOTH screens).
+  function d20() { return Math.floor(Math.random() * 20) + 1; }   // browser RNG -- fine for dice
+  function ensureInit() {
+    if (!state.initiative || typeof state.initiative !== 'object') state.initiative = {};
+    const i = state.initiative;
+    if (!i.mods || typeof i.mods !== 'object') i.mods = {};
+    if (!i.rolls || typeof i.rolls !== 'object') i.rolls = {};
+    if (!Array.isArray(i.order)) i.order = [];
+    if (typeof i.idx !== 'number' || i.idx < 0) i.idx = 0;
+    return i;
+  }
+  function syncActiveToken() {
+    const i = ensureInit();
+    if (!state.stage) return;
+    state.stage.activeTokenId = i.order.length ? i.order[Math.min(i.idx, i.order.length - 1)] : null;
+  }
+  // Rebuild the order from placed tokens that have a roll, high-to-low.
+  function rebuildInitOrder() {
+    const i = ensureInit();
+    const placed = (state.stage && state.stage.tokens) || [];
+    const have = placed.filter((t) => i.rolls[t.instId] != null);
+    have.sort((a, b) => (i.rolls[b.instId] - i.rolls[a.instId]));
+    i.order = have.map((t) => t.instId);
+    if (i.idx >= i.order.length) i.idx = 0;
+    syncActiveToken();
+  }
+  function rollEnemies(reset) {
+    ensureTokens(); const i = ensureInit();
+    for (const t of state.stage.tokens) {
+      if (t.kind === 'enemy') i.rolls[t.instId] = d20() + (parseInt(i.mods[t.castId], 10) || 0);
+    }
+    if (reset) i.idx = 0;
+    rebuildInitOrder();
+    commit();
+  }
+  function setEnemyMod(castId, val) {
+    const i = ensureInit();
+    const n = parseInt(val, 10);
+    if (val === '' || isNaN(n)) delete i.mods[castId]; else i.mods[castId] = n;
+    saveState(state);   // stored for the next roll; no re-render (keeps input focus)
+  }
+  function setHeroRoll(instId, val) {
+    const i = ensureInit();
+    const n = parseInt(val, 10);
+    if (val === '' || isNaN(n)) delete i.rolls[instId]; else i.rolls[instId] = n;
+    rebuildInitOrder();
+    commit();
+  }
+  function initStep(delta) {
+    const i = ensureInit();
+    if (!i.order.length) return;
+    i.idx = (i.idx + delta + i.order.length) % i.order.length;
+    syncActiveToken();
+    commit();
+  }
+  function setInitIdx(n) {
+    const i = ensureInit();
+    if (n < 0 || n >= i.order.length) return;
+    i.idx = n; syncActiveToken(); commit();
+  }
+  function clearInitiative() {
+    const mods = (state.initiative && state.initiative.mods) || {};
+    state.initiative = { mods, rolls: {}, order: [], idx: 0 };   // keep the type modifiers
+    if (state.stage) state.stage.activeTokenId = null;
+    commit();
   }
 
   function enterMapMode() {
@@ -1389,6 +1485,17 @@ export function mountGm(root) {
     b.addEventListener('click', () => addToken(id, kind));
     return b;
   }
+  // A hero's initiative entry (players roll their own). Commits on change (blur),
+  // not per keystroke, so the re-render does not steal focus mid-type.
+  function heroInitInput(t) {
+    const i = ensureInit();
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.className = 'mmr-init'; inp.placeholder = 'init';
+    inp.title = 'Initiative roll'; inp.setAttribute('aria-label', t.label + ' initiative');
+    inp.value = (i.rolls[t.instId] != null ? i.rolls[t.instId] : '');
+    inp.addEventListener('change', () => setHeroRoll(t.instId, inp.value));
+    return inp;
+  }
   function rosterRow(extraClass) {
     const r = document.createElement('div'); r.className = 'mmr-row' + (extraClass ? ' ' + extraClass : '');
     return r;
@@ -1398,7 +1505,16 @@ export function mountGm(root) {
     if (hidden) n.classList.add('is-hidden-name');
     return n;
   }
-  function rosterColumn(label, addAll) {
+  // Batch-set visibility for a group's placed tokens (Reveal all / Hide all).
+  function setGroupVisible(placed, visible) {
+    ensureTokens();
+    for (const p of placed) {
+      const live = state.stage.tokens.find((x) => x.instId === p.instId);
+      if (live) live.visible = visible;
+    }
+    commit();
+  }
+  function rosterColumn(label, addAll, placed) {
     const col = document.createElement('div'); col.className = 'mmr-cat';
     const head = document.createElement('div'); head.className = 'mmr-head';
     const lab = document.createElement('span'); lab.className = 'mmr-label'; lab.textContent = label;
@@ -1406,6 +1522,15 @@ export function mountGm(root) {
     all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
     all.addEventListener('click', addAll);
     head.append(lab, all);
+    // Reveal all / Hide all once at least one of the group is on the board.
+    if (placed && placed.length) {
+      const anyHidden = placed.some((t) => t.visible === false);
+      const rev = document.createElement('button');
+      rev.className = 'gm-button btn--quiet mmr-revealall'; rev.type = 'button';
+      rev.textContent = anyHidden ? 'Reveal all' : 'Hide all';
+      rev.addEventListener('click', () => setGroupVisible(placed, anyHidden));
+      head.append(rev);
+    }
     const list = document.createElement('div'); list.className = 'mmr-list';
     col.append(head, list);
     return { col, list };
@@ -1428,13 +1553,13 @@ export function mountGm(root) {
 
     if (heroes.length) {
       // Add all skips heroes already placed (addToken is a no-op for those).
-      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); });
+      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
       for (const id of heroes) {
         const c = castEntry(id, 'hero'); if (!c) continue;
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
         const row = rosterRow(inst ? 'is-placed' : null);
         row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
-        if (inst) row.append(rosterVisBtn(inst), rosterDelBtn(inst));
+        if (inst) row.append(heroInitInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
         else row.append(rosterAddBtn(id, 'hero'));
         list.append(row);
       }
@@ -1443,7 +1568,7 @@ export function mountGm(root) {
 
     if (enemies.length) {
       // Add all drops one copy of each enemy type.
-      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); });
+      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const typeRow = rosterRow('mmr-type');
@@ -1459,12 +1584,143 @@ export function mountGm(root) {
     }
   }
 
+  // The initiative panel (map mode): per-enemy-type modifiers, Roll enemies /
+  // Roll all, then the sorted tracker with prev/next. Active row + active token
+  // ride state.stage.activeTokenId (the gold ring on both screens).
+  function renderInitiative(scene) {
+    if (!els.initiative) return;
+    const host = els.initiative; host.innerHTML = '';
+    const i = ensureInit();
+    const placed = (state.stage && state.stage.tokens) || [];
+    const enemyTypes = [...new Set(placed.filter((t) => t.kind === 'enemy').map((t) => t.castId))];
+
+    const head = document.createElement('div'); head.className = 'init-head';
+    const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
+    const rollE = document.createElement('button'); rollE.className = 'gm-button btn--quiet init-roll'; rollE.type = 'button';
+    rollE.textContent = 'Roll enemies'; rollE.title = 'Roll a d20 + the type modifier for each enemy token';
+    rollE.addEventListener('click', () => rollEnemies(false));
+    const rollA = document.createElement('button'); rollA.className = 'gm-button init-rollall'; rollA.type = 'button';
+    rollA.textContent = 'Roll all'; rollA.title = 'Roll the enemies and start the order from the top';
+    rollA.addEventListener('click', () => rollEnemies(true));
+    const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
+    clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
+    clr.addEventListener('click', clearInitiative);
+    head.append(title, rollE, rollA, clr);
+    host.append(head);
+
+    // Per enemy-type modifier (one input per type placed on the board).
+    if (enemyTypes.length) {
+      const mods = document.createElement('div'); mods.className = 'init-mods';
+      for (const castId of enemyTypes) {
+        const c = castEntry(castId, 'enemy'); if (!c) continue;
+        const lab = document.createElement('label'); lab.className = 'init-mod';
+        const nm = document.createElement('span'); nm.textContent = c.name;
+        const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'init-mod-input';
+        inp.placeholder = '+0'; inp.value = (i.mods[castId] != null ? i.mods[castId] : '');
+        inp.title = c.name + ' initiative modifier (applied to every ' + enemySingular(c) + ')';
+        inp.addEventListener('change', () => setEnemyMod(castId, inp.value));
+        lab.append(nm, inp); mods.append(lab);
+      }
+      host.append(mods);
+    }
+
+    // The tracker.
+    const track = document.createElement('div'); track.className = 'init-track';
+    if (!i.order.length) {
+      const hint = document.createElement('p'); hint.className = 'init-empty';
+      hint.textContent = 'Roll the enemies and type the heroes’ rolls to build the order.';
+      track.append(hint);
+    } else {
+      const nav = document.createElement('div'); nav.className = 'init-nav';
+      const prev = document.createElement('button'); prev.className = 'gm-button btn--quiet init-prev'; prev.type = 'button';
+      prev.textContent = '◀'; prev.title = 'Previous turn'; prev.addEventListener('click', () => initStep(-1));
+      const turn = document.createElement('span'); turn.className = 'init-turn';
+      turn.textContent = 'Turn ' + (i.idx + 1) + ' / ' + i.order.length;
+      const next = document.createElement('button'); next.className = 'gm-button init-next'; next.type = 'button';
+      next.textContent = 'Next ▶'; next.title = 'Next turn'; next.addEventListener('click', () => initStep(1));
+      nav.append(prev, turn, next); track.append(nav);
+
+      const list = document.createElement('ol'); list.className = 'init-list';
+      i.order.forEach((instId, n) => {
+        const t = placed.find((x) => x.instId === instId); if (!t) return;
+        const c = castEntry(t.castId, t.kind);
+        const li = document.createElement('li'); li.className = 'init-row' + (n === i.idx ? ' is-active' : '');
+        const nm = document.createElement('span'); nm.className = 'init-name'; nm.textContent = t.label;
+        const val = document.createElement('span'); val.className = 'init-val'; val.textContent = i.rolls[instId];
+        li.append(rosterSwatch(c ? c.ringColor : '#888'), nm, val);
+        li.title = 'Jump to this turn';
+        li.addEventListener('click', () => setInitIdx(n));
+        list.append(li);
+      });
+      track.append(list);
+    }
+    host.append(track);
+  }
+
+  // The stat block to show: the active token's type when it is an enemy with a
+  // stat block; otherwise the last enemy shown (so a hero's turn keeps the foe's
+  // card up), else the first placed enemy type that has one.
+  let lastStatCastId = null;
+  function activeEnemyStats() {
+    const placed = (state.stage && state.stage.tokens) || [];
+    const activeId = state.stage && state.stage.activeTokenId;
+    const active = activeId && placed.find((t) => t.instId === activeId);
+    if (active && active.kind === 'enemy') {
+      const c = castEntry(active.castId, 'enemy');
+      if (c && c.stats) { lastStatCastId = active.castId; return c.stats; }
+    }
+    const fallbackId = lastStatCastId || placed.filter((t) => t.kind === 'enemy').map((t) => t.castId)
+      .find((id) => { const c = castEntry(id, 'enemy'); return c && c.stats; });
+    if (fallbackId) { const c = castEntry(fallbackId, 'enemy'); if (c && c.stats) { lastStatCastId = fallbackId; return c.stats; } }
+    return null;
+  }
+  function renderStatSheet() {
+    if (!els.statsheet) return;
+    const host = els.statsheet; host.innerHTML = '';
+    const s = activeEnemyStats();
+    if (!s) {
+      const p = document.createElement('p'); p.className = 'stat-empty';
+      p.textContent = 'No stat block for the active enemy. Add a `stats` block in data/cast.js.';
+      host.append(p); return;
+    }
+    const head = document.createElement('h3'); head.className = 'gm-h3 stat-name'; head.textContent = s.name;
+    host.append(head);
+    const line = (k, v) => { const r = document.createElement('div'); r.className = 'stat-line';
+      const a = document.createElement('span'); a.className = 'stat-k'; a.textContent = k;
+      const b = document.createElement('span'); b.className = 'stat-v'; b.textContent = v; r.append(a, b); return r; };
+    const lines = document.createElement('div'); lines.className = 'stat-lines';
+    if (s.ac != null) lines.append(line('Armor Class', s.ac));
+    if (s.hp != null) lines.append(line('Hit Points', s.hp));
+    if (s.speed) lines.append(line('Speed', s.speed));
+    host.append(lines);
+    if (s.abilities) {
+      const ab = document.createElement('div'); ab.className = 'stat-abils';
+      for (const [k, lab] of [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']]) {
+        const v = s.abilities[k] == null ? 0 : s.abilities[k];
+        const tile = document.createElement('div'); tile.className = 'stat-abil';
+        const t = document.createElement('span'); t.className = 'stat-abil-k'; t.textContent = lab;
+        const n = document.createElement('span'); n.className = 'stat-abil-v'; n.textContent = (v >= 0 ? '+' : '') + v;
+        tile.append(t, n); ab.append(tile);
+      }
+      host.append(ab);
+    }
+    for (const atk of (s.attacks || [])) {
+      const a = document.createElement('div'); a.className = 'stat-attack';
+      const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name;
+      const d = document.createElement('div'); d.className = 'stat-attack-line';
+      d.textContent = [atk.toHit ? atk.toHit + ' to hit' : '', atk.range, atk.damage].filter(Boolean).join(' · ');
+      a.append(nm, d); host.append(a);
+    }
+  }
+
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
     renderRoster(scene);
+    renderInitiative(scene);
+    renderStatSheet();
   }
 
   // ---- Drag a token on the board. The element follows the pointer locally
@@ -1848,8 +2104,13 @@ export function mountGm(root) {
   }
   // The scene's backdrops, as the canonical keys the cue will reference on apply.
   function cueBackdropOptions() {
-    const maps = draftToScene(draft).maps || {};
-    return Object.keys(maps).map((key) => ({ key, label: humanize(key) + (maps[key] === '' ? ' (title card)' : '') }));
+    const scene = draftToScene(draft);
+    const maps = scene.maps || {};
+    const vm = scene.variantModes || {};
+    return Object.keys(maps).map((key) => ({
+      key, label: humanize(key) + (maps[key] === '' ? ' (title card)' : ''),
+      map: !!(vm[key] && vm[key].map)   // a battle map vs a scene-mode background
+    }));
   }
   // The scene's audio beds as the track keys a cue plays (mus:<i>/amb:<i>), labelled
   // from the asset catalog. Built from the draft so it matches what the scene saves.
@@ -1975,7 +2236,16 @@ export function mountGm(root) {
     const bgF = field('Background');
     const bgSel = document.createElement('select'); bgSel.className = 'cue-bg';
     const none = document.createElement('option'); none.value = ''; none.textContent = '— No change —'; bgSel.append(none);
-    for (const o of cueBackdropOptions()) { const op = document.createElement('option'); op.value = o.key; op.textContent = o.label; bgSel.append(op); }
+    // Group so the GM can tell scene-mode backgrounds from battle maps at a glance.
+    const bgOpts = cueBackdropOptions();
+    const bgGroup = (label, list) => {
+      if (!list.length) return;
+      const g = document.createElement('optgroup'); g.label = label;
+      for (const o of list) { const op = document.createElement('option'); op.value = o.key; op.textContent = o.label; g.append(op); }
+      bgSel.append(g);
+    };
+    bgGroup('Backgrounds', bgOpts.filter((o) => !o.map));
+    bgGroup('Maps', bgOpts.filter((o) => o.map));
     bgSel.value = aff.background ? (snap.mapState || '') : '';
     bgSel.addEventListener('change', () => {
       if (bgSel.value) { aff.background = true; snap.mapState = bgSel.value; }
@@ -2324,6 +2594,15 @@ export function mountGm(root) {
       btn.textContent = scene.name;
       btn.addEventListener('click', () => selectScene(scene.id));
       li.appendChild(btn);
+      // A pencil to open the builder for this scene directly (any scene).
+      const edit = document.createElement('button');
+      edit.className = 'scene-edit';
+      edit.type = 'button';
+      edit.textContent = '✎';
+      edit.title = 'Edit this scene';
+      edit.setAttribute('aria-label', 'Edit ' + scene.name);
+      edit.addEventListener('click', (e) => { e.stopPropagation(); openBuilder(scene); });
+      li.appendChild(edit);
       if (isUserScene(scene.id)) {
         const tag = document.createElement('span');
         tag.className = 'scene-tag';
@@ -2412,6 +2691,8 @@ export function mountGm(root) {
     els.notes.hidden = inMap || building || !scene;
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
+    els.initiative.hidden = !inMap;
+    els.statsheet.hidden = !inMap;
     // In the builder, shrink the preview and pin it so it stays visible while
     // scrolling the controls (so "Test in preview" is actually watchable). The
     // is-map class drops the compact 3-zone grid for map mode (board takes over).
@@ -2431,6 +2712,8 @@ export function mountGm(root) {
       // swaps in its own controls (variant reveal + Save/Reset layout).
       els.quick.hidden = inMap;
       els.mixer.hidden = inMap || !scene.audio;
+      els.perfSide.hidden = inMap;          // quick+mixer empty in map -> drop the blank panel
+      if (inMap) els.cueRow.hidden = true;  // cues are a scene/cinematic tool; hidden in map
       els.allControls.hidden = !inMap;
       if (inMap) {
         renderVariantButtons(scene);     // the map-reveal chips in the Map controls

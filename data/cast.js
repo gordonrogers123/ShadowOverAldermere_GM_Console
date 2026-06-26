@@ -20,6 +20,12 @@
 //  auto-numbered on the board, e.g. "Brigand 1" from name "Brigands". If
 //  absent the code strips a trailing "s", then falls back to the full name.
 //
+//  `stats` (enemies, optional) is a stat block shown in map mode for whichever
+//  enemy type is up in the initiative tracker. Shape:
+//    stats: { name, ac, hp, speed, abilities:{str,dex,con,int,wis,cha},  // modifiers
+//             attacks:[{ name, toHit, range, damage }] }
+//  Add one per enemy type to get a card; types without it simply show no sheet.
+//
 //  Ring colors reuse the campaign palette:
 //    support green #2f6b43, control blue #2a4d7a, offense red #8a2e2e.
 // ============================================================
@@ -36,7 +42,15 @@ export const CAST = {
   ],
 
   enemies: [
-    { id: "brigands", name: "Brigands", tokenImage: "assets/tokens/enemies/brigands.jpg", ringColor: "#8a2e2e", singular: "Brigand" }
+    { id: "brigands", name: "Brigands", tokenImage: "assets/tokens/enemies/brigands.jpg", ringColor: "#8a2e2e", singular: "Brigand",
+      stats: {
+        name: "Roadside Raider", ac: 12, hp: 11, speed: "30 ft",
+        abilities: { str: 0, dex: 1, con: 1, int: 0, wis: 0, cha: 0 },
+        attacks: [
+          { name: "Scimitar", toHit: "+3", range: "reach 5 ft", damage: "1d6+1 slashing" },
+          { name: "Light crossbow", toHit: "+3", range: "range 80/320 ft", damage: "1d8+1 piercing" }
+        ]
+      } }
   ],
 
   npcs: [
