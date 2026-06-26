@@ -1892,19 +1892,26 @@ export function mountGm(root) {
     if (!draft) return;
     cancelTestTimeline();   // a manual preview refresh ends any running Test
     const scene = draftToScene(draft);
-    const firstKey = Object.keys(scene.maps)[0] || 'revealed';
+    const keys = Object.keys(scene.maps);
+    // Preview against the first REAL backdrop, not a title screen -- characters
+    // never composite over the title plate, so editing the size/position of a
+    // left/right character has to happen against a backdrop to be visible.
+    const previewKey = keys.find((k) => scene.maps[k] !== '') || keys[0] || 'revealed';
     const pstate = {
       sceneId: scene.id,
-      mapState: firstKey,
+      mapState: previewKey,
       stage: {
         visible: true,
+        // Force both sides shown in the builder so you can place them (live they
+        // only appear once armed/entered); the compositor still applies each
+        // character's scale / flip / x / y from the draft.
         left:  { shown: !!(scene.characters && scene.characters.left),  srcOverride: null },
         right: { shown: !!(scene.characters && scene.characters.right), srcOverride: null }
       }
     };
     previewView.render(pstate, scene, { instant: previewFirstPaint }); previewFirstPaint = false;
     els.previewName.textContent = scene.name || 'New scene';
-    els.badge.textContent = (scene.maps && scene.maps[firstKey] === '') ? 'Title screen' : humanize(firstKey);
+    els.badge.textContent = (scene.maps && scene.maps[previewKey] === '') ? 'Title screen' : humanize(previewKey);
     els.badge.classList.remove('badge-revealed');
   }
 
