@@ -386,6 +386,12 @@ export function mountGm(root) {
   initPanel.className = 'gm-initiative'; initPanel.hidden = true;
   els.initiative = initPanel;
   els.mapRoster.after(initPanel);
+  // The active enemy's stat sheet sits in the left rail (where GM notes are),
+  // shown only in map mode.
+  const statSheet = document.createElement('div');
+  statSheet.className = 'gm-statsheet'; statSheet.hidden = true;
+  els.statsheet = statSheet;
+  root.querySelector('.gm-scenes').appendChild(statSheet);
 
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
@@ -1644,6 +1650,62 @@ export function mountGm(root) {
     host.append(track);
   }
 
+  // The stat block to show: the active token's type when it is an enemy with a
+  // stat block; otherwise the last enemy shown (so a hero's turn keeps the foe's
+  // card up), else the first placed enemy type that has one.
+  let lastStatCastId = null;
+  function activeEnemyStats() {
+    const placed = (state.stage && state.stage.tokens) || [];
+    const activeId = state.stage && state.stage.activeTokenId;
+    const active = activeId && placed.find((t) => t.instId === activeId);
+    if (active && active.kind === 'enemy') {
+      const c = castEntry(active.castId, 'enemy');
+      if (c && c.stats) { lastStatCastId = active.castId; return c.stats; }
+    }
+    const fallbackId = lastStatCastId || placed.filter((t) => t.kind === 'enemy').map((t) => t.castId)
+      .find((id) => { const c = castEntry(id, 'enemy'); return c && c.stats; });
+    if (fallbackId) { const c = castEntry(fallbackId, 'enemy'); if (c && c.stats) { lastStatCastId = fallbackId; return c.stats; } }
+    return null;
+  }
+  function renderStatSheet() {
+    if (!els.statsheet) return;
+    const host = els.statsheet; host.innerHTML = '';
+    const s = activeEnemyStats();
+    if (!s) {
+      const p = document.createElement('p'); p.className = 'stat-empty';
+      p.textContent = 'No stat block for the active enemy. Add a `stats` block in data/cast.js.';
+      host.append(p); return;
+    }
+    const head = document.createElement('h3'); head.className = 'gm-h3 stat-name'; head.textContent = s.name;
+    host.append(head);
+    const line = (k, v) => { const r = document.createElement('div'); r.className = 'stat-line';
+      const a = document.createElement('span'); a.className = 'stat-k'; a.textContent = k;
+      const b = document.createElement('span'); b.className = 'stat-v'; b.textContent = v; r.append(a, b); return r; };
+    const lines = document.createElement('div'); lines.className = 'stat-lines';
+    if (s.ac != null) lines.append(line('Armor Class', s.ac));
+    if (s.hp != null) lines.append(line('Hit Points', s.hp));
+    if (s.speed) lines.append(line('Speed', s.speed));
+    host.append(lines);
+    if (s.abilities) {
+      const ab = document.createElement('div'); ab.className = 'stat-abils';
+      for (const [k, lab] of [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']]) {
+        const v = s.abilities[k] == null ? 0 : s.abilities[k];
+        const tile = document.createElement('div'); tile.className = 'stat-abil';
+        const t = document.createElement('span'); t.className = 'stat-abil-k'; t.textContent = lab;
+        const n = document.createElement('span'); n.className = 'stat-abil-v'; n.textContent = (v >= 0 ? '+' : '') + v;
+        tile.append(t, n); ab.append(tile);
+      }
+      host.append(ab);
+    }
+    for (const atk of (s.attacks || [])) {
+      const a = document.createElement('div'); a.className = 'stat-attack';
+      const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name;
+      const d = document.createElement('div'); d.className = 'stat-attack-line';
+      d.textContent = [atk.toHit ? atk.toHit + ' to hit' : '', atk.range, atk.damage].filter(Boolean).join(' · ');
+      a.append(nm, d); host.append(a);
+    }
+  }
+
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
@@ -1651,6 +1713,7 @@ export function mountGm(root) {
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
     renderRoster(scene);
     renderInitiative(scene);
+    renderStatSheet();
   }
 
   // ---- Drag a token on the board. The element follows the pointer locally
@@ -2599,6 +2662,7 @@ export function mountGm(root) {
     els.builder.hidden = !building;
     els.mapmode.hidden = !inMap;
     els.initiative.hidden = !inMap;
+    els.statsheet.hidden = !inMap;
     // In the builder, shrink the preview and pin it so it stays visible while
     // scrolling the controls (so "Test in preview" is actually watchable). The
     // is-map class drops the compact 3-zone grid for map mode (board takes over).

@@ -764,6 +764,28 @@ body.view-gm {
 }
 .view-gm .init-row.is-active .init-val { color: #8a5a16; }
 
+/* ---- Enemy stat sheet (map mode, left rail) ---- */
+.view-gm .gm-statsheet {
+  background: var(--gm-panel); border: 1px solid var(--rule);
+  border-left: 6px solid var(--offense); border-radius: 8px; padding: 0.8rem 1rem; margin-top: var(--space-3);
+}
+.view-gm .gm-statsheet .stat-name { margin: 0 0 0.5rem; }
+.view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
+.view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }
+.view-gm .stat-line .stat-k { color: var(--neutral); }
+.view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
+.view-gm .stat-abils { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
+.view-gm .stat-abil {
+  display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.3rem 0.2rem; background: var(--fill);
+}
+.view-gm .stat-abil-k { font-size: var(--fs-100); letter-spacing: 0.05em; color: var(--neutral); }
+.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+.view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
+.view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
+.view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
+.view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
+
 /* Interactive board: tokens are grabbable; a hidden token shows as a ghost so
    the GM sees what the Player does not (the Player keeps it fully hidden). */
 .view-gm .board-interactive .token-layer { pointer-events: auto; }
