@@ -27,6 +27,7 @@ export function mountGm(root) {
   let state = loadState();
   let draft = null;                 // the in-progress scene while building
   let mapMode = false;              // map mode replaces the live panel for token play
+  let activeCueId = null;           // the cue last applied -- lights its rail button
   let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
@@ -71,6 +72,12 @@ export function mountGm(root) {
              row (Black out + Map<->Exit + Edit) is shown in BOTH modes at one
              fixed spot, so the three quick actions sit together and never move. -->
         <div class="gm-controls" hidden>
+          <!-- Cues lead: one press transitions the whole stage (background, who is
+               on stage, audio) at once. "Save as cue" captures the current stage. -->
+          <div class="control-row cue-row" hidden>
+            <div class="cue-buttons"></div>
+            <button class="gm-button btn--quiet cue-save" type="button" title="Capture the current stage (background, characters, audio) as a one-press cue">+ Save as cue</button>
+          </div>
           <div class="control-row controls-nav">
             <button class="gm-button btn--toggle vis-toggle" type="button">Black out</button>
             <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
@@ -196,6 +203,12 @@ export function mountGm(root) {
                 </div>
               </div>
 
+              <div class="field">
+                <span>Cues <small>(one-press stage presets &mdash; capture them live, manage here)</small></span>
+                <div class="cue-list"></div>
+                <p class="cue-empty-hint" hidden>No cues yet. Select this scene, arrange the stage, then press <strong>+ Save as cue</strong> in the rail.</p>
+              </div>
+
               <label class="field">
                 <span>GM notes</span>
                 <textarea class="b-notes" rows="2"></textarea>
@@ -236,6 +249,9 @@ export function mountGm(root) {
     previewName:  root.querySelector('.preview-name'),
     badge:        root.querySelector('.badge'),
     controls:     root.querySelector('.gm-controls'),
+    cueRow:       root.querySelector('.cue-row'),
+    cueButtons:   root.querySelector('.cue-buttons'),
+    cueSave:      root.querySelector('.cue-save'),
     visToggle:    root.querySelector('.vis-toggle'),
     editScene:    root.querySelector('.edit-scene'),
     variantRow:   root.querySelector('.variant-row'),
@@ -284,6 +300,8 @@ export function mountGm(root) {
     bMusic:       root.querySelector('.b-music'),
     bAmbience:    root.querySelector('.b-ambience'),
     bSfx:         root.querySelector('.b-sfx'),
+    cueList:      root.querySelector('.cue-list'),
+    cueEmptyHint: root.querySelector('.cue-empty-hint'),
     charToggle: {
       left:  root.querySelector('.char-toggle[data-side="left"]'),
       right: root.querySelector('.char-toggle[data-side="right"]')
@@ -345,9 +363,8 @@ export function mountGm(root) {
   // Expand a scene's saved token layout into fresh live tokens. Positions are
   // identity-free in the scene; mint instIds in the 'tk<N>' shape so seedTokenSeq
   // keeps the counter ahead of them and a later add never collides.
-  function expandSavedLayout(scene) {
-    const layout = (scene && Array.isArray(scene.savedLayout)) ? scene.savedLayout : [];
-    return layout
+  function expandLayout(layout) {
+    return (Array.isArray(layout) ? layout : [])
       .filter((L) => L && typeof L.castId === 'string' && L.castId)
       .map((L) => ({
         instId: 'tk' + (++tokenSeq),
@@ -359,6 +376,7 @@ export function mountGm(root) {
         visible: L.visible !== false
       }));
   }
+  function expandSavedLayout(scene) { return expandLayout(scene && scene.savedLayout); }
   function selectScene(id) {
     const scene = sceneById(id);
     if (!scene) return;
@@ -386,6 +404,12 @@ export function mountGm(root) {
     state.audio = seedAudioFromScene(scene, state.audio);
     builtAudioSceneId = null;           // force the audio panel to rebuild on select
     mapMode = false;                   // start on the cinematic controls
+    activeCueId = null;
+    // If the scene defines an opening cue, fire it as part of the same select so
+    // the title card + title music come up in one atomic transition (no extra
+    // click). A persisting black-out carries through it, like the base stage.
+    const opening = (scene.cues || []).find((c) => c.opening);
+    if (opening) applyCueState(opening, scene, { wasBlackedOut });
     commit();
   }
 
@@ -410,6 +434,11 @@ export function mountGm(root) {
   function resetSide(side) { state.stage[side].srcOverride = null; commit(); }
 
   els.visToggle.addEventListener('click', toggleVisible);
+  els.cueSave.addEventListener('click', () => {
+    const label = window.prompt('Name this cue (captures the current stage -- background, characters, audio):');
+    if (label === null) return;       // cancelled
+    captureCue(label);
+  });
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
   els.mapModeToggle.addEventListener('click', () => { if (mapMode) exitMapMode(); else enterMapMode(); });
   els.mmSaveLayout.addEventListener('click', saveLayout);
@@ -450,6 +479,148 @@ export function mountGm(root) {
     // (a mode often has a single backdrop -- e.g. the one map in map mode -- that
     // the GM still needs to activate/reveal), and hide it only when none do.
     els.variantRow.hidden = buildVariantButtons(els.variantButtons, scene) < 1;
+  }
+
+  // ============================================================
+  //  Cues: one-press stage presets
+  // ------------------------------------------------------------
+  //  A cue is a saved snapshot of the whole stage -- which background variant is
+  //  up, scene-vs-map mode, the curtain, who is on left/right, and which audio
+  //  plays. Pressing it sets the full target state and commits once, so the
+  //  shared compositor + audio engine transition every aspect together (the same
+  //  machinery selectScene already uses). Cues are scene template data (like
+  //  savedLayout), carried opaquely through persistence -- no state.js change.
+  // ============================================================
+  // Every aspect on by default; a cue narrows this so a quick character swap does
+  // not disturb the background or music.
+  function defaultAffects() {
+    return { background: true, mapMode: true, curtain: true, characters: true, tokens: true, audio: true };
+  }
+  function cueAffects(cue) { return { ...defaultAffects(), ...(cue && cue.affects) }; }
+  function uniqueCueId(cues, base) {
+    base = base || 'cue';
+    let id = base, n = 2;
+    while ((cues || []).some((c) => c.id === id)) { id = base + '-' + n; n += 1; }
+    return id;
+  }
+  // Read the live stage into an identity-free snapshot (token positions carry,
+  // instIds do not -- they are re-minted on apply, like a saved layout).
+  function captureSnapshot() {
+    const st = state.stage || {};
+    const a = state.audio || {};
+    const tracks = a.tracks || {};
+    const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
+    return {
+      mapState: state.mapState,
+      mapMode: !!mapMode,
+      visible: st.visible !== false,
+      left: side(st.left),
+      right: side(st.right),
+      tokens: (Array.isArray(st.tokens) ? st.tokens : []).map((t) => ({
+        castId: t.castId, kind: t.kind, label: t.label, x: t.x, y: t.y, visible: t.visible !== false
+      })),
+      // The set of tracks currently playing; the engine cross-fades to match it.
+      // SFX are one-shots -- not part of a held snapshot, fired only when authored.
+      audio: { playing: Object.keys(tracks).filter((k) => tracks[k] && tracks[k].playing),
+               master: a.master == null ? 0.8 : a.master, sfx: [] }
+    };
+  }
+  // Capture the live stage as a new cue on the current scene; persists to both
+  // tiers and rebuilds the list, mirroring saveAudioToScene / saveLayout.
+  function captureCue(label) {
+    const scene = sceneById(state.sceneId);
+    if (!scene) return;
+    const existing = scene.cues || [];
+    label = (label || '').trim() || ('Cue ' + (existing.length + 1));
+    const cue = {
+      id: uniqueCueId(existing, slug(label)),
+      label,
+      opening: false,
+      affects: defaultAffects(),
+      snapshot: captureSnapshot()
+    };
+    const updated = { ...scene, cues: [...existing, cue] };
+    addUserScene(updated);            // localStorage upsert by id
+    saveSceneToFile(updated);         // disk write-through (best-effort, async)
+    rebuildSceneList();               // it is a saved scene now -> gets the "saved" badge
+    activeCueId = cue.id;
+    renderUI();
+    setStatus('Saved cue "' + label + '" for "' + scene.name + '".');
+  }
+  // Apply only the aspects a cue affects to the live state. No commit -- the
+  // caller commits once so every change animates in a single pass. opts.wasBlackedOut
+  // keeps a global black-out down through a curtain-affecting cue (used by the
+  // opening cue on scene select; a manual press passes false so a reveal cue lifts).
+  function applyCueState(cue, scene, opts) {
+    opts = opts || {};
+    const snap = (cue && cue.snapshot) || {};
+    const aff = cueAffects(cue);
+    ensureAudio();
+    if (!state.stage) {
+      state.stage = { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [], mapMode: false };
+    }
+    // Background -- only switch to a variant the scene still has (fail safe).
+    if (aff.background && snap.mapState != null &&
+        scene && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, snap.mapState)) {
+      state.mapState = snap.mapState;
+    }
+    // Map mode -- set BOTH the module var and the stage flag; never call
+    // enter/exitMapMode here (they each commit). Only enter if the scene has a map.
+    if (aff.mapMode) {
+      const wantMap = !!snap.mapMode && sceneHasMap(scene);
+      mapMode = wantMap;
+      state.stage.mapMode = wantMap;
+    }
+    // Curtain -- a cue that affects the curtain sets it; one that does not leaves
+    // it exactly as-is (so a quick character swap never flashes the black plate).
+    if (aff.curtain) {
+      state.stage.visible = opts.wasBlackedOut ? false : (snap.visible !== false);
+    }
+    // Characters -- the compositor diffs each side and animates only what changed.
+    if (aff.characters) {
+      const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
+      state.stage.left = side(snap.left);
+      state.stage.right = side(snap.right);
+    }
+    // Tokens -- fresh instIds via the savedLayout expansion.
+    if (aff.tokens) state.stage.tokens = expandLayout(snap.tokens);
+    // Audio -- flip each existing track's playing to match the snapshot set (the
+    // engine cross-fades both ways); fire any authored SFX; rebuild the panel.
+    if (aff.audio && snap.audio) {
+      const tracks = state.audio.tracks || {};
+      const set = new Set(snap.audio.playing || []);
+      for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
+      if (snap.audio.master != null) state.audio.master = snap.audio.master;
+      for (const id of (snap.audio.sfx || [])) {
+        state.audio.sfxTrigger[id] = (state.audio.sfxTrigger[id] || 0) + 1;
+      }
+      builtAudioSceneId = null;       // force the audio panel to reflect the new set
+    }
+    activeCueId = cue ? cue.id : null;
+  }
+  function applyCue(cue) {
+    const scene = sceneById(state.sceneId);
+    if (!scene || !cue) return;
+    applyCueState(cue, scene, { wasBlackedOut: false });
+    commit();
+  }
+  function renderCueButtons(scene) {
+    const cues = (scene && scene.cues) || [];
+    els.cueButtons.innerHTML = '';
+    for (const cue of cues) {
+      const btn = document.createElement('button');
+      btn.className = 'gm-button btn--toggle cue-button';
+      btn.type = 'button';
+      btn.textContent = cue.label || cue.id;
+      if (cue.opening) btn.classList.add('is-opening');
+      btn.title = cue.opening ? 'Opening cue (fires on select) -- ' + (cue.label || cue.id) : (cue.label || cue.id);
+      btn.classList.toggle('active', cue.id === activeCueId);
+      btn.addEventListener('click', () => applyCue(cue));
+      els.cueButtons.appendChild(btn);
+    }
+    // Always offer the row for a selected scene: the buttons (if any) plus the
+    // ever-present "Save as cue" that authors the first one.
+    els.cueRow.hidden = false;
   }
 
   // Category label + order for the grouped left/right character pickers.
@@ -993,6 +1164,7 @@ export function mountGm(root) {
       right: { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
       roster: { heroes: [], enemies: [] },
       savedLayout: [],
+      cues: [],
       audio: { music: null, ambience: [], sfx: [] }
     };
   }
@@ -1025,6 +1197,8 @@ export function mountGm(root) {
       },
       // Carried opaquely through the builder; positions are edited in map mode.
       savedLayout: Array.isArray(scene.savedLayout) ? scene.savedLayout.slice() : [],
+      // Captured live; the builder only renames / re-scopes / reorders them.
+      cues: Array.isArray(scene.cues) ? JSON.parse(JSON.stringify(scene.cues)) : [],
       audio: scene.audio
         ? { music: scene.audio.music || null,
             ambience: Array.isArray(scene.audio.ambience) ? JSON.parse(JSON.stringify(scene.audio.ambience)) : [],
@@ -1066,6 +1240,17 @@ export function mountGm(root) {
     if (Array.isArray(d.savedLayout) && d.savedLayout.length) {
       scene.savedLayout = d.savedLayout.map((L) => ({
         castId: L.castId, kind: L.kind, label: L.label, x: L.x, y: L.y, visible: L.visible !== false
+      }));
+    }
+    // Cues ride through opaquely (captured live; renamed/re-scoped/reordered in
+    // the builder). Normalize the editable fields; keep the captured snapshot.
+    if (Array.isArray(d.cues) && d.cues.length) {
+      scene.cues = d.cues.map((c) => ({
+        id: c.id || slug(c.label || 'cue'),
+        label: (c.label || c.id || 'Cue'),
+        opening: !!c.opening,
+        affects: { ...defaultAffects(), ...(c.affects || {}) },
+        snapshot: c.snapshot || {}
       }));
     }
     const chars = {};
@@ -1208,6 +1393,7 @@ export function mountGm(root) {
     els.bRightFlip.classList.toggle('is-on', !!draft.right.flip);
     renderRosterPick();
     renderAudioPick();
+    renderCueRows();
     els.bExportOut.hidden = true;
     els.bExportHint.hidden = true;
     els.bCopy.hidden = true;
@@ -1254,6 +1440,98 @@ export function mountGm(root) {
     };
     build(els.rosterHeroes, els.rosterAllHeroes, CAST.heroes || [], draft.roster.heroes);
     build(els.rosterEnemies, els.rosterAllEnemies, CAST.enemies || [], draft.roster.enemies);
+  }
+
+  // Manage the scene's cues: cues are CAPTURED live (from the rail "Save as cue"),
+  // and renamed / re-scoped / reordered / deleted here. Each row: a label, an
+  // "Opening" toggle (at most one cue fires on select), the five aspect toggles
+  // (what the cue affects), reorder, and remove. The captured snapshot is opaque.
+  function renderCueRows() {
+    if (!els.cueList) return;
+    els.cueList.innerHTML = '';
+    const cues = draft.cues || (draft.cues = []);
+    if (els.cueEmptyHint) els.cueEmptyHint.hidden = cues.length > 0;
+    cues.forEach((cue, i) => {
+      const row = document.createElement('div');
+      row.className = 'cue-edit';
+
+      const label = document.createElement('input');
+      label.type = 'text';
+      label.className = 'cue-label';
+      label.value = cue.label || '';
+      label.placeholder = 'Cue name';
+      label.addEventListener('input', () => { cue.label = label.value; });
+
+      // Exactly one opening cue: turning one on clears the rest.
+      const open = document.createElement('button');
+      open.className = 'gm-button btn--toggle cue-opening';
+      open.type = 'button';
+      open.textContent = 'Opening';
+      open.title = 'Fire this cue automatically when the scene is selected';
+      const syncOpen = () => { open.classList.toggle('is-on', !!cue.opening); open.setAttribute('aria-pressed', cue.opening ? 'true' : 'false'); };
+      syncOpen();
+      open.addEventListener('click', () => {
+        const turnOn = !cue.opening;
+        cues.forEach((c) => { c.opening = false; });
+        cue.opening = turnOn;
+        renderCueRows();
+      });
+
+      // Aspect toggles -- which parts of the stage this cue drives.
+      const aff = (cue.affects = { ...defaultAffects(), ...(cue.affects || {}) });
+      const affWrap = document.createElement('span');
+      affWrap.className = 'cue-affects';
+      const affBtn = (text, prop, title) => {
+        const b = document.createElement('button');
+        b.className = 'gm-button btn--toggle cue-aff';
+        b.type = 'button';
+        b.textContent = text;
+        b.title = title;
+        const s = () => { const on = aff[prop] !== false; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+        s();
+        b.addEventListener('click', () => { aff[prop] = (aff[prop] === false); s(); });
+        return b;
+      };
+      affWrap.append(
+        affBtn('Bg', 'background', 'Switch the background variant'),
+        affBtn('Chars', 'characters', 'Set who is on the left and right'),
+        affBtn('Audio', 'audio', 'Set which audio plays'),
+        affBtn('Map', 'mapMode', 'Enter or exit map mode'),
+        affBtn('Curtain', 'curtain', 'Raise or drop the black curtain')
+      );
+
+      const move = (from, to) => {
+        if (to < 0 || to >= cues.length) return;
+        const [c] = cues.splice(from, 1);
+        cues.splice(to, 0, c);
+        renderCueRows();
+      };
+      const up = document.createElement('button');
+      up.className = 'gm-button btn--quiet cue-up';
+      up.type = 'button';
+      up.textContent = '↑';
+      up.title = 'Move up';
+      up.disabled = i === 0;
+      up.addEventListener('click', () => move(i, i - 1));
+
+      const down = document.createElement('button');
+      down.className = 'gm-button btn--quiet cue-down';
+      down.type = 'button';
+      down.textContent = '↓';
+      down.title = 'Move down';
+      down.disabled = i === cues.length - 1;
+      down.addEventListener('click', () => move(i, i + 1));
+
+      const rm = document.createElement('button');
+      rm.className = 'cue-remove';
+      rm.type = 'button';
+      rm.textContent = 'Remove';
+      rm.title = 'Delete this cue';
+      rm.addEventListener('click', () => { cues.splice(i, 1); renderCueRows(); });
+
+      row.append(label, open, affWrap, up, down, rm);
+      els.cueList.appendChild(row);
+    });
   }
 
   function fillEnterSelect(sel, value) {
@@ -1496,6 +1774,7 @@ export function mountGm(root) {
       els.mapModeToggle.textContent = inMap ? 'Exit map mode' : 'Map mode';
       els.mapModeToggle.classList.toggle('is-on', inMap);
       renderVariantButtons(scene);
+      renderCueButtons(scene);
     }
 
     // Surface audio for every selected scene: the full panel when the scene

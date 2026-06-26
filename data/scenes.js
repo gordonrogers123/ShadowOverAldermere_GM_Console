@@ -50,6 +50,22 @@
 //      // live in the audio panel and captured with "Save audio to scene".
 //      audio:    null,   // or { music:{src,volume,pan,loop},
 //                        //      ambience:[{src,...}], sfx:[{id,src,volume,pan}] }
+//
+//      // CUES (optional). One-press stage presets: each is a saved snapshot of
+//      // the whole stage (which variant is up, scene/map mode, the curtain, who
+//      // is on left/right, which audio plays). Pressing a cue transitions every
+//      // aspect at once; an `opening:true` cue fires automatically on select
+//      // (e.g. title card + title music). Captured live in the GM window
+//      // ("Save as cue") and scoped per cue via `affects` so a quick character
+//      // swap leaves the background and music alone. Carried opaquely; old
+//      // scenes without it load fine.
+//      cues: [ { id, label, opening:false,
+//                affects:{background,mapMode,curtain,characters,tokens,audio},
+//                snapshot:{ mapState, mapMode, visible,
+//                           left:{shown,srcOverride}, right:{shown,srcOverride},
+//                           tokens:[{castId,kind,label,x,y,visible}],
+//                           audio:{playing:[trackKeys], master, sfx:[ids]} } } ],
+//
 //      gmNotes:  "GM only text."   // shown in the GM window only
 //    }
 //
