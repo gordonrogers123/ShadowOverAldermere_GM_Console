@@ -778,8 +778,13 @@ export function mountGm(root) {
       }
     } else if (name === 'characters') {
       const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
-      state.stage.left = side(snap.left);
-      state.stage.right = side(snap.right);
+      // Carry a bumped entrance nonce so the compositor replays the transition
+      // even if the side is already on stage from an earlier (instant) cue.
+      const bump = (prev) => ((prev && +prev.enterSeq) || 0) + 1;
+      const nl = side(snap.left); nl.enterSeq = bump(state.stage.left);
+      const nr = side(snap.right); nr.enterSeq = bump(state.stage.right);
+      state.stage.left = nl;
+      state.stage.right = nr;
       setStageFx('char', lane.ramp);
     }
     activeCueId = cue.id;

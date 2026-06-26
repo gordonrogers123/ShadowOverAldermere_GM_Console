@@ -195,7 +195,10 @@ export function createStageView(root) {
     const clampN = (v, lo, hi) => { v = +v; return !isFinite(v) ? 0 : v < lo ? lo : v > hi ? hi : v; };
     const x = clampN(cfg && cfg.x, -20, 60);
     const y = clampN(cfg && cfg.y, -20, 40);
-    return { src, shown, enter, scale, flip, x, y };
+    // A re-entrance nonce: a keyframed cue bumps it to replay the entrance even
+    // when the side is already on stage (rides the broadcast; undefined normally).
+    const enterSeq = live.enterSeq;
+    return { src, shown, enter, scale, flip, x, y, enterSeq };
   }
 
   function applySide(side, r, instant) {
@@ -225,14 +228,25 @@ export function createStageView(root) {
         };
         img.src = r.src;
       }
+      const seqChanged = r.enterSeq != null && r.enterSeq !== prev.enterSeq;
       if (instant) {
         img.classList.add('is-shown');
+      } else if (seqChanged && prev.shown && !srcChanged) {
+        // Already on stage (e.g. a prior instant cue popped it in), but a
+        // keyframed cue asks to replay the entrance: kill the transition, drop to
+        // the offstage baseline, force a reflow, restore, then animate back in.
+        const t = img.style.transition;
+        img.style.transition = 'none';
+        img.classList.remove('is-shown');
+        void img.offsetWidth;
+        img.style.transition = t;
+        requestAnimationFrame(() => img.classList.add('is-shown'));
       } else if (!prev.shown || srcChanged) {
         // Animate the entrance from the offstage baseline once decoded.
         const go = () => requestAnimationFrame(() => img.classList.add('is-shown'));
         if (img.decode) img.decode().then(go).catch(go); else go();
       }
-      applied[side] = { shown: true, src: r.src };
+      applied[side] = { shown: true, src: r.src, enterSeq: r.enterSeq };
     } else {
       img.classList.remove('is-shown');   // exit: CSS slides or fades it back out
       applied[side] = { shown: false, src: prev.src };
