@@ -30,6 +30,7 @@ export function mountGm(root) {
   let activeCueId = null;           // the cue last applied -- lights its rail button
   let railContextKey = null;        // scene|mode|cue key; resets the All-controls open-state only on change
   let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
+  let testTimers = [];              // pending setTimeouts for a builder "Test in preview" run
   let tokenSeq = 0;                 // monotonic source of unique token instIds
   let backgrounds = BACKGROUNDS.slice();   // mutable so Rescan can replace them
   let characters = CHARACTERS.slice();
@@ -404,7 +405,7 @@ export function mountGm(root) {
   function selectScene(id) {
     const scene = sceneById(id);
     if (!scene) return;
-    cancelCueTimeline();   // a scene change cancels any in-flight cue sequence
+    cancelCueTimeline(); cancelTestTimeline();   // a scene change cancels any in-flight cue/test sequence
     // A global black-out persists across scene changes, so the GM can cut to
     // black, switch scenes, then reveal when ready.
     const wasBlackedOut = !!(state.stage && state.stage.visible === false);
@@ -687,11 +688,15 @@ export function mountGm(root) {
       ['characters', !!aff.characters]
     ].filter(([, on]) => on).map(([k]) => k);
   }
-  function setStageFx(key, ramp) {
-    if (!state.stage) return;
-    if (!state.stage.fx) state.stage.fx = {};
-    if (ramp != null && isFinite(+ramp)) state.stage.fx[key] = Math.max(0, +ramp);
+  // Push a ramp (ms) onto a stage object's transient fx so stageView animates
+  // that element at the cue's speed. Used for both the live state and the
+  // builder's Test-in-preview state.
+  function setFx(stage, key, ramp) {
+    if (!stage) return;
+    if (!stage.fx) stage.fx = {};
+    if (ramp != null && isFinite(+ramp)) stage.fx[key] = Math.max(0, +ramp);
   }
+  function setStageFx(key, ramp) { setFx(state.stage, key, ramp); }
   // Drop the transient ramp hints so ordinary play uses the CSS/engine defaults.
   function clearCueFx() {
     if (state.stage && state.stage.fx) delete state.stage.fx;
@@ -759,6 +764,52 @@ export function mountGm(root) {
     // any later manual action animates at the normal speed.
     cueTimers.push(setTimeout(() => { clearCueFx(); commit(); }, lastEnd + 300));
   }
+  function cancelTestTimeline() {
+    for (const id of testTimers) clearTimeout(id);
+    testTimers = [];
+  }
+  // Play a cue's VISUAL choreography in the GM preview only (no commit, no
+  // broadcast, no audio) so the GM can dial in Start/Ramp from the builder
+  // without opening a Player window. Runs against a throwaway preview state and
+  // restores the draft preview when done.
+  function testCueTimeline(cue) {
+    cancelTestTimeline();
+    if (!draft) return;
+    const scene = draftToScene(draft);
+    const tl = { ...defaultTimeline(), ...(cue.timeline || {}) };
+    const snap = cue.snapshot || {};
+    const aff = { ...defaultAffects(), ...(cue.affects || {}) };
+    const firstKey = Object.keys(scene.maps || {})[0] || 'revealed';
+    // Baseline: the scene's first backdrop, curtain up, nobody on -- so the test
+    // shows the cue revealing from a clean slate.
+    const ps = { sceneId: scene.id, mapState: firstKey,
+      stage: { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [], mapMode: false } };
+    const paint = () => previewView.render(ps, scene, {});
+    paint();
+    const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
+    const beats = [
+      ['blackout', true, () => { ps.stage.visible = false; setFx(ps.stage, 'curtain', tl.blackout.ramp); }],
+      ['background', aff.background !== false, () => {
+        if (snap.mapState != null && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, snap.mapState)) ps.mapState = snap.mapState;
+        setFx(ps.stage, 'crossfade', tl.background.ramp);
+      }],
+      ['reveal', true, () => { ps.stage.visible = !(snap.visible === false); setFx(ps.stage, 'curtain', tl.reveal.ramp); }],
+      ['characters', aff.characters !== false, () => {
+        ps.stage.left = side(snap.left); ps.stage.right = side(snap.right);
+        setFx(ps.stage, 'char', tl.characters.ramp);
+      }]
+    ];
+    let lastEnd = 0;
+    for (const [name, on, fn] of beats) {
+      if (!on) continue;
+      const lane = tl[name] || defaultTimeline()[name];
+      const at = Math.max(0, +lane.at || 0);
+      lastEnd = Math.max(lastEnd, at + (+lane.ramp || 0));
+      testTimers.push(setTimeout(() => { fn(); paint(); }, at));
+    }
+    // Hold the final frame a beat, then return the preview to the editing baseline.
+    testTimers.push(setTimeout(() => { cancelTestTimeline(); renderBuilderPreview(); }, lastEnd + 900));
+  }
   function renderCueButtons(scene) {
     const cues = (scene && scene.cues) || [];
     els.cueButtons.innerHTML = '';
@@ -768,7 +819,10 @@ export function mountGm(root) {
       btn.type = 'button';
       btn.textContent = cue.label || cue.id;
       if (cue.opening) btn.classList.add('is-opening');
-      btn.title = cue.opening ? 'Opening cue (fires on select) -- ' + (cue.label || cue.id) : (cue.label || cue.id);
+      if (cue.timeline) btn.classList.add('is-sequenced');   // wears a ▸ play glyph
+      const note = [cue.opening ? 'opening cue (fires on select)' : '', cue.timeline ? 'plays as a timed sequence' : '']
+        .filter(Boolean).join(', ');
+      btn.title = note ? (cue.label || cue.id) + ' — ' + note : (cue.label || cue.id);
       btn.classList.toggle('active', cue.id === activeCueId);
       btn.addEventListener('click', () => applyCue(cue));
       els.cueButtons.appendChild(btn);
@@ -1487,7 +1541,7 @@ export function mountGm(root) {
     renderBuilderInputs();
     renderUI();
   }
-  function closeBuilder() { draft = null; renderUI(); }
+  function closeBuilder() { cancelTestTimeline(); draft = null; renderUI(); }
 
   function renderVariantRows() {
     els.variantList.innerHTML = '';
@@ -1657,6 +1711,7 @@ export function mountGm(root) {
   // (what the cue affects), reorder, and remove. The captured snapshot is opaque.
   function renderCueRows() {
     if (!els.cueList) return;
+    cancelTestTimeline();   // rebuilding the cue rows ends any running Test
     els.cueList.innerHTML = '';
     const cues = draft.cues || (draft.cues = []);
     if (els.cueEmptyHint) els.cueEmptyHint.hidden = cues.length > 0;
@@ -1782,6 +1837,24 @@ export function mountGm(root) {
       ['sfx', 'SFX', hasSfx, false],
       ['characters', 'Characters', aff.characters !== false, true]
     ];
+    // A controls row: play the sequence in the preview, or reset to defaults.
+    const controls = document.createElement('div');
+    controls.className = 'cue-tl-controls';
+    const testBtn = document.createElement('button');
+    testBtn.className = 'gm-button btn--quiet cue-tl-test';
+    testBtn.type = 'button';
+    testBtn.textContent = '▸ Test in preview';
+    testBtn.title = 'Play this sequence in the preview above (visual only)';
+    testBtn.addEventListener('click', () => testCueTimeline(cue));
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'gm-button btn--quiet cue-tl-reset';
+    resetBtn.type = 'button';
+    resetBtn.textContent = 'Defaults';
+    resetBtn.title = 'Reset every lane to the default timing';
+    resetBtn.addEventListener('click', () => { cue.timeline = defaultTimeline(); renderCueRows(); });
+    controls.append(testBtn, resetBtn);
+    host.append(controls);
+
     const secField = (laneObj, prop, cap) => {
       const wrap = document.createElement('label');
       wrap.className = 'cue-lane-field';
@@ -1817,6 +1890,7 @@ export function mountGm(root) {
 
   function renderBuilderPreview() {
     if (!draft) return;
+    cancelTestTimeline();   // a manual preview refresh ends any running Test
     const scene = draftToScene(draft);
     const firstKey = Object.keys(scene.maps)[0] || 'revealed';
     const pstate = {

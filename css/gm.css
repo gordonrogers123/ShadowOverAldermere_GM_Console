@@ -370,6 +370,8 @@ body.view-gm {
 /* The opening cue (fires on select) wears a small gold star. */
 .view-gm .cue-button.is-opening::before { content: '\2605 '; color: #b07d2b; }
 .view-gm .cue-button.is-opening.active::before { color: var(--paper); }
+/* A sequenced cue (plays as a timed choreography) wears a small play triangle. */
+.view-gm .cue-button.is-sequenced::after { content: ' \25B8'; opacity: 0.7; }
 .view-gm .cue-save { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; white-space: nowrap; }
 /* When a scene has no cues yet, the row is just the inviting "Save as cue". */
 .view-gm .cue-buttons:empty { flex: 0 0 auto; }
@@ -467,6 +469,8 @@ body.view-gm {
   margin: 0 0 0.6rem 0.5rem; padding: var(--space-2) var(--space-3);
   border-left: 3px solid var(--control); background: var(--fill); border-radius: var(--radius-sm);
 }
+.view-gm .cue-tl-controls { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
+.view-gm .cue-tl-test, .view-gm .cue-tl-reset { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
 .view-gm .cue-lane { display: flex; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-1); flex-wrap: wrap; }
 .view-gm .cue-lane-name { flex: 0 0 7rem; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100); }
 .view-gm .cue-lane-field { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-100); color: var(--neutral); }
