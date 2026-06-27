@@ -11,19 +11,21 @@
 // ============================================================
 
 export const BACKGROUNDS = [
-  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png" },
-  { id: "A1 S2 City Gates", name: "A1 S2 City Gates", src: "assets/backgrounds/A1 S2 City Gates.png" },
-  { id: "A1 S2 Gate Gardpost", name: "A1 S2 Gate Gardpost", src: "assets/backgrounds/A1 S2 Gate Gardpost.png" },
-  { id: "A1 S3 Tavern Harth", name: "A1 S3 Tavern Harth", src: "assets/backgrounds/A1 S3 Tavern Harth.png" },
-  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png" },
-  { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png" },
-  { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png" },
-  { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png" },
-  { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png" },
-  { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png" },
-  { id: "A1 S3 Town Center -- Night", name: "A1 S3 Town Center Night", src: "assets/maps/A1 S3 Town Center -- Night.png" },
-  { id: "A1 S3 Town Center", name: "A1 S3 Town Center", src: "assets/maps/A1 S3 Town Center.png" },
-  { id: "A1 S4 Market", name: "A1 S4 Market", src: "assets/maps/A1 S4 Market.png" }
+  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png", kind: "background" },
+  { id: "A1 S2 City Gates", name: "A1 S2 City Gates", src: "assets/backgrounds/A1 S2 City Gates.png", kind: "background" },
+  { id: "A1 S2 Gate Gardpost", name: "A1 S2 Gate Gardpost", src: "assets/backgrounds/A1 S2 Gate Gardpost.png", kind: "background" },
+  { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/backgrounds/A1 S2 Tent Camp -- Day.png", kind: "background" },
+  { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/backgrounds/A1 S2 Tent Camp -- Night.png", kind: "background" },
+  { id: "A1 S3 Tavern Harth", name: "A1 S3 Tavern Harth", src: "assets/backgrounds/A1 S3 Tavern Harth.png", kind: "background" },
+  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png", kind: "map" },
+  { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png", kind: "map" },
+  { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map" },
+  { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png", kind: "map" },
+  { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png", kind: "map" },
+  { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png", kind: "map" },
+  { id: "A1 S3 Town Center -- Night", name: "A1 S3 Town Center Night", src: "assets/maps/A1 S3 Town Center -- Night.png", kind: "map" },
+  { id: "A1 S3 Town Center", name: "A1 S3 Town Center", src: "assets/maps/A1 S3 Town Center.png", kind: "map" },
+  { id: "A1 S4 Market", name: "A1 S4 Market", src: "assets/maps/A1 S4 Market.png", kind: "map" }
 ];
 
 export const CHARACTERS = [
@@ -34,29 +36,27 @@ export const CHARACTERS = [
   { id: "telstar", name: "Telstar", src: "assets/characters/heroes/telstar.png", category: "hero" },
   { id: "thraka", name: "Thraka", src: "assets/characters/heroes/thraka.png", category: "hero" },
   { id: "truf", name: "Truf", src: "assets/characters/heroes/truf.png", category: "hero" },
-  { id: "cassian", name: "Cassian", src: "assets/characters/npcs/cassian.png", category: "npc" },
-  { id: "dorran", name: "Dorran", src: "assets/characters/npcs/dorran.png", category: "npc" },
-  { id: "grannyEdna1", name: "GrannyEdna1", src: "assets/characters/npcs/grannyEdna1.png", category: "npc" },
-  { id: "hob", name: "Hob", src: "assets/characters/npcs/hob.png", category: "npc" },
-  { id: "marchfamily1", name: "Marchfamily1", src: "assets/characters/npcs/marchfamily1.png", category: "npc" },
-  { id: "marchfamily2", name: "Marchfamily2", src: "assets/characters/npcs/marchfamily2.png", category: "npc" },
-  { id: "pip", name: "Pip", src: "assets/characters/npcs/pip.png", category: "npc" },
-  { id: "wick", name: "Wick", src: "assets/characters/npcs/wick.png", category: "npc" },
-  { id: "wren", name: "Wren", src: "assets/characters/npcs/wren.png", category: "npc" }
+  { id: "Captain Hob", name: "Captain Hob", src: "assets/characters/npcs/Captain Hob.png", category: "npc" },
+  { id: "Cassian -- Hero Pose", name: "Cassian Hero Pose", src: "assets/characters/npcs/Cassian -- Hero Pose.png", category: "npc" },
+  { id: "Granny Edna", name: "Granny Edna", src: "assets/characters/npcs/Granny Edna.png", category: "npc" },
+  { id: "Marsh Family -- Talking", name: "Marsh Family Talking", src: "assets/characters/npcs/Marsh Family -- Talking.png", category: "npc" },
+  { id: "Marsh Family -- Watching", name: "Marsh Family Watching", src: "assets/characters/npcs/Marsh Family -- Watching.png", category: "npc" },
+  { id: "Pip -- Speaking", name: "Pip Speaking", src: "assets/characters/npcs/Pip -- Speaking.png", category: "npc" },
+  { id: "Sgt Dorran", name: "Sgt Dorran", src: "assets/characters/npcs/Sgt Dorran.png", category: "npc" },
+  { id: "Wick", name: "Wick", src: "assets/characters/npcs/Wick.png", category: "npc" },
+  { id: "Wren", name: "Wren", src: "assets/characters/npcs/Wren.png", category: "npc" }
 ];
 
 export const MUSIC = [
-  { id: "theme-calm", name: "Theme Calm", src: "assets/audio/music/theme-calm.wav" },
-  { id: "theme-tense", name: "Theme Tense", src: "assets/audio/music/theme-tense.wav" }
+  { id: "Brigands", name: "Brigands", src: "assets/audio/music/Brigands.wav" },
+  { id: "City Night", name: "City Night", src: "assets/audio/music/City Night.wav" },
+  { id: "Hollow Market", name: "Hollow Market", src: "assets/audio/music/Hollow Market.wav" },
+  { id: "Road to Aldermere -- Fight", name: "Road To Aldermere Fight", src: "assets/audio/music/Road to Aldermere -- Fight.mp3" },
+  { id: "Road to Aldermere -- Walk", name: "Road To Aldermere Walk", src: "assets/audio/music/Road to Aldermere -- Walk.mp3" }
 ];
 
 export const AMBIENCE = [
-  { id: "tavern", name: "Tavern", src: "assets/audio/ambience/tavern.wav" },
-  { id: "wind", name: "Wind", src: "assets/audio/ambience/wind.wav" }
 ];
 
 export const SFX = [
-  { id: "chime", name: "Chime", src: "assets/audio/sfx/chime.wav" },
-  { id: "door-thud", name: "Door Thud", src: "assets/audio/sfx/door-thud.wav" },
-  { id: "sword-clash", name: "Sword Clash", src: "assets/audio/sfx/sword-clash.wav" }
 ];
