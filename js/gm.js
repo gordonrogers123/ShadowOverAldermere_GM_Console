@@ -394,7 +394,9 @@ export function mountGm(root) {
   surface.className = 'gm-surface';
   els.preview.before(surface);
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
-  root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
+  els.surface = surface;
+  els.scenes = root.querySelector('.gm-scenes');
+  els.scenes.appendChild(els.notes);  // notes fill the rail bottom
   // Map mode lays the BOARD on top, a controls strip, then the roster + the
   // initiative tracker SIDE BY SIDE. Lift the roster out of .gm-mapmode and pair
   // it with the initiative panel in one .mapmode-combat row, so the tracker sits
@@ -2262,7 +2264,15 @@ export function mountGm(root) {
       rm.type = 'button'; rm.textContent = 'Remove'; rm.title = 'Delete this cue';
       rm.addEventListener('click', () => { cueOpen.delete(cue.id); cues.splice(i, 1); renderCueRows(); });
 
-      head.append(chev, label, open, up, down, rm);
+      // Play THIS cue -- with its keyframe transitions -- in the docked preview,
+      // without scrolling up or opening the keyframe editor.
+      const prev = document.createElement('button');
+      prev.className = 'gm-button btn--quiet cue-preview';
+      prev.type = 'button'; prev.textContent = '▶ Preview';
+      prev.title = 'Play this cue (with its keyframe transitions) in the preview';
+      prev.addEventListener('click', () => testCueTimeline(cue));
+
+      head.append(chev, label, prev, open, up, down, rm);
       card.append(head);
 
       // ---- Body: content pickers + per-element keyframes (only when expanded) ----
@@ -2767,6 +2777,15 @@ export function mountGm(root) {
       if (els.controlsNav.parentElement !== els.mapmodeHeadActions) els.mapmodeHeadActions.appendChild(els.controlsNav);
     } else if (els.controlsNav.nextElementSibling !== els.allControls) {
       els.controls.insertBefore(els.controlsNav, els.allControls);
+    }
+
+    // Build mode docks the preview into the sticky left rail (under the scene
+    // list) so it stays visible while scrolling a long cue editor; otherwise it
+    // sits in the centre stage. Idempotent -- only moves when the parent is wrong.
+    if (building) {
+      if (els.preview.parentElement !== els.scenes) els.scenes.appendChild(els.preview);
+    } else if (els.preview.parentElement !== els.surface) {
+      els.surface.insertBefore(els.preview, els.controls);
     }
 
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
