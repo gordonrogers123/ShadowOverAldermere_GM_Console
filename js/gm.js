@@ -112,7 +112,7 @@ export function mountGm(root) {
 
           <div class="control-row controls-nav">
             <button class="gm-button btn--quiet map-mode-toggle" type="button" hidden>Map mode</button>
-            <button class="gm-button btn--quiet edit-scene" type="button">Edit</button>
+            <button class="gm-button btn--quiet edit-scene" type="button" title="Edit this scene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="btn-label">Edit</span></button>
           </div>
 
           <!-- Map-mode controls: reveal the map variant + Save/Reset layout. Shown
@@ -121,13 +121,13 @@ export function mountGm(root) {
             <summary class="all-controls-summary">Map controls</summary>
             <div class="all-controls-body">
               <div class="control-row variant-row">
-                <span class="control-label">Background</span>
+                <span class="control-label">Map</span>
                 <div class="variant-buttons"></div>
               </div>
               <div class="controls-map" hidden>
                 <div class="control-row">
-                  <button class="gm-button btn--save mm-save-layout" type="button">Save layout</button>
-                  <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden>Reset to saved layout</button>
+                  <button class="gm-button btn--save mm-save-layout" type="button" title="Save the current token layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span class="btn-label">Save</span></button>
+                  <button class="gm-button btn--quiet mm-reset-layout" type="button" hidden title="Reset to the last saved layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="btn-label">Reset</span></button>
                 </div>
               </div>
             </div>
@@ -165,11 +165,22 @@ export function mountGm(root) {
         <div class="gm-builder" hidden>
           <div class="builder-head">
             <h3 class="gm-h3 builder-title">Build a scene</h3>
+            <!-- Inline SVG icons (one shared 24x24 viewBox, stroke=currentColor) so
+                 the four buttons read as an even, equally-weighted set -- the old
+                 mix of a colour emoji (save) and thin text glyphs looked uneven. -->
             <div class="builder-tools">
-              <button class="u-icon-btn b-save" type="button" title="Save scene" aria-label="Save scene">&#128190;</button>
-              <button class="u-icon-btn b-export" type="button" title="Export scene JSON" aria-label="Export scene JSON">&#10515;</button>
-              <button class="u-icon-btn b-copy" type="button" title="Copy export to clipboard" aria-label="Copy export to clipboard" hidden>&#10697;</button>
-              <button class="u-icon-btn b-cancel" type="button" title="Cancel editing" aria-label="Cancel editing">&times;</button>
+              <button class="u-icon-btn b-save" type="button" title="Save scene" aria-label="Save scene">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+              </button>
+              <button class="u-icon-btn b-export" type="button" title="Export scene JSON" aria-label="Export scene JSON">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              </button>
+              <button class="u-icon-btn b-copy" type="button" title="Copy export to clipboard" aria-label="Copy export to clipboard" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button class="u-icon-btn b-cancel" type="button" title="Cancel editing" aria-label="Cancel editing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
             </div>
           </div>
 
@@ -261,8 +272,10 @@ export function mountGm(root) {
         <div class="gm-mapmode" hidden>
           <div class="mapmode-head">
             <h3 class="gm-h3 mapmode-title"></h3>
+            <!-- The Edit / Exit-map-mode nav is relocated here (next to the title)
+                 in map mode by renderUI, so it's reachable without scrolling. -->
+            <div class="mapmode-head-actions"></div>
           </div>
-          <p class="mapmode-intro">Place and move tokens on the map; they show on the TV <strong>only while you are in map mode</strong>. The rail keeps <strong>Background</strong> (reveal the map), <strong>Save layout</strong>, and <strong>Exit map mode</strong> right where they were &mdash; nothing jumps.</p>
           <div class="mapmode-board"></div>
           <div class="mapmode-roster"></div>
         </div>
@@ -283,6 +296,7 @@ export function mountGm(root) {
     previewName:  root.querySelector('.preview-name'),
     badge:        root.querySelector('.badge'),
     controls:     root.querySelector('.gm-controls'),
+    controlsNav:  root.querySelector('.controls-nav'),
     cueRow:       root.querySelector('.cue-row'),
     cueButtons:   root.querySelector('.cue-buttons'),
     quick:        root.querySelector('.gm-quick'),
@@ -328,6 +342,7 @@ export function mountGm(root) {
     mapmode:      root.querySelector('.gm-mapmode'),
     mapboard:     root.querySelector('.mapmode-board'),
     mapmodeTitle: root.querySelector('.mapmode-title'),
+    mapmodeHeadActions: root.querySelector('.mapmode-head-actions'),
     mmSaveLayout: root.querySelector('.mm-save-layout'),
     mmResetLayout: root.querySelector('.mm-reset-layout'),
     mapRoster:    root.querySelector('.mapmode-roster'),
@@ -380,14 +395,23 @@ export function mountGm(root) {
   els.preview.before(surface);
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   root.querySelector('.gm-scenes').appendChild(els.notes);  // notes fill the rail bottom
-  // Map mode lays the BOARD on top, a controls strip, the roster, then the
-  // initiative tracker. Lift the roster out of .gm-mapmode (which keeps the
-  // board) so the blocks can be ordered independently by the .is-map layout.
-  els.mapmode.after(els.mapRoster);
+  // Map mode lays the BOARD on top, a controls strip, then the roster + the
+  // initiative tracker SIDE BY SIDE. Lift the roster out of .gm-mapmode and pair
+  // it with the initiative panel in one .mapmode-combat row, so the tracker sits
+  // beside the roster (not far below it); the .is-map layout orders the blocks.
+  const combat = document.createElement('div');
+  combat.className = 'mapmode-combat';
+  els.mapmode.after(combat);
   const initPanel = document.createElement('div');
   initPanel.className = 'gm-initiative'; initPanel.hidden = true;
   els.initiative = initPanel;
-  els.mapRoster.after(initPanel);
+  combat.append(els.mapRoster, initPanel);
+  // The map-mode controls (the map-variant reveal + Save/Reset layout) ride ON the
+  // board header row, next to the title and the Edit/Exit nav -- so the separate
+  // controls strip is gone entirely. They're map-only (inside .gm-mapmode, hidden
+  // in live mode), so this one-time move needs no per-render toggle; the now-empty
+  // .gm-surface is hidden in map mode (CSS).
+  els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
   // The active enemy's stat sheet sits in the left rail (where GM notes are),
   // shown only in map mode.
   const statSheet = document.createElement('div');
@@ -1336,8 +1360,12 @@ export function mountGm(root) {
     ensureTokens();
     state.stage.tokens = state.stage.tokens.filter((t) => t.instId !== instId);
     // A removed token leaves the initiative line; the cursor clamps + the active
-    // highlight moves to whoever now sits at that slot.
-    if (state.initiative && state.initiative.rolls) { delete state.initiative.rolls[instId]; rebuildInitOrder(); }
+    // highlight moves to whoever now sits at that slot. Only re-sort an EXISTING
+    // order (built by Apply) -- don't build one from a half-entered set.
+    if (state.initiative && state.initiative.rolls) {
+      delete state.initiative.rolls[instId];
+      if (Array.isArray(state.initiative.order) && state.initiative.order.length) rebuildInitOrder();
+    }
     commit();
   }
   function toggleTokenVisible(instId) {
@@ -1376,14 +1404,14 @@ export function mountGm(root) {
     if (i.idx >= i.order.length) i.idx = 0;
     syncActiveToken();
   }
-  function rollEnemies(reset) {
+  // Roll every placed enemy into its own initiative field (d20 + the type
+  // modifier). Fills the fields only -- the GM presses Apply to build the order.
+  function rollEnemies() {
     ensureTokens(); const i = ensureInit();
     for (const t of state.stage.tokens) {
       if (t.kind === 'enemy') i.rolls[t.instId] = d20() + (parseInt(i.mods[t.castId], 10) || 0);
     }
-    if (reset) i.idx = 0;
-    rebuildInitOrder();
-    commit();
+    commit();   // show the rolled values in the roster fields; no re-sort yet
   }
   function setEnemyMod(castId, val) {
     const i = ensureInit();
@@ -1391,10 +1419,19 @@ export function mountGm(root) {
     if (val === '' || isNaN(n)) delete i.mods[castId]; else i.mods[castId] = n;
     saveState(state);   // stored for the next roll; no re-render (keeps input focus)
   }
-  function setHeroRoll(instId, val) {
+  // A single token's initiative value (typed for heroes, rolled-or-overridden for
+  // enemies). Stores the value only; Apply builds the sorted order from the values.
+  function setTokenRoll(instId, val) {
     const i = ensureInit();
     const n = parseInt(val, 10);
     if (val === '' || isNaN(n)) delete i.rolls[instId]; else i.rolls[instId] = n;
+    commit();
+  }
+  // Build (or rebuild) the turn order from the entered values, high-to-low, and
+  // start at the top. This is the GM's explicit "sort now" action.
+  function applyInitiative() {
+    const i = ensureInit();
+    i.idx = 0;
     rebuildInitOrder();
     commit();
   }
@@ -1485,15 +1522,31 @@ export function mountGm(root) {
     b.addEventListener('click', () => addToken(id, kind));
     return b;
   }
-  // A hero's initiative entry (players roll their own). Commits on change (blur),
-  // not per keystroke, so the re-render does not steal focus mid-type.
-  function heroInitInput(t) {
+  // A token's initiative value field -- typed for a hero (players roll their own),
+  // filled by "Roll enemies" for an enemy (and still editable to override). Stores
+  // the value only; the GM presses Apply to sort. Commits on change (blur), not per
+  // keystroke, so the re-render does not steal focus mid-type.
+  function tokenRollInput(t) {
     const i = ensureInit();
     const inp = document.createElement('input');
     inp.type = 'number'; inp.className = 'mmr-init'; inp.placeholder = 'init';
     inp.title = 'Initiative roll'; inp.setAttribute('aria-label', t.label + ' initiative');
     inp.value = (i.rolls[t.instId] != null ? i.rolls[t.instId] : '');
-    inp.addEventListener('change', () => setHeroRoll(t.instId, inp.value));
+    inp.addEventListener('change', () => setTokenRoll(t.instId, inp.value));
+    return inp;
+  }
+  // An enemy TYPE's initiative modifier: one per type, applied to every token of
+  // that type when rolled. Inline on the type row to match the hero init field;
+  // commits via setEnemyMod (saves without a focus-stealing re-render).
+  function enemyModInput(castId) {
+    const i = ensureInit();
+    const c = castEntry(castId, 'enemy');
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.className = 'mmr-init'; inp.placeholder = '+0';
+    inp.title = 'Initiative modifier (applied to every ' + (c ? enemySingular(c) : 'token') + ' of this type)';
+    inp.setAttribute('aria-label', (c ? c.name : 'enemy') + ' initiative modifier');
+    inp.value = (i.mods[castId] != null ? i.mods[castId] : '');
+    inp.addEventListener('change', () => setEnemyMod(castId, inp.value));
     return inp;
   }
   function rosterRow(extraClass) {
@@ -1559,7 +1612,7 @@ export function mountGm(root) {
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
         const row = rosterRow(inst ? 'is-placed' : null);
         row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
-        if (inst) row.append(heroInitInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
+        if (inst) row.append(tokenRollInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
         else row.append(rosterAddBtn(id, 'hero'));
         list.append(row);
       }
@@ -1569,14 +1622,23 @@ export function mountGm(root) {
     if (enemies.length) {
       // Add all drops one copy of each enemy type.
       const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
+      // "Roll enemies" lives over the enemies roster: it fills each enemy's own
+      // initiative field (d20 + the type modifier). The GM then presses Apply to
+      // sort -- rolling does not build the order on its own.
+      const rollBtn = document.createElement('button');
+      rollBtn.className = 'gm-button btn--quiet mmr-rollenemies'; rollBtn.type = 'button';
+      rollBtn.textContent = 'Roll enemies';
+      rollBtn.title = "Roll a d20 + the type modifier into every enemy's initiative field";
+      rollBtn.addEventListener('click', () => rollEnemies());
+      col.querySelector('.mmr-head').append(rollBtn);
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const typeRow = rosterRow('mmr-type');
-        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), rosterAddBtn(id, 'enemy'));
+        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), enemyModInput(id), rosterAddBtn(id, 'enemy'));
         list.append(typeRow);
         for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) {
           const row = rosterRow('mmr-copy');
-          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), rosterVisBtn(t), rosterDelBtn(t));
+          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), tokenRollInput(t), rosterVisBtn(t), rosterDelBtn(t));
           list.append(row);
         }
       }
@@ -1592,43 +1654,25 @@ export function mountGm(root) {
     const host = els.initiative; host.innerHTML = '';
     const i = ensureInit();
     const placed = (state.stage && state.stage.tokens) || [];
-    const enemyTypes = [...new Set(placed.filter((t) => t.kind === 'enemy').map((t) => t.castId))];
 
     const head = document.createElement('div'); head.className = 'init-head';
     const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
-    const rollE = document.createElement('button'); rollE.className = 'gm-button btn--quiet init-roll'; rollE.type = 'button';
-    rollE.textContent = 'Roll enemies'; rollE.title = 'Roll a d20 + the type modifier for each enemy token';
-    rollE.addEventListener('click', () => rollEnemies(false));
-    const rollA = document.createElement('button'); rollA.className = 'gm-button init-rollall'; rollA.type = 'button';
-    rollA.textContent = 'Roll all'; rollA.title = 'Roll the enemies and start the order from the top';
-    rollA.addEventListener('click', () => rollEnemies(true));
+    const apply = document.createElement('button'); apply.className = 'gm-button init-apply'; apply.type = 'button';
+    apply.textContent = 'Apply'; apply.title = 'Sort the order from the entered initiative values (highest first)';
+    apply.addEventListener('click', applyInitiative);
     const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
     clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
     clr.addEventListener('click', clearInitiative);
-    head.append(title, rollE, rollA, clr);
+    head.append(title, apply, clr);
     host.append(head);
-
-    // Per enemy-type modifier (one input per type placed on the board).
-    if (enemyTypes.length) {
-      const mods = document.createElement('div'); mods.className = 'init-mods';
-      for (const castId of enemyTypes) {
-        const c = castEntry(castId, 'enemy'); if (!c) continue;
-        const lab = document.createElement('label'); lab.className = 'init-mod';
-        const nm = document.createElement('span'); nm.textContent = c.name;
-        const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'init-mod-input';
-        inp.placeholder = '+0'; inp.value = (i.mods[castId] != null ? i.mods[castId] : '');
-        inp.title = c.name + ' initiative modifier (applied to every ' + enemySingular(c) + ')';
-        inp.addEventListener('change', () => setEnemyMod(castId, inp.value));
-        lab.append(nm, inp); mods.append(lab);
-      }
-      host.append(mods);
-    }
+    // Heroes type their value, "Roll enemies" (over the enemies roster) fills the
+    // enemy fields, then Apply sorts -- so the panel is just the head + the tracker.
 
     // The tracker.
     const track = document.createElement('div'); track.className = 'init-track';
     if (!i.order.length) {
       const hint = document.createElement('p'); hint.className = 'init-empty';
-      hint.textContent = 'Roll the enemies and type the heroes’ rolls to build the order.';
+      hint.textContent = 'Type the heroes’ rolls, Roll enemies, then Apply to build the order.';
       track.append(hint);
     } else {
       const nav = document.createElement('div'); nav.className = 'init-nav';
@@ -2699,13 +2743,28 @@ export function mountGm(root) {
     els.stage.classList.toggle('is-building', building);
     els.stage.classList.toggle('is-map', inMap);
 
+    // In map mode the Edit / Exit-map-mode nav rides in the board header (next to
+    // the title) so it's reachable without scrolling; in live mode it sits back in
+    // the surface nav row (before the Map controls). Idempotent -- only moves when
+    // the parent is wrong, so repeated renders don't thrash the DOM.
+    if (inMap) {
+      if (els.controlsNav.parentElement !== els.mapmodeHeadActions) els.mapmodeHeadActions.appendChild(els.controlsNav);
+    } else if (els.controlsNav.nextElementSibling !== els.allControls) {
+      els.controls.insertBefore(els.controlsNav, els.allControls);
+    }
+
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.
     if (scene && !building) {
       els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
       els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit while blacked out
       els.mapModeToggle.hidden = !sceneHasMap(scene);
-      els.mapModeToggle.textContent = inMap ? 'Exit map mode' : 'Map mode';
+      // Icon + label: a folded-map icon to enter, a log-out icon to leave -- the
+      // label says which, so the button reads the same in the live rail and the
+      // map header where it relocates.
+      els.mapModeToggle.innerHTML = inMap
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="btn-label">Exit map mode</span>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg><span class="btn-label">Map mode</span>';
       els.mapModeToggle.classList.toggle('is-on', inMap);
       renderCueButtons(scene);
       // Live: the quick-actions + mixer modules are the manual surface. Map mode
