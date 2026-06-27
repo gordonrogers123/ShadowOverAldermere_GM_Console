@@ -229,20 +229,27 @@ export function createStageView(root) {
         img.src = r.src;
       }
       const seqChanged = r.enterSeq != null && r.enterSeq !== prev.enterSeq;
+      // Re-enter when the side is ALREADY on stage but the cue swaps in a new
+      // character (srcChanged) or a keyframed cue bumps the entrance nonce
+      // (seqChanged): kill the transition, drop to the offstage baseline, force a
+      // reflow, restore, then animate the (new) character in. Without this a
+      // chained reveal -- character A on stage, a cue brings B -- just swaps the
+      // image under a still-lit is-shown and B pops instead of sliding/fading in.
+      const reEnter = prev.shown && (seqChanged || srcChanged);
       if (instant) {
         img.classList.add('is-shown');
-      } else if (seqChanged && prev.shown && !srcChanged) {
-        // Already on stage (e.g. a prior instant cue popped it in), but a
-        // keyframed cue asks to replay the entrance: kill the transition, drop to
-        // the offstage baseline, force a reflow, restore, then animate back in.
+      } else if (reEnter) {
         const t = img.style.transition;
         img.style.transition = 'none';
         img.classList.remove('is-shown');
         void img.offsetWidth;
         img.style.transition = t;
-        requestAnimationFrame(() => img.classList.add('is-shown'));
-      } else if (!prev.shown || srcChanged) {
-        // Animate the entrance from the offstage baseline once decoded.
+        // Wait for the new cutout to decode before animating it in (a same-image
+        // keyframe replay has nothing to decode, so go straight to the next frame).
+        const go = () => requestAnimationFrame(() => img.classList.add('is-shown'));
+        if (srcChanged && img.decode) img.decode().then(go).catch(go); else go();
+      } else if (!prev.shown) {
+        // First reveal: animate the entrance from the offstage baseline once decoded.
         const go = () => requestAnimationFrame(() => img.classList.add('is-shown'));
         if (img.decode) img.decode().then(go).catch(go); else go();
       }
