@@ -57,8 +57,11 @@ export function mountPlayer(root) {
     }
     if (scene.characters) {
       for (const side of ['left', 'right']) {
-        const c = scene.characters[side];
-        if (c && c.src) { const img = new Image(); img.src = c.src; }
+        // A side is a roster (single object or array); preload every cutout that
+        // a cue could bring on so a swap never flashes.
+        const cfg = scene.characters[side];
+        const roster = Array.isArray(cfg) ? cfg : (cfg ? [cfg] : []);
+        for (const c of roster) { if (c && c.src) { const img = new Image(); img.src = c.src; } }
       }
     }
   }
