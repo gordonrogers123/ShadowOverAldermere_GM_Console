@@ -116,12 +116,15 @@ function clampPan(n) {
 // normalizeToken): volume defaults 0.8, pan 0, loop true.
 function normalizeTrack(t) {
   t = t || {};
+  const sec = (v) => { const n = +v; return isFinite(n) && n > 0 ? Math.min(60, n) : 0; };
   return {
     playing: !!t.playing,
     volume: clamp01(t.volume == null ? 0.8 : t.volume),
     pan: clampPan(t.pan),
     loop: t.loop !== false,
-    muted: !!t.muted          // mixer mute: silent but still "playing"
+    muted: !!t.muted,         // mixer mute: silent but still "playing"
+    fadeIn: sec(t.fadeIn),    // seconds: ramp gain 0->vol when the bed starts
+    fadeOut: sec(t.fadeOut)   // seconds: ramp vol->0 on stop / before a non-loop bed ends
   };
 }
 

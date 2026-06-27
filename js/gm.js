@@ -1088,7 +1088,9 @@ export function mountGm(root) {
       playing: false,
       volume: cfg.volume == null ? 0.8 : cfg.volume,
       pan: cfg.pan || 0,
-      loop: cfg.loop !== false
+      loop: cfg.loop !== false,
+      fadeIn: Math.max(0, +cfg.fadeIn || 0),    // seconds: gentle fade-in on start
+      fadeOut: Math.max(0, +cfg.fadeOut || 0)   // seconds: fade-out on stop / before a non-loop ends
     };
   }
   // A scene's music as an array of beds, accepting either the new array form or
@@ -1123,7 +1125,7 @@ export function mountGm(root) {
     if (!scene || !scene.audio) return;
     const a = JSON.parse(JSON.stringify(scene.audio));
     const tr = (state.audio && state.audio.tracks) || {};
-    const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false });
+    const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false, fadeIn: t.fadeIn || 0, fadeOut: t.fadeOut || 0 });
     // Tune each music bed in place, preserving the stored shape (array or the
     // single legacy object) so existing scenes are not reshaped on a Save.
     if (Array.isArray(a.music)) a.music.forEach((m, i) => { const t = tr['mus:' + i]; if (t && m) Object.assign(m, tune(t)); });
@@ -1242,6 +1244,20 @@ export function mountGm(root) {
     pan.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].pan = +pan.value; commitAudio(); });
     head.append(aKnob('Vol', vol), aKnob('Pan', pan));
     block.append(head);
+    // Fade envelope: a gentle ramp in on start and out on stop (and before a
+    // non-looping bed reaches its end), in seconds -- 0 = instant. Saves editing
+    // the music in another program just to avoid an abrupt start/stop.
+    const fadeRow = aRow('audio-row audio-fade-row');
+    const fadeField = (prop, label) => {
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.className = 'audio-fade'; inp.min = '0'; inp.max = '30'; inp.step = '0.5';
+      inp.value = (t[prop] != null ? t[prop] : 0);
+      inp.title = label + ' (seconds)';
+      inp.addEventListener('change', () => { ensureAudio(); state.audio.tracks[key][prop] = Math.max(0, +inp.value || 0); commitAudio(); });
+      return aKnob(label, inp);
+    };
+    fadeRow.append(fadeField('fadeIn', 'Fade in'), fadeField('fadeOut', 'Fade out'));
+    block.append(fadeRow);
     return block;
   }
 
