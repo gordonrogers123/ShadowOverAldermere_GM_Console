@@ -35,6 +35,16 @@ const CAST_BY_ID = (() => {
 // A token's diameter as a fraction of the shorter side of the displayed map.
 const TOKEN_FRAC = 0.07;
 
+// A scene side's character roster: one OR many cutouts eligible to occupy a side
+// (only one shown at a time). Accepts the legacy single object or an array
+// (mirrors how audio `music` accepts single-or-array) and always returns an
+// array of entries that actually carry a src.
+function charRoster(cfg) {
+  if (!cfg) return [];
+  if (Array.isArray(cfg)) return cfg.filter((c) => c && c.src);
+  return cfg.src ? [cfg] : [];
+}
+
 function clampUnit(n) {
   n = +n;
   if (!isFinite(n)) return 0;
@@ -93,6 +103,10 @@ export function createStageView(root) {
     left: { shown: false, src: null },
     right: { shown: false, src: null }
   };
+  // Exit-then-enter bookkeeping: a swap removes is-shown (the outgoing cutout
+  // leaves) and waits for the exit to finish before the incoming one enters.
+  // A bumped token invalidates any pending enter when a newer render interrupts.
+  const swapState = { left: { token: 0, timer: null }, right: { token: 0, timer: null } };
 
   // ---- Background: the Phase 1 descriptor + two-layer cross-fade, now over
   //      any number of named variants (scene.maps[state.mapState]). ----
@@ -172,9 +186,16 @@ export function createStageView(root) {
   // ---- Characters: resolve the live src/visibility/transition per side, then
   //      diff against what is on stage and play only what changed. ----
   function resolveSide(side, state, scene) {
-    const cfg = scene && scene.characters ? scene.characters[side] : null;
+    // A side is a ROSTER of cutouts (one shown at a time). The live srcOverride
+    // names who is active; resolve THAT character's transition/placement from
+    // the roster. With no override the first roster entry is the side default
+    // (so a legacy single-character scene reads exactly as before). An override
+    // that names someone off-roster still shows -- with default placement.
+    const roster = charRoster(scene && scene.characters ? scene.characters[side] : null);
     const live = (state.stage && state.stage[side]) || { shown: false, srcOverride: null };
-    const src = live.srcOverride || (cfg && cfg.src) || null;
+    const override = live.srcOverride || null;
+    const cfg = override ? (roster.find((c) => c.src === override) || null) : (roster[0] || null);
+    const src = override || (cfg && cfg.src) || null;
     // Characters never composite over a title screen (an empty-src variant) --
     // the Aldermere plate is meant to stand alone, so a character armed/shown
     // from a prior backdrop does not bleed onto it. They enter once the GM
@@ -201,60 +222,128 @@ export function createStageView(root) {
     return { src, shown, enter, scale, flip, x, y, enterSeq };
   }
 
-  function applySide(side, r, instant) {
-    const img = chars[side];
-    const prev = applied[side];
-
-    // Size + flip ride as CSS custom properties so they compose with the
-    // entrance transforms (slide/fade) instead of fighting them; x/y are
-    // stage-relative position offsets applied via left/right/bottom (no drift).
+  // Apply a side's size / flip / position / enter-mode. They ride as CSS custom
+  // properties so they compose with the entrance transforms (slide/fade) instead
+  // of fighting them; x/y are stage-relative offsets (no drift). Held back during
+  // a swap's exit so the outgoing cutout keeps its OWN placement until it leaves.
+  function setPlacement(img, r) {
     img.style.setProperty('--char-scale', r.scale != null ? r.scale : 1);
     img.style.setProperty('--char-flip', r.flip ? -1 : 1);
     img.style.setProperty('--char-x', (r.x || 0) + '%');
     img.style.setProperty('--char-y', (r.y || 0) + '%');
-
     // A fade-in character sits in place (no slide); a slide character starts
     // off its own edge. Setting the class before is-shown fixes the baseline.
     img.classList.toggle('enter-fade', r.enter === 'fade');
+  }
+
+  function setSrc(side, src) {
+    const img = chars[side];
+    img.onerror = () => {
+      // Missing cutout: never show a broken image; just stay offstage.
+      img.classList.remove('is-shown');
+      img.removeAttribute('src');
+      applied[side] = { shown: false, src: null };
+      cancelSwap(side);
+    };
+    img.src = src;
+  }
+
+  // Invalidate any pending exit-then-enter on a side (a newer render supersedes
+  // it) and drop its fallback timer.
+  function cancelSwap(side) {
+    const s = swapState[side];
+    s.token += 1;
+    if (s.timer) { clearTimeout(s.timer); s.timer = null; }
+  }
+
+  // Run cb once the outgoing cutout has finished leaving -- on the exit
+  // transition's end, or a timeout a hair past the slide duration if no
+  // transition fires (reduced motion / display quirks). Stale tokens are ignored.
+  function afterExit(side, cb) {
+    const img = chars[side];
+    const s = swapState[side];
+    const token = s.token;
+    let done = false;
+    const finish = () => {
+      if (done || token !== s.token) return;
+      done = true;
+      img.removeEventListener('transitionend', onEnd);
+      if (s.timer) { clearTimeout(s.timer); s.timer = null; }
+      cb();
+    };
+    const onEnd = (e) => {
+      if (e.target === img && (e.propertyName === 'transform' || e.propertyName === 'opacity')) finish();
+    };
+    img.addEventListener('transitionend', onEnd);
+    s.timer = setTimeout(finish, 640);   // a hair past --char-slide (520ms)
+  }
+
+  function applySide(side, r, instant) {
+    const img = chars[side];
+    const prev = applied[side];
 
     if (r.shown) {
       const srcChanged = r.src !== prev.src;
-      if (srcChanged) {
-        img.onerror = () => {
-          // Missing cutout: never show a broken image; just stay offstage.
-          img.classList.remove('is-shown');
-          img.removeAttribute('src');
-          applied[side] = { shown: false, src: null };
-        };
-        img.src = r.src;
-      }
       const seqChanged = r.enterSeq != null && r.enterSeq !== prev.enterSeq;
-      // Re-enter when the side is ALREADY on stage but the cue swaps in a new
-      // character (srcChanged) or a keyframed cue bumps the entrance nonce
-      // (seqChanged): kill the transition, drop to the offstage baseline, force a
-      // reflow, restore, then animate the (new) character in. Without this a
-      // chained reveal -- character A on stage, a cue brings B -- just swaps the
-      // image under a still-lit is-shown and B pops instead of sliding/fading in.
-      const reEnter = prev.shown && (seqChanged || srcChanged);
+
+      // A swap (exit-then-enter) is mid-flight on this side: a redundant
+      // re-render (same target) must NOT touch is-shown or it aborts the exit;
+      // a genuinely new target -- or an instant snap -- interrupts and replaces it.
+      if (prev.swapping) {
+        if (!instant && !srcChanged && !seqChanged) return;
+        cancelSwap(side);
+      }
+
+      // Swap: the active character changed while the side was already lit, so the
+      // outgoing cutout must LEAVE before the incoming one enters. Replay: a
+      // keyframed cue re-fires the same character's entrance in place. (Both are
+      // skipped on an instant snap, which just shows the final posture.)
+      const swap = !instant && prev.shown && srcChanged;
+      const replay = !instant && prev.shown && seqChanged && !srcChanged;
+
+      // Everything except a swap places immediately; a swap holds the new
+      // placement back until the outgoing cutout has left (applied in `enter`).
+      if (!swap) setPlacement(img, r);
+
       if (instant) {
+        if (srcChanged) setSrc(side, r.src);
         img.classList.add('is-shown');
-      } else if (reEnter) {
+      } else if (swap) {
+        img.classList.remove('is-shown');         // exit the outgoing character
+        const enter = () => {
+          setPlacement(img, r);                   // incoming character's own placement
+          setSrc(side, r.src);
+          const t = img.style.transition;
+          img.style.transition = 'none';
+          img.classList.remove('is-shown');
+          void img.offsetWidth;                   // settle at the offstage baseline
+          img.style.transition = t;
+          const go = () => requestAnimationFrame(() => {
+            img.classList.add('is-shown');
+            if (applied[side]) applied[side].swapping = false;
+          });
+          if (img.decode) img.decode().then(go).catch(go); else go();
+        };
+        afterExit(side, enter);
+      } else if (replay) {
         const t = img.style.transition;
         img.style.transition = 'none';
         img.classList.remove('is-shown');
         void img.offsetWidth;
         img.style.transition = t;
-        // Wait for the new cutout to decode before animating it in (a same-image
-        // keyframe replay has nothing to decode, so go straight to the next frame).
-        const go = () => requestAnimationFrame(() => img.classList.add('is-shown'));
-        if (srcChanged && img.decode) img.decode().then(go).catch(go); else go();
+        requestAnimationFrame(() => img.classList.add('is-shown'));
       } else if (!prev.shown) {
         // First reveal: animate the entrance from the offstage baseline once decoded.
+        if (srcChanged) setSrc(side, r.src);
         const go = () => requestAnimationFrame(() => img.classList.add('is-shown'));
         if (img.decode) img.decode().then(go).catch(go); else go();
+      } else {
+        img.classList.add('is-shown');            // already shown, same cutout
       }
-      applied[side] = { shown: true, src: r.src, enterSeq: r.enterSeq };
+
+      applied[side] = { shown: true, src: r.src, enterSeq: r.enterSeq, swapping: swap };
     } else {
+      cancelSwap(side);
       img.classList.remove('is-shown');   // exit: CSS slides or fades it back out
       applied[side] = { shown: false, src: prev.src };
     }

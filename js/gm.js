@@ -26,6 +26,10 @@ import { mountDiceRoller } from './diceRoller.js';
 export function mountGm(root) {
   let state = loadState();
   let draft = null;                 // the in-progress scene while building
+  // While building, which roster entry's src to spotlight in the preview per
+  // side (so editing the 2nd character shows it, not the 1st). null -> the
+  // side's first roster entry.
+  let builderPick = { left: null, right: null };
   let mapMode = false;              // map mode replaces the live panel for token play
   let activeCueId = null;           // the cue last applied -- lights its rail button
   let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
@@ -198,26 +202,14 @@ export function mountGm(root) {
               </div>
 
               <div class="field char-field">
-                <span>Left character</span>
-                <select class="b-left-src"></select>
-                <select class="b-left-enter"></select>
-                <div class="char-adjust">
-                  <label class="char-size">Size <input type="range" class="b-left-scale" min="0.5" max="4" step="0.1"></label>
-                  <label class="char-size" title="Horizontal position">↔ <input type="range" class="b-left-x" min="-10" max="45" step="1"></label>
-                  <label class="char-size" title="Vertical position — raise to align with the backdrop bottom">↕ <input type="range" class="b-left-y" min="-10" max="30" step="1"></label>
-                  <button class="gm-button btn--toggle b-left-flip" type="button" title="Flip the character to face the other way">Flip</button>
-                </div>
+                <span>Left characters <small>(one shown at a time — cues pick who enters)</small></span>
+                <div class="char-roster" data-side="left"></div>
+                <button class="gm-button btn--quiet add-char" data-side="left" type="button">Add character</button>
               </div>
               <div class="field char-field">
-                <span>Right character</span>
-                <select class="b-right-src"></select>
-                <select class="b-right-enter"></select>
-                <div class="char-adjust">
-                  <label class="char-size">Size <input type="range" class="b-right-scale" min="0.5" max="4" step="0.1"></label>
-                  <label class="char-size" title="Horizontal position">↔ <input type="range" class="b-right-x" min="-10" max="45" step="1"></label>
-                  <label class="char-size" title="Vertical position — raise to align with the backdrop bottom">↕ <input type="range" class="b-right-y" min="-10" max="30" step="1"></label>
-                  <button class="gm-button btn--toggle b-right-flip" type="button" title="Flip the character to face the other way">Flip</button>
-                </div>
+                <span>Right characters <small>(one shown at a time — cues pick who enters)</small></span>
+                <div class="char-roster" data-side="right"></div>
+                <button class="gm-button btn--quiet add-char" data-side="right" type="button">Add character</button>
               </div>
             </div>
 
@@ -317,18 +309,14 @@ export function mountGm(root) {
     bName:        root.querySelector('.b-name'),
     variantList:  root.querySelector('.variant-list'),
     addVariant:   root.querySelector('.add-variant'),
-    bLeftSrc:     root.querySelector('.b-left-src'),
-    bLeftEnter:   root.querySelector('.b-left-enter'),
-    bLeftScale:   root.querySelector('.b-left-scale'),
-    bLeftX:       root.querySelector('.b-left-x'),
-    bLeftY:       root.querySelector('.b-left-y'),
-    bLeftFlip:    root.querySelector('.b-left-flip'),
-    bRightSrc:    root.querySelector('.b-right-src'),
-    bRightEnter:  root.querySelector('.b-right-enter'),
-    bRightScale:  root.querySelector('.b-right-scale'),
-    bRightX:      root.querySelector('.b-right-x'),
-    bRightY:      root.querySelector('.b-right-y'),
-    bRightFlip:   root.querySelector('.b-right-flip'),
+    charRoster: {
+      left:  root.querySelector('.char-roster[data-side="left"]'),
+      right: root.querySelector('.char-roster[data-side="right"]')
+    },
+    addChar: {
+      left:  root.querySelector('.add-char[data-side="left"]'),
+      right: root.querySelector('.add-char[data-side="right"]')
+    },
     bNotes:       root.querySelector('.b-notes'),
     bSave:        root.querySelector('.b-save'),
     bExport:      root.querySelector('.b-export'),
@@ -456,6 +444,14 @@ export function mountGm(root) {
     const file = String(src || '').split('/').pop() || '';
     return file.replace(/\.[^.]+$/, '');
   }
+  // A scene side's character roster (one shown at a time): accepts the legacy
+  // single object or an array and returns the entries that carry a src. Mirrors
+  // the compositor's charRoster and audio's musicBeds single-or-array handling.
+  function charRoster(cfg) {
+    if (!cfg) return [];
+    if (Array.isArray(cfg)) return cfg.filter((c) => c && c.src);
+    return cfg.src ? [cfg] : [];
+  }
 
   // ============================================================
   //  Live play controls
@@ -493,8 +489,8 @@ export function mountGm(root) {
     const hasDef = def && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, def);
     state.mapState = hasDef ? def : (keys[0] || 'hidden');
     const d = scene.defaults || {};
-    const hasLeft = !!(scene.characters && scene.characters.left);
-    const hasRight = !!(scene.characters && scene.characters.right);
+    const hasLeft = charRoster(scene.characters && scene.characters.left).length > 0;
+    const hasRight = charRoster(scene.characters && scene.characters.right).length > 0;
     state.stage = {
       visible: wasBlackedOut ? false : (d.visible !== false),  // a global black-out carries across scene changes
       left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
@@ -529,7 +525,7 @@ export function mountGm(root) {
   function quickSwap(side, src) {
     const scene = sceneById(state.sceneId);
     state.stage[side].srcOverride = src || null;
-    state.stage[side].shown = !!src || !!(scene && scene.characters && scene.characters[side]);
+    state.stage[side].shown = !!src || charRoster(scene && scene.characters && scene.characters[side]).length > 0;
     commit();
   }
 
@@ -911,7 +907,7 @@ export function mountGm(root) {
   function renderQuick(scene) {
     buildVariantButtons(els.quickBgButtons, scene);   // cinematic variants; lights the active one
     for (const side of ['left', 'right']) {
-      const hasChar = !!(scene.characters && scene.characters[side]) || !!state.stage[side].srcOverride;
+      const hasChar = charRoster(scene.characters && scene.characters[side]).length > 0 || !!state.stage[side].srcOverride;
       fillCharSelect(els.quickSwap[side], state.stage[side].srcOverride || '', true);   // first option = Scene default
       const shown = state.stage[side].shown;
       els.quickHide[side].textContent = shown ? 'Hide' : 'Show';
@@ -1845,8 +1841,9 @@ export function mountGm(root) {
         { key: 'hidden', src: TITLE_SRC, scene: true, map: false },
         { key: 'revealed', src: (backgrounds[0] && backgrounds[0].src) || '', scene: true, map: true }
       ],
-      left:  { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
-      right: { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 },
+      // Each side is a roster (array) of cutouts; a new scene starts empty.
+      left:  [],
+      right: [],
       roster: { heroes: [], enemies: [] },
       savedLayout: [],
       cues: [],
@@ -1865,17 +1862,20 @@ export function mountGm(root) {
         map: vm ? vm.map !== false : !isTitle };
     });
     if (!variants.length) variants.push({ key: 'revealed', src: '', scene: true, map: true });
-    const sideOf = (s) => (s
-      ? { src: s.src || '', enter: s.enter || DEFAULT_ENTER, scale: +s.scale > 0 ? +s.scale : 1, flip: !!s.flip, x: +s.x || 0, y: +s.y || 0 }
-      : { src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 });
+    // Each side is a ROSTER (array of cutouts). A legacy single-character scene
+    // reads as a one-entry list; an empty side reads as an empty list.
+    const sideList = (cfg) => charRoster(cfg).map((s) => ({
+      src: s.src || '', enter: s.enter || DEFAULT_ENTER,
+      scale: +s.scale > 0 ? +s.scale : 1, flip: !!s.flip, x: +s.x || 0, y: +s.y || 0
+    }));
     const t = scene.tokens || {};
     return {
       editingId: scene.id,
       name: scene.name || '',
       gmNotes: scene.gmNotes || '',
       variants,
-      left:  sideOf(scene.characters && scene.characters.left),
-      right: sideOf(scene.characters && scene.characters.right),
+      left:  sideList(scene.characters && scene.characters.left),
+      right: sideList(scene.characters && scene.characters.right),
       roster: {
         heroes: Array.isArray(t.heroes) ? t.heroes.slice() : [],
         enemies: Array.isArray(t.enemies) ? t.enemies.slice() : []
@@ -1945,20 +1945,22 @@ export function mountGm(root) {
       });
     }
     const chars = {};
-    // Per-character display tuning (size + horizontal flip) rides on the scene's
-    // character config; only stored when it differs from the default to keep
-    // scenes clean. Useful for transparent cutouts (e.g. NPCs) that need scaling
-    // or need to face the other way.
-    const sideCfg = (d) => {
-      const c = { id: charIdOf(d.src), src: d.src, enter: d.enter };
-      if (+d.scale > 0 && +d.scale !== 1) c.scale = +d.scale;
-      if (d.flip) c.flip = true;
-      if (+d.x) c.x = +d.x;
-      if (+d.y) c.y = +d.y;
+    // Each side saves as an ARRAY of cutouts (one shown at a time; a cue's
+    // srcOverride picks who). Per-character display tuning (size / flip / offset)
+    // is only stored when it differs from the default, to keep scenes clean.
+    const sideCfg = (e) => {
+      const c = { id: charIdOf(e.src), src: e.src, enter: e.enter };
+      if (+e.scale > 0 && +e.scale !== 1) c.scale = +e.scale;
+      if (e.flip) c.flip = true;
+      if (+e.x) c.x = +e.x;
+      if (+e.y) c.y = +e.y;
       return c;
     };
-    if (d.left.src)  chars.left  = sideCfg(d.left);
-    if (d.right.src) chars.right = sideCfg(d.right);
+    const sideRoster = (list) => (Array.isArray(list) ? list : []).filter((e) => e && e.src).map(sideCfg);
+    const leftRoster = sideRoster(d.left);
+    const rightRoster = sideRoster(d.right);
+    if (leftRoster.length)  chars.left  = leftRoster;
+    if (rightRoster.length) chars.right = rightRoster;
     if (chars.left || chars.right) scene.characters = chars;
     scene.defaults = { visible: true, leftShown: !!chars.left, rightShown: !!chars.right };
     return scene;
@@ -2065,24 +2067,91 @@ export function mountGm(root) {
     });
   }
 
+  // ---- Builder per-side character roster: a stack of cards, one per cutout
+  //      eligible to occupy the side (only one shown at a time; cues pick who
+  //      enters). Each card carries the character, its own entrance transition,
+  //      and its own size / horizontal / vertical / flip placement.
+  function buildCharCard(side, entry, i) {
+    const card = document.createElement('div');
+    card.className = 'char-card';
+    // Touching any control spotlights THIS entry in the preview, so editing the
+    // 2nd character on a side shows the 2nd character (not the 1st).
+    const spotlight = () => { builderPick[side] = entry.src || null; renderBuilderPreview(); };
+
+    const src = document.createElement('select');
+    src.className = 'cc-src';
+    fillCharSelect(src, entry.src, false);   // first option = "None"
+    src.addEventListener('change', () => { entry.src = src.value; spotlight(); });
+
+    const enter = document.createElement('select');
+    enter.className = 'cc-enter';
+    fillEnterSelect(enter, entry.enter);
+    enter.addEventListener('change', () => { entry.enter = enter.value; spotlight(); });
+
+    const adjust = document.createElement('div');
+    adjust.className = 'char-adjust';
+    const mkRange = (label, cls, min, max, step, val, title, set) => {
+      const lab = document.createElement('label'); lab.className = 'char-size';
+      if (title) lab.title = title;
+      lab.append(document.createTextNode(label + ' '));
+      const inp = document.createElement('input');
+      inp.type = 'range'; inp.className = cls;
+      inp.min = min; inp.max = max; inp.step = step; inp.value = val;
+      inp.addEventListener('input', () => { set(+inp.value); spotlight(); });
+      lab.append(inp); return lab;
+    };
+    adjust.append(
+      mkRange('Size', 'cc-scale', 0.5, 4, 0.1, entry.scale || 1, '', (v) => { entry.scale = v; }),
+      mkRange('↔', 'cc-x', -10, 45, 1, entry.x || 0, 'Horizontal position', (v) => { entry.x = v; }),
+      mkRange('↕', 'cc-y', -10, 30, 1, entry.y || 0, 'Vertical position — raise to align with the backdrop bottom', (v) => { entry.y = v; })
+    );
+
+    const flip = document.createElement('button');
+    flip.type = 'button'; flip.className = 'gm-button btn--toggle cc-flip';
+    flip.textContent = 'Flip'; flip.title = 'Flip the character to face the other way';
+    flip.classList.toggle('is-on', !!entry.flip);
+    flip.addEventListener('click', () => { entry.flip = !entry.flip; flip.classList.toggle('is-on', entry.flip); spotlight(); });
+
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'gm-button btn--quiet cc-del';
+    del.textContent = '✕'; del.title = 'Remove this character from the side';
+    del.addEventListener('click', () => {
+      draft[side].splice(i, 1);
+      builderPick[side] = (draft[side][0] && draft[side][0].src) || null;
+      renderCharRoster(side);
+      renderBuilderPreview();
+    });
+
+    adjust.append(flip, del);
+    card.append(src, enter, adjust);
+    return card;
+  }
+
+  function renderCharRoster(side) {
+    const host = els.charRoster[side];
+    host.innerHTML = '';
+    const list = draft[side] || [];
+    if (!list.length) {
+      const hint = document.createElement('p');
+      hint.className = 'char-empty';
+      hint.textContent = 'No one on this side yet — add a character to enter it via cues.';
+      host.append(hint);
+      return;
+    }
+    list.forEach((entry, i) => host.append(buildCharCard(side, entry, i)));
+  }
+
   function renderBuilderInputs() {
     els.builderTitle = els.builder.querySelector('.builder-title');
     els.builderTitle.textContent = draft.editingId ? 'Edit scene' : 'Build a scene';
     els.bName.value = draft.name;
     els.bNotes.value = draft.gmNotes;
     renderVariantRows();
-    fillCharSelect(els.bLeftSrc, draft.left.src, false);
-    fillCharSelect(els.bRightSrc, draft.right.src, false);
-    fillEnterSelect(els.bLeftEnter, draft.left.enter);
-    fillEnterSelect(els.bRightEnter, draft.right.enter);
-    els.bLeftScale.value = draft.left.scale || 1;
-    els.bRightScale.value = draft.right.scale || 1;
-    els.bLeftX.value = draft.left.x || 0;
-    els.bLeftY.value = draft.left.y || 0;
-    els.bRightX.value = draft.right.x || 0;
-    els.bRightY.value = draft.right.y || 0;
-    els.bLeftFlip.classList.toggle('is-on', !!draft.left.flip);
-    els.bRightFlip.classList.toggle('is-on', !!draft.right.flip);
+    // Default the preview spotlight to each side's first character.
+    builderPick = { left: (draft.left[0] && draft.left[0].src) || null,
+                    right: (draft.right[0] && draft.right[0].src) || null };
+    renderCharRoster('left');
+    renderCharRoster('right');
     renderRosterPick();
     renderAudioPick();
     renderCueRows();
@@ -2334,12 +2403,34 @@ export function mountGm(root) {
     chToggle.addEventListener('click', () => { aff.characters = !aff.characters; renderCueRows(); });
     chF.append(chToggle);
     if (aff.characters) {
+      const charName = (src) => { const c = characters.find((x) => x.src === src); return c ? c.name : charIdOf(src); };
+      // The cue's side picker lists THIS scene's roster for the side, by name,
+      // plus Hide. An off-roster current selection is kept so editing an old cue
+      // never silently drops who it placed.
+      const fillCueSide = (sel, roster, current) => {
+        sel.innerHTML = '';
+        const hide = document.createElement('option'); hide.value = ''; hide.textContent = '— Hide —';
+        sel.append(hide);
+        const seen = new Set();
+        const add = (src, suffix) => {
+          if (!src || seen.has(src)) return; seen.add(src);
+          const o = document.createElement('option'); o.value = src;
+          o.textContent = charName(src) + (suffix || ''); sel.append(o);
+        };
+        roster.forEach((e) => add(e.src));
+        if (current && !seen.has(current)) add(current, ' (not in roster)');
+      };
       const mk = (which) => {
         const wrap = document.createElement('label'); wrap.className = 'cue-side';
         const cap = document.createElement('span'); cap.textContent = which === 'left' ? 'Left' : 'Right';
         const sel = document.createElement('select'); sel.className = 'cue-char-' + which;
-        fillCharSelect(sel, (snap[which] && snap[which].srcOverride) || '', false);   // first option = "None"
-        sel.value = (snap[which] && snap[which].srcOverride) || '';
+        const cur = (snap[which] && snap[which].srcOverride) || '';
+        const roster = charRoster(draft && draft[which]);
+        // With a roster, pick from it; with none yet, fall back to the full cast
+        // so a cue can still place someone on an otherwise-empty side.
+        if (roster.length) fillCueSide(sel, roster, cur);
+        else fillCharSelect(sel, cur, false);   // first option = "None"
+        sel.value = cur;
         sel.addEventListener('change', () => { snap[which] = { shown: !!sel.value, srcOverride: sel.value || null }; });
         wrap.append(cap, sel); return wrap;
       };
@@ -2547,9 +2638,10 @@ export function mountGm(root) {
         visible: true,
         // Force both sides shown in the builder so you can place them (live they
         // only appear once armed/entered); the compositor still applies each
-        // character's scale / flip / x / y from the draft.
-        left:  { shown: !!(scene.characters && scene.characters.left),  srcOverride: null },
-        right: { shown: !!(scene.characters && scene.characters.right), srcOverride: null }
+        // character's scale / flip / x / y. builderPick spotlights the roster
+        // entry being edited (else the side's first entry shows).
+        left:  { shown: charRoster(scene.characters && scene.characters.left).length > 0,  srcOverride: builderPick.left },
+        right: { shown: charRoster(scene.characters && scene.characters.right).length > 0, srcOverride: builderPick.right }
       }
     };
     previewView.render(pstate, scene, { instant: previewFirstPaint }); previewFirstPaint = false;
@@ -2566,18 +2658,16 @@ export function mountGm(root) {
     renderVariantRows();
     renderBuilderPreview();
   });
-  els.bLeftSrc.addEventListener('change', () => { draft.left.src = els.bLeftSrc.value; renderBuilderPreview(); });
-  els.bLeftEnter.addEventListener('change', () => { draft.left.enter = els.bLeftEnter.value; renderBuilderPreview(); });
-  els.bRightSrc.addEventListener('change', () => { draft.right.src = els.bRightSrc.value; renderBuilderPreview(); });
-  els.bRightEnter.addEventListener('change', () => { draft.right.enter = els.bRightEnter.value; renderBuilderPreview(); });
-  els.bLeftScale.addEventListener('input', () => { draft.left.scale = +els.bLeftScale.value; renderBuilderPreview(); });
-  els.bRightScale.addEventListener('input', () => { draft.right.scale = +els.bRightScale.value; renderBuilderPreview(); });
-  els.bLeftX.addEventListener('input', () => { draft.left.x = +els.bLeftX.value; renderBuilderPreview(); });
-  els.bLeftY.addEventListener('input', () => { draft.left.y = +els.bLeftY.value; renderBuilderPreview(); });
-  els.bRightX.addEventListener('input', () => { draft.right.x = +els.bRightX.value; renderBuilderPreview(); });
-  els.bRightY.addEventListener('input', () => { draft.right.y = +els.bRightY.value; renderBuilderPreview(); });
-  els.bLeftFlip.addEventListener('click', () => { draft.left.flip = !draft.left.flip; els.bLeftFlip.classList.toggle('is-on', draft.left.flip); renderBuilderPreview(); });
-  els.bRightFlip.addEventListener('click', () => { draft.right.flip = !draft.right.flip; els.bRightFlip.classList.toggle('is-on', draft.right.flip); renderBuilderPreview(); });
+  // Add a blank character to a side's roster (each card wires its own controls
+  // in buildCharCard); spotlight the new one so the GM places it straight away.
+  for (const side of ['left', 'right']) {
+    els.addChar[side].addEventListener('click', () => {
+      draft[side].push({ src: '', enter: DEFAULT_ENTER, scale: 1, flip: false, x: 0, y: 0 });
+      builderPick[side] = null;
+      renderCharRoster(side);
+      renderBuilderPreview();
+    });
+  }
   // Music is a checkbox library now (see renderAudioPick) -- no <select> handler.
   els.bCancel.addEventListener('click', closeBuilder);
   els.newScene.addEventListener('click', () => openBuilder(null));

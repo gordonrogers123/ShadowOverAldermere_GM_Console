@@ -565,13 +565,25 @@ body.view-gm {
 .view-gm .builder-collapse > summary small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
 .view-gm .b-name { width: 100%; }
 .view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
+/* Per-side character roster: a stack of cards, one per cutout (only one shown
+   at a time; cues pick who enters). Each card carries the character + transition
+   pickers and that character's own size / offset / flip placement. */
+.view-gm .char-roster { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-2); }
+.view-gm .char-card {
+  border: 1px solid var(--rule); border-left: 3px solid var(--control);
+  border-radius: var(--radius-sm); background: var(--fill);
+  padding: var(--space-2) var(--space-3);
+}
+.view-gm .char-card select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
+.view-gm .char-empty { margin: 0 0 var(--space-2); font-size: var(--fs-200); color: var(--neutral); font-style: italic; }
+.view-gm .add-char { font-size: var(--fs-200); }
 /* Per-character size + flip controls under each character picker. */
 .view-gm .char-adjust { display: flex; align-items: center; gap: var(--space-2) var(--space-3); margin-top: var(--space-1); flex-wrap: wrap; }
 .view-gm .char-size { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-200); color: var(--neutral); }
 .view-gm .char-size input[type="range"] { width: 5.5rem; }
-.view-gm .char-size input.b-left-x, .view-gm .char-size input.b-left-y,
-.view-gm .char-size input.b-right-x, .view-gm .char-size input.b-right-y { width: 4.5rem; }
-.view-gm .b-left-flip, .view-gm .b-right-flip { font-size: var(--fs-200); padding: 0.35rem 0.7rem; }
+.view-gm .char-size input.cc-x, .view-gm .char-size input.cc-y { width: 4.5rem; }
+.view-gm .cc-flip { font-size: var(--fs-200); padding: 0.35rem 0.7rem; }
+.view-gm .cc-del { margin-left: auto; font-size: var(--fs-200); padding: 0.35rem 0.6rem; }
 .view-gm .variant-edit { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
 .view-gm .v-key { width: 9rem; }
 /* Per-variant Scene/Map visibility toggles (colour from the .btn--toggle role). */
