@@ -107,27 +107,62 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
 
     source.connect(panner); panner.connect(trackGain); trackGain.connect(masterGain);
 
+    // A bed can carry its own fade envelope (seconds): a gentle ramp in on start
+    // and out on stop, plus a fade-out tail before a NON-looping file ends so it
+    // doesn't hard-cut. fadeIn=0 keeps the old behaviour (snap / cue ramp).
+    const fadeIn = Math.max(0, +t.fadeIn || 0);
+    const fadeOut = Math.max(0, +t.fadeOut || 0);
     let stopped = false;
+    let fadeInUntil = 0;   // ctx-time the start fade-in finishes -- update() won't fight it
+    let tailFrom = 0;      // ctx-time a non-looping bed begins its end-of-file fade-out
+
+    const targetVol = (tt) => clamp01(tt.muted ? 0 : (tt.volume == null ? 0.8 : tt.volume));
+
+    function start(tt) {
+      const now = ctx.currentTime;
+      const vol = targetVol(tt);
+      panner.pan.value = clampPan(tt.pan);
+      source.loop = tt.loop !== false;
+      try { source.start(now); } catch (e) {}
+      const g = trackGain.gain;
+      try {
+        g.cancelScheduledValues(now); g.setValueAtTime(0, now);
+        if (fadeIn > 0) { g.linearRampToValueAtTime(vol, now + fadeIn); fadeInUntil = now + fadeIn; }
+        else { g.setTargetAtTime(vol, now, currentTau); }
+        // Non-looping bed with a tail: hold, then ramp to silence as the file ends.
+        if (source.loop === false && fadeOut > 0 && buffer.duration > fadeIn + fadeOut) {
+          tailFrom = now + buffer.duration - fadeOut;
+          g.setValueAtTime(vol, tailFrom);
+          g.linearRampToValueAtTime(0, now + buffer.duration);
+        }
+      } catch (e) {}
+    }
     function update(tt, tau) {
       const now = ctx.currentTime;
-      // A muted track holds its volume but plays at silence -- the mixer can drop
-      // it without stopping the bed (so unmute snaps it back at the same level).
-      const vol = tt.muted ? 0 : (tt.volume == null ? 0.8 : tt.volume);
-      trackGain.gain.setTargetAtTime(clamp01(vol), now, tau || currentTau);
       panner.pan.setTargetAtTime(clampPan(tt.pan), now, 0.03);
       source.loop = tt.loop !== false;
+      // Don't override a scheduled start fade-in / end-of-file fade-out mid-flight.
+      if (now < fadeInUntil) return;
+      if (tailFrom && now >= tailFrom - 0.05) return;
+      // A muted track holds its volume but plays at silence -- the mixer can drop
+      // it without stopping the bed (so unmute snaps it back at the same level).
+      trackGain.gain.setTargetAtTime(targetVol(tt), now, tau || currentTau);
     }
     function stop() {
       if (stopped) return; stopped = true;
-      // Fade out over the active ramp; hold the source alive long enough for the
-      // fade to finish so a slow cue ramp does not get cut off mid-fade.
-      const tau = currentTau;
-      const fade = Math.max(0.15, tau * 3);
-      try { trackGain.gain.setTargetAtTime(0, ctx.currentTime, tau); } catch (e) {}
-      try { source.stop(ctx.currentTime + fade + 0.05); } catch (e) {}
-      setTimeout(() => { try { source.disconnect(); panner.disconnect(); trackGain.disconnect(); } catch (e) {} }, (fade + 0.25) * 1000);
+      const now = ctx.currentTime;
+      // Fade out over the bed's fadeOut, else over the active cue ramp; hold the
+      // source alive long enough for the fade to finish so it is not cut mid-fade.
+      const out = fadeOut > 0 ? fadeOut : Math.max(0.15, currentTau * 3);
+      try {
+        trackGain.gain.cancelScheduledValues(now);
+        trackGain.gain.setValueAtTime(Math.max(0.0001, trackGain.gain.value), now);
+        trackGain.gain.linearRampToValueAtTime(0, now + out);
+      } catch (e) {}
+      try { source.stop(now + out + 0.05); } catch (e) {}
+      setTimeout(() => { try { source.disconnect(); panner.disconnect(); trackGain.disconnect(); } catch (e) {} }, (out + 0.25) * 1000);
     }
-    return { source, update, stop };
+    return { source, start, update, stop };
   }
 
   function stopTrack(key) {
@@ -192,8 +227,7 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
           if (resolveTrackSrc(lastScene, key) !== src) return;
           const handle = buildTrackGraph(buf, t2);
           live.set(key, handle);
-          try { handle.source.start(); } catch (e) {}
-          handle.update(t2);
+          handle.start(t2);   // begins playback with the bed's fade-in envelope
         });
       }
     }

@@ -882,6 +882,11 @@ body.view-gm {
   grid-template-columns: 6rem 5rem auto auto;   /* name | transport | Vol knob | Pan knob; trailing space left intentionally */
   align-items: center; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-2);
 }
+/* The fade-in/out row sits beneath the transport row as its own flex line
+   (escaping the 4-column grid above), lightly indented under the name column. */
+.view-gm .audio-track > .audio-fade-row { display: flex; align-items: center; gap: var(--space-4); margin: 0 0 var(--space-2) 0; padding-left: 6rem; }
+.view-gm .audio-track > .audio-fade-row > .audio-knob:first-of-type { margin-left: 0; }
+.view-gm .audio-fade { width: 3.6rem; text-align: center; }
 /* Label on the left, then a compact fixed-width slider. The fixed width keeps
    every slider the same size and leaves visual space to the right of the row. */
 .view-gm .audio-knob { display: inline-flex; align-items: center; gap: var(--space-1); }
