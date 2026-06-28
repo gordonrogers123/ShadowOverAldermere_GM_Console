@@ -262,10 +262,13 @@ body.view-gm {
 .view-gm .perf-side .variant-button { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
 .view-gm .perf-side .quick-swap { flex: 1 1 7rem; }
 
-/* Larger: a full-width preview stacked ABOVE the controls (preview, cue, quick,
-   mixer, nav -- the classic order, via DOM order in the block flow). */
+/* Larger: a full-width preview stacked ABOVE the controls. Under the wide preview
+   the quick (visual) + mixer (audio) modules sit SIDE BY SIDE so they don't push
+   the page tall and force a scroll; they wrap back to stacked on a narrow window. */
 .view-gm .gm-stage.is-large .gm-preview { max-width: none; margin: 0 0 var(--space-3); }
-.view-gm .gm-stage.is-large .perf-side { gap: var(--space-3); }
+.view-gm .gm-stage.is-large .perf-side { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
+.view-gm .gm-stage.is-large .perf-side > .gm-quick,
+.view-gm .gm-stage.is-large .perf-side > .gm-mixer { flex: 1 1 20rem; min-width: 0; }
 
 /* Map mode / builder: plain block flow. The builder pins the compact preview at
    the top so Test-in-preview stays watchable while scrolling the editor. */
