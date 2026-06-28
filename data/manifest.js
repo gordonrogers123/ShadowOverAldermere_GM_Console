@@ -12,14 +12,17 @@
 
 export const BACKGROUNDS = [
   { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png", kind: "background" },
-  { id: "A1 S2 City Gates", name: "A1 S2 City Gates", src: "assets/backgrounds/A1 S2 City Gates.png", kind: "background" },
-  { id: "A1 S2 Gate Gardpost", name: "A1 S2 Gate Gardpost", src: "assets/backgrounds/A1 S2 Gate Gardpost.png", kind: "background" },
+  { id: "A1 S2 City Gates -- Day", name: "A1 S2 City Gates Day", src: "assets/backgrounds/A1 S2 City Gates -- Day.png", kind: "background" },
+  { id: "A1 S2 City Gates -- Night", name: "A1 S2 City Gates Night", src: "assets/backgrounds/A1 S2 City Gates -- Night.png", kind: "background" },
+  { id: "A1 S2 Gate Guard Post", name: "A1 S2 Gate Guard Post", src: "assets/backgrounds/A1 S2 Gate Guard Post.png", kind: "background" },
   { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/backgrounds/A1 S2 Tent Camp -- Day.png", kind: "background" },
   { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/backgrounds/A1 S2 Tent Camp -- Night.png", kind: "background" },
   { id: "A1 S3 Tavern Harth", name: "A1 S3 Tavern Harth", src: "assets/backgrounds/A1 S3 Tavern Harth.png", kind: "background" },
   { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png", kind: "map" },
   { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png", kind: "map" },
   { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map" },
+  { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/maps/A1 S2 Tent Camp -- Day.png", kind: "map" },
+  { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/maps/A1 S2 Tent Camp -- Night.png", kind: "map" },
   { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png", kind: "map" },
   { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png", kind: "map" },
   { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png", kind: "map" },
@@ -36,15 +39,21 @@ export const CHARACTERS = [
   { id: "telstar", name: "Telstar", src: "assets/characters/heroes/telstar.png", category: "hero" },
   { id: "thraka", name: "Thraka", src: "assets/characters/heroes/thraka.png", category: "hero" },
   { id: "truf", name: "Truf", src: "assets/characters/heroes/truf.png", category: "hero" },
+  { id: "Borin", name: "Borin", src: "assets/characters/npcs/Borin.png", category: "npc" },
   { id: "Captain Hob", name: "Captain Hob", src: "assets/characters/npcs/Captain Hob.png", category: "npc" },
   { id: "Cassian -- Hero Pose", name: "Cassian Hero Pose", src: "assets/characters/npcs/Cassian -- Hero Pose.png", category: "npc" },
-  { id: "Granny Edna", name: "Granny Edna", src: "assets/characters/npcs/Granny Edna.png", category: "npc" },
   { id: "Marsh Family -- Talking", name: "Marsh Family Talking", src: "assets/characters/npcs/Marsh Family -- Talking.png", category: "npc" },
   { id: "Marsh Family -- Watching", name: "Marsh Family Watching", src: "assets/characters/npcs/Marsh Family -- Watching.png", category: "npc" },
+  { id: "Naia and Theron", name: "Naia And Theron", src: "assets/characters/npcs/Naia and Theron.png", category: "npc" },
   { id: "Pip -- Speaking", name: "Pip Speaking", src: "assets/characters/npcs/Pip -- Speaking.png", category: "npc" },
   { id: "Sgt Dorran", name: "Sgt Dorran", src: "assets/characters/npcs/Sgt Dorran.png", category: "npc" },
   { id: "Wick", name: "Wick", src: "assets/characters/npcs/Wick.png", category: "npc" },
-  { id: "Wren", name: "Wren", src: "assets/characters/npcs/Wren.png", category: "npc" }
+  { id: "Wren -- Excited", name: "Wren Excited", src: "assets/characters/npcs/Wren -- Excited.png", category: "npc" },
+  { id: "Wren -- Upset", name: "Wren Upset", src: "assets/characters/npcs/Wren -- Upset.png", category: "npc" },
+  { id: "grannyEdna -- Cooking", name: "GrannyEdna Cooking", src: "assets/characters/npcs/grannyEdna -- Cooking.png", category: "npc" },
+  { id: "grannyEdna -- Standing", name: "GrannyEdna Standing", src: "assets/characters/npcs/grannyEdna -- Standing.png", category: "npc" },
+  { id: "Brigands", name: "Brigands", src: "assets/characters/enemies/Brigands.png", category: "enemy" },
+  { id: "Pale Husk", name: "Pale Husk", src: "assets/characters/enemies/Pale Husk.png", category: "enemy" }
 ];
 
 export const MUSIC = [
