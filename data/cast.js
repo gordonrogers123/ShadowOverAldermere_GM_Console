@@ -50,6 +50,15 @@ export const CAST = {
           { name: "Scimitar", toHit: "+3", range: "reach 5 ft", damage: "1d6+1 slashing" },
           { name: "Light crossbow", toHit: "+3", range: "range 80/320 ft", damage: "1d8+1 piercing" }
         ]
+      } },
+    { id: "palehusks", name: "Pale Husk", tokenImage: "assets/tokens/enemies/palehusk.jpg", ringColor: "#8a2e2e", singular: "Pale Husk",
+      stats: {
+        name: "Pale Husk", ac: 11, hp: 26, speed: "20 ft",
+        abilities: { str: 1, dex: -1, con: 2, int: -4, wis: -2, cha: -3 },
+        attacks: [
+          { name: "Slam", toHit: "+3", range: "reach 5 ft", damage: "1d6+1 bludgeoning" },
+          { name: "Draining Bite", toHit: "+3", range: "reach 5 ft", damage: "1d4+1 piercing plus 1d4 necrotic" }
+        ]
       } }
   ],
 
