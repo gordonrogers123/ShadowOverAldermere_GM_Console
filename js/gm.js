@@ -190,8 +190,13 @@ export function mountGm(root) {
                 <input class="b-name" type="text" placeholder="A Word at the Gate">
               </label>
 
+              <label class="field">
+                <span>Title-screen header <small>(small line above the name on the title card &mdash; defaults to "Aldermere")</small></span>
+                <input class="b-title-header" type="text" placeholder="Aldermere">
+              </label>
+
               <div class="field">
-                <span>Background variants <small>(first is shown first; pick "Title screen" for an Aldermere card that reveals to a map)</small></span>
+                <span>Background variants <small>(first is shown first; pick "Title screen" for a title card that reveals to a map)</small></span>
                 <div class="variant-list"></div>
                 <button class="gm-button btn--quiet add-variant" type="button">Add variant</button>
               </div>
@@ -302,6 +307,7 @@ export function mountGm(root) {
     notesBody:    root.querySelector('.notes-body'),
     builder:      root.querySelector('.gm-builder'),
     bName:        root.querySelector('.b-name'),
+    bTitleHeader: root.querySelector('.b-title-header'),
     variantList:  root.querySelector('.variant-list'),
     addVariant:   root.querySelector('.add-variant'),
     charRoster: {
@@ -1750,6 +1756,7 @@ export function mountGm(root) {
     return {
       editingId: null,
       name: '',
+      titleHeader: '',
       gmNotes: '',
       // New scenes open on the Aldermere title screen (scene mode only), then
       // reveal to a backdrop shown in both modes.
@@ -1788,6 +1795,7 @@ export function mountGm(root) {
     return {
       editingId: scene.id,
       name: scene.name || '',
+      titleHeader: scene.titleHeader || '',
       gmNotes: scene.gmNotes || '',
       variants,
       left:  sideList(scene.characters && scene.characters.left),
@@ -1881,6 +1889,9 @@ export function mountGm(root) {
     // Characters are cue-driven, so a scene no longer records a "show on select"
     // flag -- the opening cue reveals whoever should be on screen at the start.
     scene.defaults = { visible: true };
+    // Per-scene title-card header (the small line above the name); only stored
+    // when set, so an unset scene falls back to the default "Aldermere".
+    if ((d.titleHeader || '').trim()) scene.titleHeader = d.titleHeader.trim();
     return scene;
   }
 
@@ -2063,6 +2074,7 @@ export function mountGm(root) {
     els.builderTitle = els.builder.querySelector('.builder-title');
     els.builderTitle.textContent = draft.editingId ? 'Edit scene' : 'Build a scene';
     els.bName.value = draft.name;
+    els.bTitleHeader.value = draft.titleHeader || '';
     els.bNotes.value = draft.gmNotes;
     renderVariantRows();
     // Default the preview spotlight to each side's first character.
@@ -2570,6 +2582,7 @@ export function mountGm(root) {
 
   // Builder input wiring (elements persist; only their options change).
   els.bName.addEventListener('input', () => { draft.name = els.bName.value; renderBuilderPreview(); });
+  els.bTitleHeader.addEventListener('input', () => { draft.titleHeader = els.bTitleHeader.value; renderBuilderPreview(); });
   els.bNotes.addEventListener('input', () => { draft.gmNotes = els.bNotes.value; });
   els.addVariant.addEventListener('click', () => {
     draft.variants.push({ key: 'variant-' + (draft.variants.length + 1), src: (backgrounds[0] && backgrounds[0].src) || '', scene: true, map: true });

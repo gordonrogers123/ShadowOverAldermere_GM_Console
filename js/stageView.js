@@ -115,19 +115,23 @@ export function createStageView(root) {
     const maps = scene.maps || null;
     const path = maps ? maps[state.mapState] : null;
     if (path) return { kind: 'image', src: path, label: scene.name };
-    return { kind: 'unrevealed', label: scene.name };
+    // The title plate's top line is per-scene (scene.titleHeader), defaulting to
+    // "Aldermere" so existing scenes are unchanged. e.g. "Act I · Scene II".
+    const header = (scene.titleHeader != null && String(scene.titleHeader).trim()) || 'Aldermere';
+    return { kind: 'unrevealed', label: scene.name, header };
   }
 
   function bgKey(d) {
-    return d.kind === 'image' ? 'image:' + d.src : d.kind + ':' + (d.label || '');
+    // Include the header so editing the title-screen header re-renders the plate.
+    return d.kind === 'image' ? 'image:' + d.src : d.kind + ':' + (d.label || '') + ':' + (d.header || '');
   }
 
-  function buildUnrevealed(label) {
+  function buildUnrevealed(label, header) {
     const panel = document.createElement('div');
     panel.className = 'unrevealed';
     const mark = document.createElement('div');
     mark.className = 'unrevealed-mark';
-    mark.textContent = 'Aldermere';
+    mark.textContent = header || 'Aldermere';
     const name = document.createElement('div');
     name.className = 'unrevealed-name';
     name.textContent = label || '';
@@ -158,7 +162,7 @@ export function createStageView(root) {
 
     if (d.kind === 'unrevealed') {
       incoming.innerHTML = '';
-      incoming.appendChild(buildUnrevealed(d.label));
+      incoming.appendChild(buildUnrevealed(d.label, d.header));
       reveal();
       return;
     }
@@ -174,7 +178,7 @@ export function createStageView(root) {
     img.onerror = () => {
       // A variant file not present yet: fall back to the neutral plate.
       incoming.innerHTML = '';
-      incoming.appendChild(buildUnrevealed(d.label));
+      incoming.appendChild(buildUnrevealed(d.label, d.header));
       settle();
     };
     incoming.innerHTML = '';
