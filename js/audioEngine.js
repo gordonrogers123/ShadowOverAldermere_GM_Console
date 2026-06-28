@@ -97,70 +97,115 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
     return p;
   }
 
+  // Two gains in series so a bed's fade ENVELOPE and its live VOLUME never fight:
+  //   source -> panner -> envGain (0..1 fade shape) -> volGain (live level) -> master
+  // envGain carries the fade in/out -- and for a LOOPING bed with a fade, a
+  // dip-to-silence at every loop boundary (fade out at the end of each pass, fade
+  // in at the start of the next), scheduled a batch of iterations ahead on the
+  // audio clock and topped up by a timer so it never runs dry. volGain carries the
+  // mixer level and mute, set live without disturbing the (normalised) envelope --
+  // so dragging a fader never desyncs the loop dip. A bed with no fade keeps a
+  // flat envelope (envGain = 1) and native looping, exactly as before.
   function buildTrackGraph(buffer, t) {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.loop = t.loop !== false;
 
     const panner = ctx.createStereoPanner();
-    const trackGain = ctx.createGain(); trackGain.gain.value = 0;   // ramp up from silence
+    const envGain = ctx.createGain(); envGain.gain.value = 1;   // fade SHAPE (0..1)
+    const volGain = ctx.createGain(); volGain.gain.value = 0;   // live LEVEL (ramps up from silence)
+    source.connect(panner); panner.connect(envGain); envGain.connect(volGain); volGain.connect(masterGain);
 
-    source.connect(panner); panner.connect(trackGain); trackGain.connect(masterGain);
-
-    // A bed can carry its own fade envelope (seconds): a gentle ramp in on start
-    // and out on stop, plus a fade-out tail before a NON-looping file ends so it
-    // doesn't hard-cut. fadeIn=0 keeps the old behaviour (snap / cue ramp).
     const fadeIn = Math.max(0, +t.fadeIn || 0);
     const fadeOut = Math.max(0, +t.fadeOut || 0);
+    const hasFade = fadeIn > 0 || fadeOut > 0;
+    const dur = buffer.duration || 0;
+    // Per-loop fades clamp to half the file so they never overlap; a tiny floor
+    // when looping keeps the loop seam click-free even if one side is set to 0.
+    const efIn = hasFade ? Math.max(0.006, Math.min(fadeIn, dur / 2)) : 0;
+    const efOut = hasFade ? Math.max(0.006, Math.min(fadeOut, dur / 2)) : 0;
+    let looping = t.loop !== false;
+    let startTime = 0;
+    let scheduledIters = 0;   // how many loop iterations' envelopes are on the clock
+    let topupTimer = null;
     let stopped = false;
-    let fadeInUntil = 0;   // ctx-time the start fade-in finishes -- update() won't fight it
-    let tailFrom = 0;      // ctx-time a non-looping bed begins its end-of-file fade-out
 
     const targetVol = (tt) => clamp01(tt.muted ? 0 : (tt.volume == null ? 0.8 : tt.volume));
 
+    // Schedule the dip envelope for the next batch of loop iterations on envGain,
+    // then arm a timer to extend it before it runs dry. The shape is normalised
+    // (0..1) and independent of volume, so a live volume change never reschedules.
+    const BATCH = 12;
+    function extendEnvelope() {
+      if (stopped || !hasFade || !looping || dur <= 0) return;
+      const g = envGain.gain;
+      const end = scheduledIters + BATCH;
+      try {
+        for (let n = scheduledIters; n < end; n++) {
+          const a = startTime + n * dur;   // this pass starts
+          const b = a + dur;               // ...and ends
+          g.setValueAtTime(0.0001, a); g.linearRampToValueAtTime(1, a + efIn);   // fade in
+          g.setValueAtTime(1, b - efOut); g.linearRampToValueAtTime(0.0001, b);   // fade out
+        }
+      } catch (e) {}
+      scheduledIters = end;
+      const runsOutAt = startTime + scheduledIters * dur;
+      topupTimer = setTimeout(extendEnvelope, Math.max(300, (runsOutAt - ctx.currentTime - dur) * 1000));
+    }
+
     function start(tt) {
       const now = ctx.currentTime;
-      const vol = targetVol(tt);
+      startTime = now;
+      looping = tt.loop !== false;
+      source.loop = looping;
       panner.pan.value = clampPan(tt.pan);
-      source.loop = tt.loop !== false;
       try { source.start(now); } catch (e) {}
-      const g = trackGain.gain;
+      // Live level rides volGain (quick ramp to the mixer level / cue ramp).
+      const vg = volGain.gain;
+      try { vg.cancelScheduledValues(now); vg.setValueAtTime(Math.max(0.0001, vg.value || 0.0001), now); vg.setTargetAtTime(targetVol(tt), now, currentTau); } catch (e) {}
+      // Fade SHAPE rides envGain.
+      const g = envGain.gain;
       try {
-        g.cancelScheduledValues(now); g.setValueAtTime(0, now);
-        if (fadeIn > 0) { g.linearRampToValueAtTime(vol, now + fadeIn); fadeInUntil = now + fadeIn; }
-        else { g.setTargetAtTime(vol, now, currentTau); }
-        // Non-looping bed with a tail: hold, then ramp to silence as the file ends.
-        if (source.loop === false && fadeOut > 0 && buffer.duration > fadeIn + fadeOut) {
-          tailFrom = now + buffer.duration - fadeOut;
-          g.setValueAtTime(vol, tailFrom);
-          g.linearRampToValueAtTime(0, now + buffer.duration);
+        g.cancelScheduledValues(now);
+        if (hasFade && looping) {
+          g.setValueAtTime(efIn > 0 ? 0.0001 : 1, now);
+          scheduledIters = 0;
+          extendEnvelope();                                  // dip at every loop seam
+        } else if (hasFade && !looping) {
+          g.setValueAtTime(efIn > 0 ? 0.0001 : 1, now);
+          if (efIn > 0) g.linearRampToValueAtTime(1, now + efIn);   // ramp in
+          if (efOut > 0 && dur > efIn + efOut) {                    // tail out before the file ends
+            g.setValueAtTime(1, now + dur - efOut);
+            g.linearRampToValueAtTime(0.0001, now + dur);
+          }
+        } else {
+          g.setValueAtTime(1, now);                          // no fade: flat, native loop
         }
       } catch (e) {}
     }
     function update(tt, tau) {
       const now = ctx.currentTime;
       panner.pan.setTargetAtTime(clampPan(tt.pan), now, 0.03);
-      source.loop = tt.loop !== false;
-      // Don't override a scheduled start fade-in / end-of-file fade-out mid-flight.
-      if (now < fadeInUntil) return;
-      if (tailFrom && now >= tailFrom - 0.05) return;
-      // A muted track holds its volume but plays at silence -- the mixer can drop
-      // it without stopping the bed (so unmute snaps it back at the same level).
-      trackGain.gain.setTargetAtTime(targetVol(tt), now, tau || currentTau);
+      looping = tt.loop !== false;
+      source.loop = looping;
+      // A muted track holds its level but sounds silent -- the mixer can drop it
+      // without stopping the bed (so unmute snaps it back). The dip envelope on
+      // envGain is untouched, so the loop seam stays in sync through any change.
+      volGain.gain.setTargetAtTime(targetVol(tt), now, tau || currentTau);
     }
     function stop() {
       if (stopped) return; stopped = true;
+      if (topupTimer) { clearTimeout(topupTimer); topupTimer = null; }
       const now = ctx.currentTime;
       // Fade out over the bed's fadeOut, else over the active cue ramp; hold the
       // source alive long enough for the fade to finish so it is not cut mid-fade.
       const out = fadeOut > 0 ? fadeOut : Math.max(0.15, currentTau * 3);
       try {
-        trackGain.gain.cancelScheduledValues(now);
-        trackGain.gain.setValueAtTime(Math.max(0.0001, trackGain.gain.value), now);
-        trackGain.gain.linearRampToValueAtTime(0, now + out);
+        volGain.gain.cancelScheduledValues(now);
+        volGain.gain.setValueAtTime(Math.max(0.0001, volGain.gain.value), now);
+        volGain.gain.linearRampToValueAtTime(0, now + out);
       } catch (e) {}
       try { source.stop(now + out + 0.05); } catch (e) {}
-      setTimeout(() => { try { source.disconnect(); panner.disconnect(); trackGain.disconnect(); } catch (e) {} }, (out + 0.25) * 1000);
+      setTimeout(() => { try { source.disconnect(); panner.disconnect(); envGain.disconnect(); volGain.disconnect(); } catch (e) {} }, (out + 0.25) * 1000);
     }
     return { source, start, update, stop };
   }
