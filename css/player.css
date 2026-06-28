@@ -14,6 +14,10 @@
   position: relative;
   overflow: hidden;
   background: var(--stage);
+  /* A size-query container so the title plate's type scales to the STAGE width,
+     not the viewport -- so it looks right full-screen on the TV and in the small
+     GM/cue preview alike (cqi == vw when the stage fills the screen). */
+  container-type: inline-size;
 }
 /* Apply a posture with no animation (cold load restore). */
 .stage.no-anim * { transition: none !important; }
@@ -65,16 +69,16 @@
 }
 .stage .unrevealed-mark {
   font-family: var(--font-display);
-  font-size: clamp(1rem, 2.4vw, 1.6rem);
+  font-size: clamp(0.55rem, 2.4cqi, 1.6rem);   /* scales to the stage, not the viewport */
   letter-spacing: 0.5em;
   text-transform: uppercase;
   color: rgba(203, 191, 168, 0.45);
-  margin-bottom: 1rem;
+  margin-bottom: 1cqi;
 }
 .stage .unrevealed-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(2rem, 6vw, 4.5rem);
+  font-size: clamp(1rem, 6cqi, 4.5rem);   /* scales to the stage, not the viewport */
   letter-spacing: 0.04em;
   color: var(--rule);
 }

@@ -846,7 +846,13 @@ export function mountGm(root) {
     const snap = cue.snapshot || {};
     const aff = { ...defaultAffects(), ...(cue.affects || {}) };
     const keyed = new Set(keyframedLanes(cue));   // only these animate; the rest snap
-    const firstKey = Object.keys(scene.maps || {})[0] || 'revealed';
+    // Baseline on the first REAL backdrop, not the first variant -- when the scene
+    // leads with a title-screen variant (empty src), a cue that doesn't change the
+    // background must still preview over a map (characters never composite on the
+    // title plate, and its viewport-sized type looks huge in the small preview).
+    // Mirrors renderBuilderPreview's previewKey.
+    const mapKeys = Object.keys(scene.maps || {});
+    const firstKey = mapKeys.find((k) => scene.maps[k] !== '') || mapKeys[0] || 'revealed';
     const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
     // Baseline: the scene's first backdrop, curtain up, nobody on. Then snap every
     // affected VISUAL aspect the GM did NOT keyframe, so the test shows only the
