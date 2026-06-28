@@ -1,1 +1,263 @@
-[]
+[
+  {
+    "id": "the-road-to-aldermere",
+    "name": "The Road to Aldermere",
+    "maps": {
+      "title-screen": "",
+      "the-road": "assets/backgrounds/A1 S1 Road to Aldermere.png",
+      "the-brigands": "assets/backgrounds/A1 S1 -- Brigands.png",
+      "the-battle": "assets/maps/A1 S1 Road to Aldermere.png"
+    },
+    "variantModes": {
+      "title-screen": {
+        "scene": true,
+        "map": false
+      },
+      "the-road": {
+        "scene": true,
+        "map": false
+      },
+      "the-brigands": {
+        "scene": true,
+        "map": false
+      },
+      "the-battle": {
+        "scene": false,
+        "map": true
+      }
+    },
+    "defaultMapState": "title-screen",
+    "tokens": {
+      "heroes": [
+        "lysander",
+        "telstar",
+        "thraka",
+        "khaleesi",
+        "sai",
+        "samsara",
+        "truf"
+      ],
+      "enemies": [
+        "brigands"
+      ]
+    },
+    "music": null,
+    "ambience": [],
+    "audio": {
+      "music": [
+        {
+          "src": "assets/audio/music/Road to Aldermere -- Fight.mp3",
+          "volume": 0.3,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 1,
+          "fadeOut": 1
+        },
+        {
+          "src": "assets/audio/music/Road to Aldermere -- Walk.mp3",
+          "volume": 0.37,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 7,
+          "fadeOut": 5
+        }
+      ],
+      "ambience": [],
+      "sfx": []
+    },
+    "gmNotes": "",
+    "cues": [
+      {
+        "id": "cue-1",
+        "label": "Title",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "title-screen",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [
+              "mus:1"
+            ],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "Each of you came to this road for reasons of your own.\n\nSome of you are young, the fire still new in you, hungry to make a name the world will remember. You have heard the old songs, and you mean to earn one of your own.\n\nOthers among you have walked roads like this before. You hung up the blade years ago and settled into the soft life: a warm hearth and a full belly. But comfort has a way of wearing thin. You have grown tired the easy life, and the pull of the road and one more great adventure calls you now.\n\nEither way, the same promise drew you to the far edges of Veldora, away from the crowded capitals of the realm's heart, out to a frontier where a person might still become something.\n\nWord had spread that the twin cities of Highmoor and Aldermere were desperate for heroes. Contracts with the Heroes' Guild left to gather dust, unfilled for far too long, and a reward that had only grown fatter the longer it sat unclaimed. A purse like that does not go begging unless something has gone badly wrong, but the coin was real and the road was open, and so you came.\n\nThose promises carried you here. But what waited at the crossroads was unlike anything you expected.",
+        "timeline": {
+          "audioIn": {
+            "at": 1000,
+            "ramp": 1000
+          }
+        }
+      },
+      {
+        "id": "cue-2",
+        "label": "The Road",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "the-road",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "You arrive separately to find a country crossroads under an overcast sky with a weathered wooden signpost pointing toward a distant city\n\nThere is a long caravan of refugees with handcarts trudging west along a rutted dirt road\n\nYou see a thick column of black smoke rising far to the east over low hills; scrubby grass and shallow ditches lining the road\n\nAs you stand there watching the progression, an old woman pauses to speak with you.",
+        "timeline": {
+          "background": {
+            "at": 800,
+            "ramp": 2000
+          }
+        }
+      },
+      {
+        "id": "cue-3",
+        "label": "Granny Edna",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/grannyEdna -- Standing.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "\"If you're deciding which way to go, I suggest you come with us. There's nothing left of Highmoor; not for you, not for any of us.\"\n\n\nCan help with\t\nFood, warmth, and a friendly footing with the caravan\n\nReveals if asked\nThe pale-night story (Highmoor fell in a single night, no army, just cold and quiet and screaming) \nTales of the caravan's grief and hope\nFear that the city they are walking toward may not want them",
+        "timeline": {
+          "audioOut": {
+            "at": 0,
+            "ramp": 1000
+          },
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-4",
+        "label": "Wren",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Wren -- Excited.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      }
+    ],
+    "characters": {
+      "right": [
+        {
+          "id": "grannyEdna -- Standing",
+          "src": "assets/characters/npcs/grannyEdna -- Standing.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "x": 6,
+          "y": -9
+        },
+        {
+          "id": "Wren -- Excited",
+          "src": "assets/characters/npcs/Wren -- Excited.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "y": -10
+        },
+        {
+          "id": "Marsh Family -- Watching",
+          "src": "assets/characters/npcs/Marsh Family -- Watching.png",
+          "enter": "fade",
+          "x": -10
+        }
+      ]
+    },
+    "defaults": {
+      "visible": true,
+      "leftShown": false,
+      "rightShown": true
+    }
+  }
+]
