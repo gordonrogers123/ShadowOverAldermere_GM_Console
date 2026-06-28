@@ -42,7 +42,6 @@ export function mountGm(root) {
   let audioMusic = MUSIC.slice();          // audio pick lists, also Rescan-replaceable
   let audioAmbience = AMBIENCE.slice();
   let audioSfx = SFX.slice();
-  let builtAudioSceneId = null;            // which scene's audio panel is currently built
 
   // Sentinel a builder variant uses for "the Aldermere title screen": a
   // background with no image. It saves as an empty src, which the compositor
@@ -158,13 +157,9 @@ export function mountGm(root) {
           <p class="notes-body"></p>
         </div>
 
-        <!-- The full per-bed audio panel (outputs, per-track Vol/Pan/Play, Save).
-             Collapsed by default now that the compact mixer carries the live
-             controls -- this is the setup/detail view, one click away. -->
-        <details class="gm-audio" hidden>
-          <summary class="gm-audio-summary">Audio &mdash; full panel <small>(per-bed Vol/Pan, outputs, save)</small></summary>
-          <div class="audio-body"></div>
-        </details>
+        <!-- The old full audio panel is retired: per-bed Vol/Pan/fades are
+             configured in the scene builder, the sidebar mixer carries the live
+             levels + Fade, and the TV/Laptop outputs moved onto the mixer. -->
 
         <div class="gm-builder" hidden>
           <div class="builder-head">
@@ -338,8 +333,6 @@ export function mountGm(root) {
     rosterEnemies: root.querySelector('.roster-enemies'),
     rosterAllHeroes:  root.querySelector('.roster-all[data-group="heroes"]'),
     rosterAllEnemies: root.querySelector('.roster-all[data-group="enemies"]'),
-    audio:        root.querySelector('.gm-audio'),
-    audioBody:    root.querySelector('.audio-body'),
     bMusic:       root.querySelector('.b-music'),
     bAmbience:    root.querySelector('.b-ambience'),
     bSfx:         root.querySelector('.b-sfx'),
@@ -489,17 +482,19 @@ export function mountGm(root) {
     const hasDef = def && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, def);
     state.mapState = hasDef ? def : (keys[0] || 'hidden');
     const d = scene.defaults || {};
-    const hasLeft = charRoster(scene.characters && scene.characters.left).length > 0;
-    const hasRight = charRoster(scene.characters && scene.characters.right).length > 0;
     state.stage = {
       visible: wasBlackedOut ? false : (d.visible !== false),  // a global black-out carries across scene changes
-      left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
-      right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
+      // Characters are CUE-DRIVEN ("cues pick who enters"): a scene starts with
+      // both sides empty and a cue brings someone on -- the opening cue included,
+      // since it fires as part of select. (Previously a non-empty roster auto-armed
+      // its first character as shown, so a cue that merely switched off the title
+      // screen would pop that character in even though no cue had picked anyone.)
+      left:  { shown: false, srcOverride: null },
+      right: { shown: false, srcOverride: null },
       tokens: expandSavedLayout(scene),  // auto-place a saved layout, else empty
       mapMode: false                     // selecting a scene starts on the cinematic controls
     };
     state.audio = seedAudioFromScene(scene, state.audio);
-    builtAudioSceneId = null;           // force the audio panel to rebuild on select
     mapMode = false;                   // start on the cinematic controls
     activeCueId = null;
     // If the scene defines an opening cue, fire it as part of the same select so
@@ -652,7 +647,6 @@ export function mountGm(root) {
       const set = new Set((snap.audio.playing || []).map((k) => (k === 'music' ? 'mus:0' : k)));
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
       if (snap.audio.master != null) state.audio.master = snap.audio.master;
-      builtAudioSceneId = null;       // force the audio panel to reflect the new set
     }
     // SFX one-shots -- independent of the bed set, so a cue can fire a sound
     // without touching the music. Gated by 'sfx' so its lane can be keyframed.
@@ -780,7 +774,6 @@ export function mountGm(root) {
     } else if (name === 'audioOut') {
       for (const k of Object.keys(tracks)) tracks[k].playing = false;   // everything fades down
       state.audio.ramp = Math.max(0, +lane.ramp || 0);
-      builtAudioSceneId = null;
     } else if (name === 'background') {
       if (snap.mapState != null && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, snap.mapState)) {
         state.mapState = snap.mapState;
@@ -792,7 +785,6 @@ export function mountGm(root) {
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
       if (snap.audio && snap.audio.master != null) state.audio.master = snap.audio.master;
       state.audio.ramp = Math.max(0, +lane.ramp || 0);
-      builtAudioSceneId = null;
     } else if (name === 'reveal') {
       state.stage.visible = !(snap.visible === false);
       setStageFx('curtain', lane.ramp);
@@ -1000,14 +992,27 @@ export function mountGm(root) {
       els.mixerFaders.append(col);
     }
 
-    // The whole-mix Fade sits on its own row below the columns.
+    // Mixer footer: which windows actually SOUND (TV = Player, Laptop = GM
+    // monitor) + the whole-mix Fade. Outputs live here now that the full panel
+    // is retired -- they sit right next to the Fade button.
+    const outWrap = document.createElement('div'); outWrap.className = 'mixer-outputs';
+    const outLabel = document.createElement('span'); outLabel.className = 'mixer-out-label'; outLabel.textContent = 'Out';
+    outWrap.append(outLabel);
+    for (const [key, text] of [['player', 'TV'], ['gm', 'Laptop']]) {
+      const b = document.createElement('button');
+      b.className = 'gm-button btn--toggle mixer-output'; b.type = 'button'; b.dataset.out = key; b.textContent = text;
+      const isOn = () => !!(state.audio.outputs && state.audio.outputs[key]);
+      b.classList.toggle('active', isOn());
+      b.addEventListener('click', () => { ensureAudio(); state.audio.outputs[key] = !isOn(); b.classList.toggle('active', isOn()); commitAudio(); });
+      outWrap.append(b);
+    }
     const fade = document.createElement('button');
     fade.className = 'gm-button btn--toggle mixer-fade'; fade.type = 'button';
     fade.textContent = state.audio.masterMuted ? 'Fade in' : 'Fade out';
     fade.classList.toggle('is-on', !!state.audio.masterMuted);
     fade.title = 'Fade all audio out / back in';
     fade.addEventListener('click', fadeAudio);
-    els.mixerExtra.append(fade);
+    els.mixerExtra.append(outWrap, fade);
   }
 
   // GM notes shown live: a cue's own notes when it is the active cue (so blocking
@@ -1065,10 +1070,11 @@ export function mountGm(root) {
   }
 
   // ============================================================
-  //  Audio: a state-driven control panel. The GM monitors locally; the Player
+  //  Audio: a state-driven control surface. The GM monitors locally; the Player
   //  is the room output. Controls mutate state.audio then commitAudio() (save +
   //  broadcast + engine.sync) -- NOT renderUI(), so sliders are never rebuilt
-  //  mid-drag. The panel is (re)built once per scene from buildAudioPanel().
+  //  mid-drag. The live surface is the sidebar mixer (renderMixer); per-bed
+  //  levels & fades are configured in the scene builder.
   // ============================================================
   function ensureAudio() {
     if (!state.audio) state.audio = { master: 0.8, outputs: { player: true, gm: false }, tracks: {}, sfxTrigger: {} };
@@ -1118,25 +1124,8 @@ export function mountGm(root) {
   }
   // Capture live tuning (volume/pan) back into the scene's audio config
   // so it recalls next session. Persists to both tiers, like Save layout.
-  function saveAudioToScene() {
-    const scene = sceneById(state.sceneId);
-    if (!scene || !scene.audio) return;
-    const a = JSON.parse(JSON.stringify(scene.audio));
-    const tr = (state.audio && state.audio.tracks) || {};
-    const tune = (t) => ({ volume: t.volume, pan: t.pan, loop: t.loop !== false, fadeIn: t.fadeIn || 0, fadeOut: t.fadeOut || 0 });
-    // Tune each music bed in place, preserving the stored shape (array or the
-    // single legacy object) so existing scenes are not reshaped on a Save.
-    if (Array.isArray(a.music)) a.music.forEach((m, i) => { const t = tr['mus:' + i]; if (t && m) Object.assign(m, tune(t)); });
-    else if (a.music && a.music.src) { const t = tr['mus:0']; if (t) Object.assign(a.music, tune(t)); }
-    (a.ambience || []).forEach((amb, i) => { const t = tr['amb:' + i]; if (t) Object.assign(amb, tune(t)); });
-    const updated = { ...scene, audio: a };
-    addUserScene(updated);
-    saveSceneToFile(updated);
-    rebuildSceneList();
-    setStatus('Saved audio for "' + scene.name + '".');
-  }
-
-  // ---- small DOM helpers for the audio panel ----
+  // ---- small DOM helpers (a labelled range / knob), reused by the builder's
+  //      per-bed audio editor (vol / pan / fades). ----
   function aRow(cls) { const d = document.createElement('div'); d.className = cls || 'audio-row'; return d; }
   function aLabel(text) { const s = document.createElement('span'); s.className = 'control-label'; s.textContent = text; return s; }
   function aSub(text) { const s = document.createElement('span'); s.className = 'audio-sub-label'; s.textContent = text; return s; }
@@ -1154,110 +1143,9 @@ export function mountGm(root) {
     return w;
   }
 
-  function buildAudioPanel(scene) {
-    ensureAudio();
-    const a = scene.audio || {};
-    els.audioBody.innerHTML = '';
-
-    const top = aRow();
-    const master = aRange('audio-master', 0, 1, state.audio.master);
-    master.addEventListener('input', () => { ensureAudio(); state.audio.master = +master.value; commitAudio(); });
-    top.append(aLabel('Master'), master);
-    const outWrap = document.createElement('div'); outWrap.className = 'audio-outputs';
-    for (const [key, text] of [['player', 'TV'], ['gm', 'Laptop']]) {
-      const b = document.createElement('button');
-      b.className = 'gm-button btn--toggle audio-output'; b.type = 'button'; b.dataset.out = key; b.textContent = text;
-      const isOn = () => !!(state.audio.outputs && state.audio.outputs[key]);
-      b.classList.toggle('active', isOn());
-      b.addEventListener('click', () => { ensureAudio(); state.audio.outputs[key] = !isOn(); b.classList.toggle('active', isOn()); commitAudio(); });
-      outWrap.append(b);
-    }
-    top.append(aSub('Output'), outWrap);
-    els.audioBody.append(top);
-
-    const beds = musicBeds(a);
-    beds.forEach((m, i) => {
-      els.audioBody.append(buildTrackBlock('mus:' + i, beds.length > 1 ? 'Music ' + (i + 1) : 'Music', m));
-    });
-    (a.ambience || []).forEach((amb, i) => {
-      if (amb && amb.src) els.audioBody.append(buildTrackBlock('amb:' + i, 'Ambience ' + (i + 1), amb));
-    });
-
-    if ((a.sfx || []).length) {
-      const row = aRow('audio-row audio-sfx-row');
-      row.append(aLabel('SFX'));
-      for (const s of a.sfx) {
-        const b = document.createElement('button');
-        b.className = 'gm-button audio-sfx'; b.type = 'button'; b.dataset.sfx = s.id; b.textContent = humanize(s.id);
-        b.addEventListener('click', () => { ensureAudio(); state.audio.sfxTrigger[s.id] = (state.audio.sfxTrigger[s.id] || 0) + 1; commitAudio(); });
-        row.append(b);
-      }
-      els.audioBody.append(row);
-    }
-
-    const saveRow = aRow();
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'gm-button btn--save audio-save'; saveBtn.type = 'button'; saveBtn.textContent = 'Save audio to scene';
-    saveBtn.addEventListener('click', saveAudioToScene);
-    saveRow.append(saveBtn);
-    els.audioBody.append(saveRow);
-  }
-
-  // Empty-state shown in the Audio panel when a scene carries no audio yet, so
-  // the feature is discoverable instead of the whole panel simply being absent.
-  function buildAudioEmpty(scene) {
-    els.audioBody.innerHTML = '';
-    const p = document.createElement('p');
-    p.className = 'audio-empty';
-    p.textContent = 'No music, ambience, or SFX set for this scene yet. ';
-    const cta = document.createElement('button');
-    cta.className = 'gm-button btn--quiet audio-empty-cta';
-    cta.type = 'button';
-    cta.textContent = 'Add audio in the builder';
-    cta.addEventListener('click', () => openBuilder(scene));
-    p.append(cta);
-    els.audioBody.append(p);
-  }
-
-  function buildTrackBlock(key, label, cfg) {
-    ensureAudio();
-    if (!state.audio.tracks[key]) state.audio.tracks[key] = trackFromCfg(cfg);
-    const t = state.audio.tracks[key];
-    const block = document.createElement('div'); block.className = 'audio-track'; block.dataset.key = key;
-
-    const head = aRow();
-    head.append(aLabel(label));
-    const play = document.createElement('button');
-    play.className = 'gm-button audio-play'; play.type = 'button';
-    play.textContent = t.playing ? 'Stop' : 'Play';
-    play.classList.toggle('is-playing', !!t.playing);
-    play.addEventListener('click', () => {
-      ensureAudio(); const tt = state.audio.tracks[key]; tt.playing = !tt.playing;
-      play.textContent = tt.playing ? 'Stop' : 'Play'; play.classList.toggle('is-playing', !!tt.playing); commitAudio();
-    });
-    head.append(play);
-    const vol = aRange('audio-vol', 0, 1, t.volume);
-    vol.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].volume = +vol.value; commitAudio(); });
-    const pan = aRange('audio-pan', -1, 1, t.pan);
-    pan.addEventListener('input', () => { ensureAudio(); state.audio.tracks[key].pan = +pan.value; commitAudio(); });
-    head.append(aKnob('Vol', vol), aKnob('Pan', pan));
-    block.append(head);
-    // Fade envelope: a gentle ramp in on start and out on stop (and before a
-    // non-looping bed reaches its end), in seconds -- 0 = instant. Saves editing
-    // the music in another program just to avoid an abrupt start/stop.
-    const fadeRow = aRow('audio-row audio-fade-row');
-    const fadeField = (prop, label) => {
-      const inp = document.createElement('input');
-      inp.type = 'number'; inp.className = 'audio-fade'; inp.min = '0'; inp.max = '30'; inp.step = '0.5';
-      inp.value = (t[prop] != null ? t[prop] : 0);
-      inp.title = label + ' (seconds)';
-      inp.addEventListener('change', () => { ensureAudio(); state.audio.tracks[key][prop] = Math.max(0, +inp.value || 0); commitAudio(); });
-      return aKnob(label, inp);
-    };
-    fadeRow.append(fadeField('fadeIn', 'Fade in'), fadeField('fadeOut', 'Fade out'));
-    block.append(fadeRow);
-    return block;
-  }
+  // (The full live audio panel -- per-bed Vol/Pan/Play/fades + outputs + Save --
+  // is retired: per-bed levels & fades are set in the builder, the sidebar mixer
+  // carries live levels + Fade + the TV/Laptop outputs, and cues start/stop beds.)
 
   // ---- Builder audio picker (which tracks the scene carries) ----
   function buildAudioChecks(container, list, isOn, toggle) {
@@ -1271,21 +1159,49 @@ export function mountGm(root) {
       lab.append(cb, nm); container.append(lab);
     }
   }
+  // Music/ambience beds: pick which the scene carries AND tune each selected bed
+  // in place -- volume, pan, and the per-loop fade in/out (seconds) the engine
+  // dips at every loop seam. This is where fades are configured now (the old live
+  // "full panel" is gone); the live sidebar mixer just rides the saved levels.
+  function buildBedPicks(container, list, beds) {
+    container.innerHTML = '';
+    if (!list.length) { const p = document.createElement('span'); p.className = 'audio-pick-empty'; p.textContent = '(none found -- add files under assets/audio, then Rescan)'; container.append(p); return; }
+    for (const item of list) {
+      const bed = beds.find((x) => x.src === item.src);
+      const wrap = document.createElement('div'); wrap.className = 'bed-pick' + (bed ? ' is-on' : '');
+      const lab = document.createElement('label'); lab.className = 'roster-item';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!bed;
+      cb.addEventListener('change', () => {
+        if (cb.checked) { if (!beds.some((x) => x.src === item.src)) beds.push({ src: item.src, volume: 0.8, pan: 0, loop: true, fadeIn: 0, fadeOut: 0 }); }
+        else { const i = beds.findIndex((x) => x.src === item.src); if (i >= 0) beds.splice(i, 1); }
+        buildBedPicks(container, list, beds);   // re-render to reveal/hide the bed's controls
+      });
+      const nm = document.createElement('span'); nm.textContent = item.name;
+      lab.append(cb, nm); wrap.append(lab);
+      if (bed) {
+        const ctl = document.createElement('div'); ctl.className = 'bed-controls';
+        const vol = aRange('audio-vol', 0, 1, bed.volume == null ? 0.8 : bed.volume);
+        vol.addEventListener('input', () => { bed.volume = +vol.value; });
+        const pan = aRange('audio-pan', -1, 1, bed.pan || 0);
+        pan.addEventListener('input', () => { bed.pan = +pan.value; });
+        ctl.append(aKnob('Vol', vol), aKnob('Pan', pan));
+        const mkFade = (prop, label) => {
+          const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'audio-fade';
+          inp.min = '0'; inp.max = '30'; inp.step = '0.5'; inp.value = bed[prop] || 0; inp.title = label + ' in seconds (0 = none)';
+          inp.addEventListener('change', () => { bed[prop] = Math.max(0, +inp.value || 0); });
+          return aKnob(label, inp);
+        };
+        ctl.append(mkFade('fadeIn', 'Fade in'), mkFade('fadeOut', 'Fade out'));
+        wrap.append(ctl);
+      }
+      container.append(wrap);
+    }
+  }
   function renderAudioPick() {
-    // Music is now a LIBRARY of beds (checkbox list, like Ambience); cues pick
-    // which bed plays. draft.audio.music is an array of {src,volume,pan,loop}.
-    buildAudioChecks(els.bMusic, audioMusic,
-      (item) => draft.audio.music.some((x) => x.src === item.src),
-      (item, on) => {
-        if (on) { if (!draft.audio.music.some((x) => x.src === item.src)) draft.audio.music.push({ src: item.src, volume: 0.8, pan: 0, loop: true }); }
-        else draft.audio.music = draft.audio.music.filter((x) => x.src !== item.src);
-      });
-    buildAudioChecks(els.bAmbience, audioAmbience,
-      (item) => draft.audio.ambience.some((x) => x.src === item.src),
-      (item, on) => {
-        if (on) { if (!draft.audio.ambience.some((x) => x.src === item.src)) draft.audio.ambience.push({ src: item.src, volume: 0.8, pan: 0, loop: true }); }
-        else draft.audio.ambience = draft.audio.ambience.filter((x) => x.src !== item.src);
-      });
+    // Music + ambience are libraries of beds, each tuned in place (vol/pan/fades);
+    // cues pick which play. SFX are one-shots (a plain check list, no fades).
+    buildBedPicks(els.bMusic, audioMusic, draft.audio.music);
+    buildBedPicks(els.bAmbience, audioAmbience, draft.audio.ambience);
     buildAudioChecks(els.bSfx, audioSfx,
       (item) => draft.audio.sfx.some((x) => x.id === item.id),
       (item, on) => {
@@ -1962,7 +1878,9 @@ export function mountGm(root) {
     if (leftRoster.length)  chars.left  = leftRoster;
     if (rightRoster.length) chars.right = rightRoster;
     if (chars.left || chars.right) scene.characters = chars;
-    scene.defaults = { visible: true, leftShown: !!chars.left, rightShown: !!chars.right };
+    // Characters are cue-driven, so a scene no longer records a "show on select"
+    // flag -- the opening cue reveals whoever should be on screen at the start.
+    scene.defaults = { visible: true };
     return scene;
   }
 
@@ -2905,18 +2823,6 @@ export function mountGm(root) {
       } else {
         renderQuick(scene);
         if (scene.audio) renderMixer(scene);
-      }
-    }
-
-    // Surface audio for every selected scene: the full panel when the scene
-    // carries audio, otherwise a discoverable empty-state pointing at the builder.
-    const showAudio = !inMap && !building && !!scene;
-    els.audio.hidden = !showAudio;
-    if (showAudio) {
-      const audioKey = (scene.audio ? 'full:' : 'empty:') + scene.id;
-      if (builtAudioSceneId !== audioKey) {
-        if (scene.audio) buildAudioPanel(scene); else buildAudioEmpty(scene);
-        builtAudioSceneId = audioKey;
       }
     }
 
