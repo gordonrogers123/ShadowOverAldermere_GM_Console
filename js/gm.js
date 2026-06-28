@@ -638,10 +638,12 @@ export function mountGm(root) {
       state.stage.visible = opts.wasBlackedOut ? false : (snap.visible !== false);
     }
     // Characters -- the compositor diffs each side and animates only what changed.
+    // A side captured as null is "carry over" (No change): the cue leaves it
+    // exactly as-is, so changing one side never disturbs / re-enters the other.
     if (aff.characters && !skip.has('characters')) {
       const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
-      state.stage.left = side(snap.left);
-      state.stage.right = side(snap.right);
+      if (snap.left !== null) state.stage.left = side(snap.left);
+      if (snap.right !== null) state.stage.right = side(snap.right);
     }
     // Tokens -- fresh instIds via the savedLayout expansion.
     if (aff.tokens && !skip.has('tokens')) state.stage.tokens = expandLayout(snap.tokens);
@@ -802,12 +804,12 @@ export function mountGm(root) {
     } else if (name === 'characters') {
       const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
       // Carry a bumped entrance nonce so the compositor replays the transition
-      // even if the side is already on stage from an earlier (instant) cue.
+      // even if the side is already on stage from an earlier (instant) cue. A side
+      // captured as null is "carry over" -- left untouched, so its entrance does
+      // not re-fire when only the other side changes.
       const bump = (prev) => ((prev && +prev.enterSeq) || 0) + 1;
-      const nl = side(snap.left); nl.enterSeq = bump(state.stage.left);
-      const nr = side(snap.right); nr.enterSeq = bump(state.stage.right);
-      state.stage.left = nl;
-      state.stage.right = nr;
+      if (snap.left !== null) { const nl = side(snap.left); nl.enterSeq = bump(state.stage.left); state.stage.left = nl; }
+      if (snap.right !== null) { const nr = side(snap.right); nr.enterSeq = bump(state.stage.right); state.stage.right = nr; }
       setStageFx('char', lane.ramp);
     }
     activeCueId = cue.id;
@@ -837,11 +839,15 @@ export function mountGm(root) {
   }
   // Play a cue's VISUAL choreography in the GM preview only (no commit, no
   // broadcast, no audio) so the GM can dial in Start/Ramp from the builder
-  // without opening a Player window. Runs against a throwaway preview state and
-  // restores the draft preview when done.
-  function testCueTimeline(cue) {
+  // without opening a Player window. Runs against a throwaway preview state.
+  // opts.hold (the cue-row "Preview" button): play it like a live cue button --
+  // baseline from who the builder currently shows and LEAVE the result on screen
+  // instead of flashing it and snapping back; the keyframe editor's "Test" passes
+  // no hold, so it returns to the editing baseline to be re-run cleanly.
+  function testCueTimeline(cue, opts) {
     cancelTestTimeline();
     if (!draft) return;
+    const hold = !!(opts && opts.hold);
     const scene = draftToScene(draft);
     const tl = { ...defaultTimeline(), ...(cue.timeline || {}) };
     const snap = cue.snapshot || {};
@@ -855,14 +861,24 @@ export function mountGm(root) {
     const mapKeys = Object.keys(scene.maps || {});
     const firstKey = mapKeys.find((k) => scene.maps[k] !== '') || mapKeys[0] || 'revealed';
     const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
-    // Baseline: the scene's first backdrop, curtain up, nobody on. Then snap every
-    // affected VISUAL aspect the GM did NOT keyframe, so the test shows only the
-    // timed elements moving (a character walking in over a settled background).
+    // Baseline sides: a clean test starts with nobody on (so an entrance animates
+    // visibly); a "hold" preview starts from who the builder currently shows, so a
+    // carry-over (No change) side visibly stays put while the other side changes.
+    const baseSide = (which) => hold
+      ? { shown: charRoster(draft && draft[which]).length > 0, srcOverride: builderPick[which] }
+      : { shown: false, srcOverride: null };
+    // Baseline: the scene's first backdrop, curtain up. Then snap every affected
+    // VISUAL aspect the GM did NOT keyframe, so the test shows only the timed
+    // elements moving (a character walking in over a settled background). A side
+    // captured as null is "carry over" -- left at the baseline, never touched.
     const ps = { sceneId: scene.id, mapState: firstKey,
-      stage: { visible: true, left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null }, tokens: [], mapMode: false } };
+      stage: { visible: true, left: baseSide('left'), right: baseSide('right'), tokens: [], mapMode: false } };
     const hasVariant = snap.mapState != null && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, snap.mapState);
     if (aff.background !== false && !keyed.has('background') && hasVariant) ps.mapState = snap.mapState;
-    if (aff.characters !== false && !keyed.has('characters')) { ps.stage.left = side(snap.left); ps.stage.right = side(snap.right); }
+    if (aff.characters !== false && !keyed.has('characters')) {
+      if (snap.left !== null) ps.stage.left = side(snap.left);
+      if (snap.right !== null) ps.stage.right = side(snap.right);
+    }
     if (aff.curtain !== false && !keyed.has('blackout') && !keyed.has('reveal')) ps.stage.visible = !(snap.visible === false);
     const paint = () => previewView.render(ps, scene, {});
     paint();
@@ -871,7 +887,11 @@ export function mountGm(root) {
       ['blackout', () => { ps.stage.visible = false; setFx(ps.stage, 'curtain', tl.blackout.ramp); }],
       ['background', () => { if (hasVariant) ps.mapState = snap.mapState; setFx(ps.stage, 'crossfade', tl.background.ramp); }],
       ['reveal', () => { ps.stage.visible = !(snap.visible === false); setFx(ps.stage, 'curtain', tl.reveal.ramp); }],
-      ['characters', () => { ps.stage.left = side(snap.left); ps.stage.right = side(snap.right); setFx(ps.stage, 'char', tl.characters.ramp); }]
+      ['characters', () => {
+        if (snap.left !== null) ps.stage.left = side(snap.left);
+        if (snap.right !== null) ps.stage.right = side(snap.right);
+        setFx(ps.stage, 'char', tl.characters.ramp);
+      }]
     ];
     let lastEnd = 0;
     for (const [name, fn] of beats) {
@@ -881,8 +901,9 @@ export function mountGm(root) {
       lastEnd = Math.max(lastEnd, at + (+lane.ramp || 0));
       testTimers.push(setTimeout(() => { fn(); paint(); }, at));
     }
-    // Hold the final frame a beat, then return the preview to the editing baseline.
-    testTimers.push(setTimeout(() => { cancelTestTimeline(); renderBuilderPreview(); }, lastEnd + 900));
+    // The keyframe-editor "Test" snaps back to the editing baseline so it can be
+    // re-run; the cue-row "Preview" (hold) leaves the result up, like a live cue.
+    if (!hold) testTimers.push(setTimeout(() => { cancelTestTimeline(); renderBuilderPreview(); }, lastEnd + 900));
   }
   function renderCueButtons(scene) {
     const cues = (scene && scene.cues) || [];
@@ -2158,8 +2179,10 @@ export function mountGm(root) {
       opening: false,
       notes: '',
       affects: { background: false, characters: false, audio: false, mapMode: false, curtain: false, tokens: false },
+      // Character sides default to null = "carry over" (No change), so a new cue
+      // only touches a side once the GM explicitly picks a character or Hide for it.
       snapshot: { mapState: null, mapMode: false, visible: true,
-        left: { shown: false, srcOverride: null }, right: { shown: false, srcOverride: null },
+        left: null, right: null,
         tokens: [], audio: { playing: [], master: 0.8, sfx: [] } }
     };
   }
@@ -2275,8 +2298,8 @@ export function mountGm(root) {
       const prev = document.createElement('button');
       prev.className = 'gm-button btn--quiet cue-preview';
       prev.type = 'button'; prev.textContent = '▶ Preview';
-      prev.title = 'Play this cue (with its keyframe transitions) in the preview';
-      prev.addEventListener('click', () => testCueTimeline(cue));
+      prev.title = 'Play this cue (with its keyframe transitions) in the preview, and leave it up';
+      prev.addEventListener('click', () => testCueTimeline(cue, { hold: true }));
 
       head.append(chev, label, prev, open, up, down, rm);
       card.append(head);
@@ -2300,8 +2323,6 @@ export function mountGm(root) {
   // matching affect on; "No change" leaves that aspect alone. Re-renders on change
   // so the keyframe lanes below track what the cue now affects.
   function buildCueContent(cue, aff, snap, host) {
-    const side = (s) => ({ shown: !!(s && s.shown), srcOverride: (s && s.srcOverride) || null });
-
     const field = (labelText) => {
       const f = document.createElement('div'); f.className = 'cue-field';
       const sp = document.createElement('span'); sp.className = 'cue-field-label'; sp.textContent = labelText;
@@ -2357,18 +2378,26 @@ export function mountGm(root) {
         roster.forEach((e) => add(e.src));
         if (current && !seen.has(current)) add(current, ' (not in roster)');
       };
+      const KEEP = '__keep__';   // sentinel: leave this side exactly as it is
       const mk = (which) => {
         const wrap = document.createElement('label'); wrap.className = 'cue-side';
         const cap = document.createElement('span'); cap.textContent = which === 'left' ? 'Left' : 'Right';
         const sel = document.createElement('select'); sel.className = 'cue-char-' + which;
+        const isKeep = snap[which] === null;                       // null => carry over
         const cur = (snap[which] && snap[which].srcOverride) || '';
         const roster = charRoster(draft && draft[which]);
         // With a roster, pick from it; with none yet, fall back to the full cast
         // so a cue can still place someone on an otherwise-empty side.
         if (roster.length) fillCueSide(sel, roster, cur);
         else fillCharSelect(sel, cur, false);   // first option = "None"
-        sel.value = cur;
-        sel.addEventListener('change', () => { snap[which] = { shown: !!sel.value, srcOverride: sel.value || null }; });
+        // Carry-over option, first: the cue leaves this side untouched (so changing
+        // the other side doesn't re-trigger this one's entrance).
+        const keep = document.createElement('option'); keep.value = KEEP; keep.textContent = '— No change (carry over) —';
+        sel.insertBefore(keep, sel.firstChild);
+        sel.value = isKeep ? KEEP : cur;
+        sel.addEventListener('change', () => {
+          snap[which] = sel.value === KEEP ? null : { shown: !!sel.value, srcOverride: sel.value || null };
+        });
         wrap.append(cap, sel); return wrap;
       };
       const sides = document.createElement('div'); sides.className = 'cue-sides';
@@ -2453,10 +2482,9 @@ export function mountGm(root) {
     ta.value = cue.notes || '';
     ta.addEventListener('input', () => { cue.notes = ta.value; });
     noteF.append(ta); host.append(noteF);
-
-    // Reference of what side carries which char (keeps the snapshot consistent
-    // when characters is on but a side was never touched).
-    if (aff.characters) { snap.left = side(snap.left); snap.right = side(snap.right); }
+    // (No side normalization here: a side is null = "carry over" or a concrete
+    // {shown, srcOverride}; every apply path guards null, so forcing both sides
+    // concrete would silently turn a carry-over side into Hide.)
   }
 
   // The per-element keyframe editor. One row per APPLICABLE lane (gated by what the
