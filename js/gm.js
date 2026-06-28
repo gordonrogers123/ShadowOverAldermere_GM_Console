@@ -489,12 +489,15 @@ export function mountGm(root) {
     const hasDef = def && scene.maps && Object.prototype.hasOwnProperty.call(scene.maps, def);
     state.mapState = hasDef ? def : (keys[0] || 'hidden');
     const d = scene.defaults || {};
-    const hasLeft = charRoster(scene.characters && scene.characters.left).length > 0;
-    const hasRight = charRoster(scene.characters && scene.characters.right).length > 0;
     state.stage = {
       visible: wasBlackedOut ? false : (d.visible !== false),  // a global black-out carries across scene changes
-      left:  { shown: d.leftShown  != null ? !!d.leftShown  : hasLeft,  srcOverride: null },
-      right: { shown: d.rightShown != null ? !!d.rightShown : hasRight, srcOverride: null },
+      // Characters are CUE-DRIVEN ("cues pick who enters"): a scene starts with
+      // both sides empty and a cue brings someone on -- the opening cue included,
+      // since it fires as part of select. (Previously a non-empty roster auto-armed
+      // its first character as shown, so a cue that merely switched off the title
+      // screen would pop that character in even though no cue had picked anyone.)
+      left:  { shown: false, srcOverride: null },
+      right: { shown: false, srcOverride: null },
       tokens: expandSavedLayout(scene),  // auto-place a saved layout, else empty
       mapMode: false                     // selecting a scene starts on the cinematic controls
     };
@@ -1962,7 +1965,9 @@ export function mountGm(root) {
     if (leftRoster.length)  chars.left  = leftRoster;
     if (rightRoster.length) chars.right = rightRoster;
     if (chars.left || chars.right) scene.characters = chars;
-    scene.defaults = { visible: true, leftShown: !!chars.left, rightShown: !!chars.right };
+    // Characters are cue-driven, so a scene no longer records a "show on select"
+    // flag -- the opening cue reveals whoever should be on screen at the start.
+    scene.defaults = { visible: true };
     return scene;
   }
 
