@@ -174,6 +174,37 @@ Treat this as a deliberate fork: *GM cinematic engine* (Tiers 1–3) vs. a
 
 ---
 
+## Control surfaces — driving the show (Stream Deck, Companion, MIDI)
+
+A physical button board (an **Elgato Stream Deck**, a MIDI pad, a foot pedal) is a
+great fit: the GM fires cues **eyes-up and tactile** — watching the players, not
+hunting for the on-screen cue button — and the laptop screen stays clear. Three
+paths, cheapest → richest:
+
+1. **Keyboard shortcuts (MVP — cheap, basically works today).** Add cue / SFX /
+   blackout key bindings to the GM window (useful on their own); map Stream Deck
+   keys to those keystrokes in the Elgato software. Zero new infrastructure, stays
+   offline. *Limits:* the GM window must be focused, and keys are labelled by hand.
+2. **HTTP command + relay (medium).** A Stream Deck key fires an HTTP request (via
+   an existing "web request" plugin, or **Bitfocus Companion**) → the **helper
+   server** → which pushes the command to the GM window over WebSocket/SSE → the GM
+   fires the cue. No focus requirement, works in the background or across the LAN.
+   **This reuses the exact "server-as-relay" plumbing the Android companion tablets
+   need (Tier 4)** — build the command bus once and both plug in.
+3. **Native plugin / Companion feedback (premium).** A real Stream Deck plugin — or
+   **Bitfocus Companion**, which is purpose-built for live AV/show control — that
+   also **sets dynamic key images**, so the physical buttons show the *current
+   scene's* cue thumbnails and update as scenes change. The wow setup.
+
+**The real feature is a small control/command bus** (external surfaces send named
+commands; the GM window subscribes), with the Stream Deck as the flagship client —
+not a bespoke integration. MIDI controllers, a web remote, even the Stream Deck
+*Mobile* app on one of the Android tablets all become clients of the same bus.
+Start with the keyboard MVP (independently useful); the HTTP/relay + dynamic labels
+land alongside the companion-client work, since they share the relay.
+
+---
+
 ## Deferred / not recommended
 
 - **Discrete 5.1 / 7.1 "surround mix."** Pre-authored channel mixing depends on a
@@ -194,6 +225,10 @@ Treat this as a deliberate fork: *GM cinematic engine* (Tiers 1–3) vs. a
    hand, so it's unblocked whenever you want it) and/or DMX lighting (the "whole
    room reacts" moment).
 4. **Companion clients** — the deliberate fork, once the cinematic engine is solid.
+
+*Anytime:* the **keyboard-shortcut Stream Deck MVP** is independent of the tiers —
+do it whenever a physical cue board would help. The HTTP/relay command bus is
+shared with the companion clients, so it pairs with step 4.
 
 ## Reuse notes
 
