@@ -96,6 +96,13 @@ plumbing and the rest are nearly free.
 to come from a specific direction (a growl from the NE corner, footsteps from
 behind).
 
+**Target setup (confirmed):** a **multichannel audio interface + multiple powered
+speakers** around the room are in hand — so this is **not** gated on hardware;
+it's a software build (the spatial panner + a one-time room/speaker config that
+matches the real speaker count/positions and per-output level trims + a per-sound
+placement UI). The interface is the single multichannel output device Web Audio
+targets.
+
 **Key insight:** for a *group*, do **not** use headphone HRTF/binaural (works for
 one listener with headphones only). Use **object-based amplitude panning to
 physical speakers** — the sound is louder in the speaker(s) nearest the intended
@@ -114,8 +121,9 @@ which is exactly where the table is.
   per-sound **placement** UI (drag a dot, or pick a compass point).
 
 **The limiter is the OUTPUT DEVICE, not the Web Audio API.** Hardware ladder:
-1. **Multichannel USB audio interface** (6–8 outs → powered speakers/amp) — the
+1. **Multichannel audio interface** (6–8 outs → powered speakers/amp) — the
    "do it right" path; the browser sees one multichannel output device.
+   **← this is the setup in hand, so the spatial-audio work is unblocked.**
 2. **HDMI → AV receiver in multichannel PCM** — cheap if a receiver already
    exists; mind the routing (the same HDMI also drives the TV).
 3. ~~Multiple stereo USB dongles~~ — a browser context drives **one** output
@@ -142,13 +150,20 @@ editor. High immersion, niche (needs a rig), architecture already has the bridge
 
 **Direction (eventual, not near-term):** per-player, read-mostly access to *their
 own* character — stats, info, inventory, HP, conditions, the initiative order, the
-current scene mood — on their phone. **Not** GM-level control of the board; a
-"second screen," not a VTT.
+current scene mood. **Not** GM-level control of the board; a "second screen," not
+a VTT.
+
+**Target device (confirmed):** **Android tablets** on the local network. That
+keeps the client simple — Chrome on the tablet loads a **companion page served by
+the helper server** and connects over the LAN (WebSocket/SSE); no native app, no
+app store. A tablet's larger screen also suits a fuller layout (a full sheet + an
+inventory grid) than a phone would, and the device set is small and known.
 
 This is lighter than a VTT, but it's the one feature that breaks the grain:
-- **Networking:** phones aren't in the GM's browser, so the **Python server
-  becomes a live relay** (WebSocket/SSE) and serves a player-companion page. The
-  pure-offline property softens to "needs a LAN."
+- **Networking:** the tablets aren't in the GM's browser, so the **Python server
+  becomes a live relay** (WebSocket/SSE) over the LAN and serves the companion
+  page. The pure-offline property softens to "needs a LAN" (already true for the
+  room-audio / DMX hardware tier).
 - **Data model:** characters/inventory (GM-owned, or player-owned with light
   self-edits like HP).
 - **Identity + authority:** a per-player join (code/URL); players edit only their
@@ -175,8 +190,9 @@ Treat this as a deliberate fork: *GM cinematic engine* (Tiers 1–3) vs. a
    the shared lane.
 2. **Map & combat depth** — fog of war + token HP/conditions, then the
    camera/large-map system.
-3. **Room hardware** — spatial room audio and/or DMX lighting (the "whole room
-   reacts" moment), for a dedicated game room.
+3. **Room hardware** — spatial room audio (the interface + speakers are already in
+   hand, so it's unblocked whenever you want it) and/or DMX lighting (the "whole
+   room reacts" moment).
 4. **Companion clients** — the deliberate fork, once the cinematic engine is solid.
 
 ## Reuse notes
