@@ -223,16 +223,17 @@ body.view-gm {
 .view-gm .gm-surface > .gm-controls { display: contents; }
 .view-gm .gm-surface > .gm-controls[hidden] { display: none; }   /* build mode: hide as a group */
 
-/* Compact (default, not larger / building / map): a 3-zone grid -- the preview
+/* Compact (default, not larger / building / map): a 2-zone grid -- the preview
    in the centre, the control panel (quick + mixer) on the RIGHT at the same
-   height, and the cue bar as a FULL-WIDTH row under both, then the Edit/Map nav. */
+   height, and the cue bar as a FULL-WIDTH row under both. (The Edit/Map nav now
+   rides in the preview caption next to the size toggle, so there's no nav row.) */
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface {
   display: grid;
   /* Fixed side width (not a min/max range): ~20% narrower than before for a
      bigger preview, but ALWAYS wide enough to keep the four mixer columns on one
      row at any window width (a range let it shrink and wrap the SFX column). */
   grid-template-columns: minmax(0, 1fr) 20rem;
-  grid-template-areas: "preview side" "cue cue" "nav nav";
+  grid-template-areas: "preview side" "cue cue";
   gap: var(--space-3) var(--space-4);
   align-items: stretch;
 }
@@ -240,13 +241,12 @@ body.view-gm {
 @media (max-width: 1180px) {
   .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface {
     grid-template-columns: 1fr;
-    grid-template-areas: "preview" "side" "cue" "nav";
+    grid-template-areas: "preview" "side" "cue";
   }
 }
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .gm-surface > .gm-preview { grid-area: preview; align-self: start; }
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .perf-side { grid-area: side; }
 .view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .cue-row { grid-area: cue; }
-.view-gm .gm-stage:not(.is-building):not(.is-large):not(.is-map) .controls-nav { grid-area: nav; }
 
 /* The right control panel: quick-action + mixer modules stacked, matching the
    preview's height (it stretches to the grid row). */
@@ -314,11 +314,27 @@ body.view-gm {
   display: flex;
   align-items: center;
   gap: 0.8rem;
+  flex-wrap: wrap;          /* on a narrow preview the action cluster wraps, never overflows */
   margin-top: 0.6rem;
 }
 /* Preview size toggle, pushed to the right of the caption. Enlarging overrides
    the builder's small/pinned preview so a map scene can be built at full size. */
 .view-gm .preview-size { margin-left: auto; font-size: var(--fs-100); padding: 0.3rem 0.6rem; white-space: nowrap; }
+/* Live mode relocates the Map mode / Edit nav INTO the caption (it was a full-
+   width row at the bottom). The auto left margin pushes the nav + size-toggle
+   cluster to the right end, beside the scene title; the toggle drops its own auto
+   margin so the two read as one group. Buttons size to content, like the toggle. */
+.view-gm .preview-cap .controls-nav {
+  margin: 0 0 0 auto;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+.view-gm .preview-cap .controls-nav > button {
+  flex: 0 0 auto;
+  font-size: var(--fs-100);
+  padding: 0.3rem 0.6rem;
+}
+.view-gm .preview-cap .controls-nav ~ .preview-size { margin-left: 0; }
 .view-gm .preview-name {
   font-family: var(--font-display);
   font-size: 1.25rem;

@@ -285,6 +285,7 @@ export function mountGm(root) {
     preview:      root.querySelector('.gm-preview'),
     previewFrame: root.querySelector('.preview-frame'),
     previewSize:  root.querySelector('.preview-size'),
+    previewCap:   root.querySelector('.preview-cap'),
     previewName:  root.querySelector('.preview-name'),
     badge:        root.querySelector('.badge'),
     controls:     root.querySelector('.gm-controls'),
@@ -2797,12 +2798,16 @@ export function mountGm(root) {
     els.stage.classList.toggle('is-map', inMap);
 
     // In map mode the Edit / Exit-map-mode nav rides in the board header (next to
-    // the title) so it's reachable without scrolling; in live mode it sits back in
-    // the surface nav row (before the Map controls). Idempotent -- only moves when
-    // the parent is wrong, so repeated renders don't thrash the DOM.
+    // the title) so it's reachable without scrolling; in live mode it rides in the
+    // preview caption next to the size toggle (so the live nav sits with the scene
+    // title, not as a stray row at the bottom); building parks it in the hidden
+    // controls block so it doesn't dock into the build rail with the preview.
+    // Idempotent -- only moves when the parent is wrong, so renders don't thrash.
     if (inMap) {
       if (els.controlsNav.parentElement !== els.mapmodeHeadActions) els.mapmodeHeadActions.appendChild(els.controlsNav);
-    } else if (els.controlsNav.nextElementSibling !== els.allControls) {
+    } else if (scene && !building) {
+      if (els.controlsNav.nextElementSibling !== els.previewSize) els.previewCap.insertBefore(els.controlsNav, els.previewSize);
+    } else if (els.controlsNav.parentElement !== els.controls) {
       els.controls.insertBefore(els.controlsNav, els.allControls);
     }
 
