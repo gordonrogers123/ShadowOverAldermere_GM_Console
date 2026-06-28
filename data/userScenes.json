@@ -1,1 +1,525 @@
-[]
+[
+  {
+    "id": "the-road-to-aldermere",
+    "name": "The Road to Aldermere",
+    "maps": {
+      "title-screen": "",
+      "the-road": "assets/backgrounds/A1 S1 Road to Aldermere.png",
+      "the-brigands": "assets/backgrounds/A1 S1 -- Brigands.png",
+      "the-battle": "assets/maps/A1 S1 Road to Aldermere.png"
+    },
+    "variantModes": {
+      "title-screen": {
+        "scene": true,
+        "map": false
+      },
+      "the-road": {
+        "scene": true,
+        "map": false
+      },
+      "the-brigands": {
+        "scene": true,
+        "map": false
+      },
+      "the-battle": {
+        "scene": false,
+        "map": true
+      }
+    },
+    "defaultMapState": "title-screen",
+    "tokens": {
+      "heroes": [
+        "lysander",
+        "telstar",
+        "thraka",
+        "khaleesi",
+        "sai",
+        "samsara",
+        "truf"
+      ],
+      "enemies": [
+        "brigands"
+      ]
+    },
+    "music": null,
+    "ambience": [],
+    "audio": {
+      "music": [
+        {
+          "src": "assets/audio/music/Road to Aldermere -- Fight.mp3",
+          "volume": 0.3,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 3,
+          "fadeOut": 1
+        },
+        {
+          "src": "assets/audio/music/Road to Aldermere -- Walk.mp3",
+          "volume": 0.37,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 3,
+          "fadeOut": 3
+        }
+      ],
+      "ambience": [],
+      "sfx": []
+    },
+    "gmNotes": "",
+    "savedLayout": [
+      {
+        "castId": "lysander",
+        "kind": "hero",
+        "label": "Lysander",
+        "x": 0.45979571524140517,
+        "y": 0.5709513838324196,
+        "visible": true
+      },
+      {
+        "castId": "telstar",
+        "kind": "hero",
+        "label": "Telstar",
+        "x": 0.3475369980583158,
+        "y": 0.5203982485835087,
+        "visible": true
+      },
+      {
+        "castId": "thraka",
+        "kind": "hero",
+        "label": "Thraka",
+        "x": 0.8059702710199553,
+        "y": 0.7563128797450928,
+        "visible": true
+      },
+      {
+        "castId": "khaleesi",
+        "kind": "hero",
+        "label": "Khaleesi",
+        "x": 0.3637231386754124,
+        "y": 0.3406537676984923,
+        "visible": true
+      },
+      {
+        "castId": "sai",
+        "kind": "hero",
+        "label": "Sai",
+        "x": 0.7339158385954607,
+        "y": 0.7628660639440257,
+        "visible": true
+      },
+      {
+        "castId": "samsara",
+        "kind": "hero",
+        "label": "Samsara",
+        "x": 0.28696950413627687,
+        "y": 0.27231341819533506,
+        "visible": true
+      },
+      {
+        "castId": "truf",
+        "kind": "hero",
+        "label": "Truf",
+        "x": 0.6080816486367419,
+        "y": 0.6355470566504724,
+        "visible": true
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 1",
+        "x": 0.7715094555125883,
+        "y": 0.8845680562099222,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 2",
+        "x": 0.6999771566563872,
+        "y": 0.82465322924825,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 3",
+        "x": 0.5010442671365869,
+        "y": 0.7469511880323315,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 4",
+        "x": 0.4587514481048183,
+        "y": 0.6935895452695923,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 5",
+        "x": 0.35589113515101084,
+        "y": 0.6318023799653678,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 6",
+        "x": 0.24937588721914924,
+        "y": 0.566270537976039,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 7",
+        "x": 0.28279243558992934,
+        "y": 0.3781005345495374,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 8",
+        "x": 0.21178227030202162,
+        "y": 0.3003984933336189,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 9",
+        "x": 0.46188424951457896,
+        "y": 0.3191218767591414,
+        "visible": false
+      },
+      {
+        "castId": "brigands",
+        "kind": "enemy",
+        "label": "Brigand 10",
+        "x": 0.4279455675755054,
+        "y": 0.2507815272559841,
+        "visible": false
+      }
+    ],
+    "cues": [
+      {
+        "id": "cue-1",
+        "label": "Title",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "title-screen",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [
+              "mus:1"
+            ],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "Each of you came to this road for reasons of your own.\n\nSome of you are young, the fire still new in you, hungry to make a name the world will remember. You have heard the old songs, and you mean to earn one of your own.\n\nOthers among you have walked roads like this before. You hung up the blade years ago and settled into the soft life: a warm hearth and a full belly. But comfort has a way of wearing thin. You have grown tired the easy life, and the pull of the road and one more great adventure calls you now.\n\nEither way, the same promise drew you to the far edges of Veldora, away from the crowded capitals of the realm's heart, out to a frontier where a person might still become something.\n\nWord had spread that the twin cities of Highmoor and Aldermere were desperate for heroes. Contracts with the Heroes' Guild left to gather dust, unfilled for far too long, and a reward that had only grown fatter the longer it sat unclaimed. A purse like that does not go begging unless something has gone badly wrong, but the coin was real and the road was open, and so you came.\n\nThose promises carried you here. But what waited at the crossroads was unlike anything you expected.",
+        "timeline": {
+          "audioIn": {
+            "at": 1000,
+            "ramp": 1000
+          }
+        }
+      },
+      {
+        "id": "cue-2",
+        "label": "The Road",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "the-road",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "You arrive separately to find a country crossroads with a long caravan of refugees with handcarts trudging west along a rutted dirt road. a weathered wooden signpost pointing toward a distant city, Highmoor. As you look you see a thick column of black smoke rising far to the east over low hills.\n\nThe sign pointed west says Aldermere, where all these travelers seem to be heading.",
+        "timeline": {
+          "background": {
+            "at": 800,
+            "ramp": 2000
+          }
+        }
+      },
+      {
+        "id": "cue-3",
+        "label": "Granny Edna",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/grannyEdna -- Standing.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "As you stand there watching the progression, an old woman pauses to speak with you.\n\n\"If you're deciding which way to go, I suggest you come with us. There's nothing left of Highmoor; not for you, not for any of us.\"\n\n\nCan help with\t\nFood, warmth, and a friendly footing with the caravan\n\nReveals if asked\nThe pale-night story (Highmoor fell in a single night, no army, just cold and quiet and screaming) \nTales of the caravan's grief and hope\nFear that the city they are walking toward may not want them",
+        "timeline": {
+          "audioOut": {
+            "at": 0,
+            "ramp": 1000
+          },
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-4",
+        "label": "Wren",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Wren -- Excited.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "A wiry teenager who keeps drifting back to walk near you and the other heroes.\n\nTo Truf: \"I like your outfit. You look very mysterious.\"\nTo Lysander: \"You seem nice. What's that weapon you're carrying? Is it heavy?\"\nTo Telstar: \"You're funny looking. Can you fly? Your pipe smells funny.\"\n\nCan help with:\nEager hands and eyes around the caravan; she will pitch in wherever she can, and in the fight she grabs a fallen cudgel and charges in.\t\n\nReveals if asked:\nCaravan gossip and her dream of being a hero; a child's secondhand fear of the pale night, half rumor and half nightmare.",
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-5",
+        "label": "Marsh Family",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Marsh Family -- Watching.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "Tobin, Della, and little Posy\nA careful father looking about cautiously, a gentle anxious mother, and a small solemn daughter asleep in her mother's arms.\n\n\"We only want only to reach the city.\"\n\"If you saw what happened you would be cautious too.\"",
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-6",
+        "label": "Brigands Reveal",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "the-brigands",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [
+              "mus:0"
+            ],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 2000
+          },
+          "background": {
+            "at": 1000,
+            "ramp": 500
+          },
+          "audioIn": {
+            "at": 500,
+            "ramp": 1000
+          }
+        }
+      },
+      {
+        "id": "cue-7",
+        "label": "Battle Map",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "the-battle",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "background": {
+            "at": 800,
+            "ramp": 400
+          }
+        }
+      }
+    ],
+    "characters": {
+      "right": [
+        {
+          "id": "grannyEdna -- Standing",
+          "src": "assets/characters/npcs/grannyEdna -- Standing.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "x": 6,
+          "y": -9
+        },
+        {
+          "id": "Wren -- Excited",
+          "src": "assets/characters/npcs/Wren -- Excited.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "y": -10
+        },
+        {
+          "id": "Marsh Family -- Watching",
+          "src": "assets/characters/npcs/Marsh Family -- Watching.png",
+          "enter": "fade",
+          "x": -10
+        }
+      ]
+    },
+    "defaults": {
+      "visible": true
+    }
+  }
+]

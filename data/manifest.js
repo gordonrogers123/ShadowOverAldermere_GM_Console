@@ -11,13 +11,15 @@
 // ============================================================
 
 export const BACKGROUNDS = [
+  { id: "A1 S1 -- Brigands", name: "A1 S1 Brigands", src: "assets/backgrounds/A1 S1 -- Brigands.png", kind: "background" },
   { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png", kind: "background" },
   { id: "A1 S2 City Gates -- Day", name: "A1 S2 City Gates Day", src: "assets/backgrounds/A1 S2 City Gates -- Day.png", kind: "background" },
   { id: "A1 S2 City Gates -- Night", name: "A1 S2 City Gates Night", src: "assets/backgrounds/A1 S2 City Gates -- Night.png", kind: "background" },
   { id: "A1 S2 Gate Guard Post", name: "A1 S2 Gate Guard Post", src: "assets/backgrounds/A1 S2 Gate Guard Post.png", kind: "background" },
   { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/backgrounds/A1 S2 Tent Camp -- Day.png", kind: "background" },
   { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/backgrounds/A1 S2 Tent Camp -- Night.png", kind: "background" },
-  { id: "A1 S3 Tavern Harth", name: "A1 S3 Tavern Harth", src: "assets/backgrounds/A1 S3 Tavern Harth.png", kind: "background" },
+  { id: "A1 S3 -- Pale Husk", name: "A1 S3 Pale Husk", src: "assets/backgrounds/A1 S3 -- Pale Husk.png", kind: "background" },
+  { id: "A1 S5 Tavern Harth", name: "A1 S5 Tavern Harth", src: "assets/backgrounds/A1 S5 Tavern Harth.png", kind: "background" },
   { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png", kind: "map" },
   { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png", kind: "map" },
   { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map" },
