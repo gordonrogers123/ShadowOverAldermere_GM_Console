@@ -520,6 +520,396 @@
     },
     "defaults": {
       "visible": true
-    }
+    },
+    "titleHeader": "Act I"
+  },
+  {
+    "id": "the-city-gate",
+    "name": "The City Gate",
+    "maps": {
+      "title": "",
+      "city-gates": "assets/backgrounds/A1 S2 City Gates -- Day.png",
+      "guard-post": "assets/backgrounds/A1 S2 Gate Guard Post.png"
+    },
+    "variantModes": {
+      "title": {
+        "scene": true,
+        "map": false
+      },
+      "city-gates": {
+        "scene": true,
+        "map": false
+      },
+      "guard-post": {
+        "scene": true,
+        "map": false
+      }
+    },
+    "defaultMapState": "title",
+    "tokens": null,
+    "music": null,
+    "ambience": [],
+    "audio": null,
+    "gmNotes": "",
+    "cues": [
+      {
+        "id": "cue-1",
+        "label": "Title Screen",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": false,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "title",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "background": {
+            "at": 800,
+            "ramp": 400
+          }
+        }
+      },
+      {
+        "id": "cue-6",
+        "label": "City Gates",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": false,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "background": {
+            "at": 800,
+            "ramp": 400
+          }
+        }
+      },
+      {
+        "id": "cue-2",
+        "label": "Wick",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Wick.png"
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-3",
+        "label": "Sgt Dorran",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Wick.png"
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Sgt Dorran.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-4",
+        "label": "Pip Enters",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Pip -- Speaking.png"
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-5",
+        "label": "Cassian",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Pip -- Speaking.png"
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Cassian -- Hero Pose.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-7",
+        "label": "Guard Post",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "guard-post",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 700
+          },
+          "background": {
+            "at": 800,
+            "ramp": 400
+          },
+          "reveal": {
+            "at": 1000,
+            "ramp": 700
+          }
+        }
+      },
+      {
+        "id": "cue-8",
+        "label": "Marsh Request Entrance",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "guard-post",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Marsh Family -- Talking.png"
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Captain Hob.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      }
+    ],
+    "characters": {
+      "left": [
+        {
+          "id": "Wick",
+          "src": "assets/characters/npcs/Wick.png",
+          "enter": "fade",
+          "flip": true
+        },
+        {
+          "id": "Pip -- Speaking",
+          "src": "assets/characters/npcs/Pip -- Speaking.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "flip": true,
+          "x": -10,
+          "y": -10
+        },
+        {
+          "id": "Marsh Family -- Talking",
+          "src": "assets/characters/npcs/Marsh Family -- Talking.png",
+          "enter": "fade"
+        }
+      ],
+      "right": [
+        {
+          "id": "Sgt Dorran",
+          "src": "assets/characters/npcs/Sgt Dorran.png",
+          "enter": "fade"
+        },
+        {
+          "id": "Cassian -- Hero Pose",
+          "src": "assets/characters/npcs/Cassian -- Hero Pose.png",
+          "enter": "fade",
+          "x": 16
+        },
+        {
+          "id": "Captain Hob",
+          "src": "assets/characters/npcs/Captain Hob.png",
+          "enter": "fade"
+        }
+      ]
+    },
+    "defaults": {
+      "visible": true
+    },
+    "titleHeader": "Act I"
   }
 ]
