@@ -291,3 +291,11 @@ their full configuration, including token placement.
 
 Reserved for later: the service worker for offline caching and the Cloudflare
 Pages plus Access deployment.
+
+## Where it's headed
+
+Future feature ideas — atmosphere effects (weather/particles, cinematic image
+effects, cutscene video), deeper map mode (fog of war, a shared zoom/pan camera),
+room hardware (spatial "place a sound in the room" audio, DMX lighting), and the
+eventual per-player companion view — live in [`docs/ROADMAP.md`](docs/ROADMAP.md),
+along with the reasoning for what's cheap vs. expensive given the architecture.
