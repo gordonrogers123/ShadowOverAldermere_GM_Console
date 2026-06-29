@@ -2058,7 +2058,10 @@ export function mountGm(root) {
       lab.append(inp); return lab;
     };
     adjust.append(
-      mkRange('Size', 'cc-scale', 0.5, 4, 0.1, entry.scale || 1, '', (v) => { entry.scale = v; }),
+      // Size tops out at 2x: a cutout fills the 16:9 frame at 1x, and even a square
+      // letterboxed cutout only needs ~1.8x to fill it -- 2..4 was dead travel, so
+      // the usable band now spans the whole slider (finer 0.05 step to match).
+      mkRange('Size', 'cc-scale', 0.5, 2, 0.05, entry.scale || 1, '', (v) => { entry.scale = v; }),
       mkRange('↔', 'cc-x', -10, 45, 1, entry.x || 0, 'Horizontal position', (v) => { entry.x = v; }),
       mkRange('↕', 'cc-y', -10, 30, 1, entry.y || 0, 'Vertical position — raise to align with the backdrop bottom', (v) => { entry.y = v; })
     );
