@@ -59,6 +59,7 @@ export const CHARACTERS = [
 ];
 
 export const MUSIC = [
+  { id: "Beneath_the_Battlements", name: "Beneath The Battlements", src: "assets/audio/music/Beneath_the_Battlements.mp3" },
   { id: "Brigands", name: "Brigands", src: "assets/audio/music/Brigands.wav" },
   { id: "City Night", name: "City Night", src: "assets/audio/music/City Night.wav" },
   { id: "Hollow Market", name: "Hollow Market", src: "assets/audio/music/Hollow Market.wav" },
