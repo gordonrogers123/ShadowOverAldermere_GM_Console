@@ -257,7 +257,11 @@ body.view-gm {
    the variant chips never crowd it; the char-row labels shrink; the chips compact
    -- so every button reads in full and nothing overlaps its label. */
 .view-gm .perf-side .quick-row { flex-wrap: wrap; align-items: center; }
-.view-gm .perf-side .quick-bg-row .control-label { flex: 0 0 100%; min-width: 0; margin-bottom: var(--space-1); }
+/* Background row stacks: a header line (title + black-out) over the chip row, so
+   the variant chips get the full width and the black-out never has to wrap. */
+.view-gm .perf-side .quick-bg-row { flex-direction: column; align-items: stretch; gap: var(--space-1); }
+.view-gm .perf-side .quick-bg-head { display: flex; align-items: center; gap: var(--space-2); }
+.view-gm .perf-side .quick-bg-row .control-label { flex: 0 0 auto; min-width: 0; margin: 0; }
 .view-gm .perf-side .quick-char-row .control-label { flex: 0 0 3.25rem; }
 .view-gm .perf-side .variant-button { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
 .view-gm .perf-side .quick-swap { flex: 1 1 7rem; }
@@ -492,9 +496,9 @@ body.view-gm {
    stage, so it gets a distinct "dark stage" look, pushed to the end of the row
    (away from the variant chips), and a red alert tint while the screen is out. */
 .view-gm .quick-row .vis-toggle {
-  flex: 0 0 auto; margin-left: auto;
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  font-size: var(--fs-200); padding: 0.45rem 0.8rem;
+  flex: 0 0 auto; margin-left: auto;          /* rides the right of the Background title */
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-size: var(--fs-100); padding: 0.3rem 0.6rem;   /* compact -- shrink to fit the title row */
   background: var(--stage); color: var(--paper); border-color: var(--ink);
 }
 .view-gm .quick-row .vis-toggle svg { width: 1.05em; height: 1.05em; flex: 0 0 auto; }

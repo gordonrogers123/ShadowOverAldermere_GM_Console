@@ -89,9 +89,11 @@ export function mountGm(root) {
                character hot-swap + hide -- the common live tweaks, always one tap. -->
           <div class="gm-quick" hidden>
             <div class="quick-row quick-bg-row">
-              <span class="control-label">Background</span>
+              <div class="quick-bg-head">
+                <span class="control-label">Background</span>
+                <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
+              </div>
               <div class="quick-bg-buttons"></div>
-              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
             </div>
             <div class="quick-row quick-char-row" data-side="left">
               <span class="control-label">Left</span>
