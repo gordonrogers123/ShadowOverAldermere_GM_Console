@@ -253,17 +253,23 @@ body.view-gm {
 .view-gm .perf-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .view-gm .perf-side > .gm-quick,
 .view-gm .perf-side > .gm-mixer { margin: 0; }
-/* Legibility in the narrow side panel: the Background label takes its own line so
-   the variant chips never crowd it; the char-row labels shrink; the chips compact
-   -- so every button reads in full and nothing overlaps its label. */
-.view-gm .perf-side .quick-row { flex-wrap: wrap; align-items: center; }
-/* Background row stacks: a header line (title + black-out) over the chip row, so
-   the variant chips get the full width and the black-out never has to wrap. */
-.view-gm .perf-side .quick-bg-row { flex-direction: column; align-items: stretch; gap: var(--space-2); }
-.view-gm .perf-side .quick-bg-head { display: flex; align-items: center; gap: var(--space-2); }
-.view-gm .perf-side .quick-bg-row .control-label { flex: 0 0 auto; min-width: 0; margin: 0; }
-.view-gm .perf-side .quick-char-row .control-label { flex: 0 0 3.25rem; }
-.view-gm .perf-side .variant-button { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
+/* The quick panel is the "Visual" section: a header (title + the global Black-out)
+   over three aligned rows -- BG / Left / Right -- each [label | dropdown | toggle].
+   A fixed label + auto toggle column keep the dropdowns lined up; the BG row has no
+   toggle, so its dropdown runs full width. Compact type keeps it all on one line. */
+.view-gm .perf-side .gm-quick { display: flex; flex-direction: column; gap: var(--space-2); }
+.view-gm .perf-side .quick-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding-bottom: var(--space-1); margin-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
+}
+.view-gm .perf-side .quick-section {
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--neutral);
+}
+.view-gm .perf-side .quick-row { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); margin: 0; }
+.view-gm .perf-side .quick-bg-row { grid-template-columns: 2.6rem minmax(0, 1fr); }   /* no trailing toggle */
+.view-gm .perf-side .quick-row .control-label { white-space: nowrap; margin: 0; font-size: var(--fs-100); letter-spacing: 0.03em; }
+.view-gm .perf-side .quick-swap, .view-gm .perf-side .quick-bg-select { min-width: 0; width: 100%; }
 .view-gm .perf-side .quick-swap { flex: 1 1 7rem; }
 
 /* Larger: a full-width preview stacked ABOVE the controls. Under the wide preview
@@ -491,25 +497,22 @@ body.view-gm {
 .view-gm .quick-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: nowrap; margin-bottom: var(--space-2); }
 .view-gm .quick-row:last-child { margin-bottom: 0; }
 .view-gm .quick-row .control-label { flex: 0 0 6rem; min-width: 0; white-space: nowrap; }
-.view-gm .quick-bg-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
-/* Black-out is NOT a backdrop chip -- it drops a global curtain over the whole
-   stage, so it gets a distinct "dark stage" look, pushed to the end of the row
-   (away from the variant chips), and a red alert tint while the screen is out. */
-.view-gm .quick-row .vis-toggle {
-  flex: 0 0 auto; margin-left: auto;          /* rides the right of the Background title */
-  display: inline-flex; align-items: center; gap: 0.25rem; line-height: 1;
-  font-size: 0.66rem; letter-spacing: 0.02em; padding: 0.15rem 0.5rem;   /* small + compact -- no taller than the title text */
+/* Per-side Show/Hide: small, fixed width so the dropdowns line up and the label
+   never jiggles as it flips Show <-> Hide. */
+.view-gm .quick-hide { flex: 0 0 auto; min-width: 3.4rem; text-align: center; font-size: var(--fs-100); padding: 0.4rem 0.5rem; }
+.view-gm .quick-hide[disabled] { cursor: not-allowed; opacity: 0.6; }
+/* Black-out lives on the Visual section header (it dims the WHOLE stage, not just
+   the backdrop), so it has room to read at full size with a distinct dark "curtain"
+   fill -- red while the screen is out -- so it never looks like a per-side hide. */
+.view-gm .quick-head .vis-toggle {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  font-size: var(--fs-200); padding: 0.4rem 0.7rem;
   background: var(--stage); color: var(--paper); border-color: var(--ink);
 }
-.view-gm .quick-row .vis-toggle svg { width: 0.85em; height: 0.85em; flex: 0 0 auto; }
-.view-gm .quick-row .vis-toggle:hover { background: var(--stage); filter: brightness(1.35); }
-.view-gm .quick-row .vis-toggle.is-on { background: var(--offense); color: var(--paper); border-color: var(--offense); }
-.view-gm .quick-row .vis-toggle.is-on:hover { background: var(--offense); filter: brightness(1.08); }
-.view-gm .quick-swap { flex: 1 1 0; min-width: 0; }
-/* Fixed width so the button does not resize as its label flips Hide <-> Show
-   (min-width exceeds the wider "Show" so both states render identically). */
-.view-gm .quick-hide { flex: 0 0 auto; min-width: 4.4rem; text-align: center; font-size: var(--fs-200); padding: 0.45rem 0.6rem; }
-.view-gm .quick-hide[disabled] { cursor: not-allowed; opacity: 0.6; }
+.view-gm .quick-head .vis-toggle svg { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
+.view-gm .quick-head .vis-toggle:hover { background: var(--stage); filter: brightness(1.35); }
+.view-gm .quick-head .vis-toggle.is-on { background: var(--offense); color: var(--paper); border-color: var(--offense); }
+.view-gm .quick-head .vis-toggle.is-on:hover { background: var(--offense); filter: brightness(1.08); }
 
 /* ---- Cues: one-press stage transitions (the lead control surface) ----
    Cues sit at the top of the rail in a faint inset banner so they read as the

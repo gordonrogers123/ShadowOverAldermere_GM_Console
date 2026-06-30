@@ -85,15 +85,18 @@ export function mountGm(root) {
             <div class="cue-buttons"></div>
           </div>
 
-          <!-- Quick actions (live): background hot-swap + black out, and Left/Right
-               character hot-swap + hide -- the common live tweaks, always one tap. -->
+          <!-- Quick actions (live, the "Visual" section): the global Black-out lives
+               on the section header -- it dims the WHOLE stage, not just the backdrop.
+               Below, three aligned rows, each a dropdown: Background variant, then the
+               Left/Right characters with a per-side Show/Hide. -->
           <div class="gm-quick" hidden>
+            <div class="quick-head">
+              <span class="quick-section">Visual</span>
+              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
+            </div>
             <div class="quick-row quick-bg-row">
-              <div class="quick-bg-head">
-                <span class="control-label">Background</span>
-                <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
-              </div>
-              <div class="quick-bg-buttons"></div>
+              <span class="control-label">BG</span>
+              <select class="quick-bg-select" aria-label="Background variant (hot-swap)"></select>
             </div>
             <div class="quick-row quick-char-row" data-side="left">
               <span class="control-label">Left</span>
@@ -295,7 +298,7 @@ export function mountGm(root) {
     cueRow:       root.querySelector('.cue-row'),
     cueButtons:   root.querySelector('.cue-buttons'),
     quick:        root.querySelector('.gm-quick'),
-    quickBgButtons: root.querySelector('.quick-bg-buttons'),
+    quickBgSelect: root.querySelector('.quick-bg-select'),
     mixer:        root.querySelector('.gm-mixer'),
     mixerFaders:  root.querySelector('.mixer-faders'),
     mixerExtra:   root.querySelector('.mixer-extra'),
@@ -534,6 +537,7 @@ export function mountGm(root) {
   }
 
   els.visToggle.addEventListener('click', toggleVisible);
+  els.quickBgSelect.addEventListener('change', () => setVariant(els.quickBgSelect.value));
   els.cueNew.addEventListener('click', () => addCue());
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
   els.previewSize.addEventListener('click', () => {
@@ -581,6 +585,21 @@ export function mountGm(root) {
     // (a mode often has a single backdrop -- e.g. the one map in map mode -- that
     // the GM still needs to activate/reveal), and hide it only when none do.
     els.variantRow.hidden = buildVariantButtons(els.variantButtons, scene) < 1;
+  }
+  // The live Background picker is a dropdown (matching the Left/Right character
+  // rows) instead of chips, so the quick panel reads as three consistent rows and
+  // never wraps when a scene has many backgrounds. Same variant filter as the chips.
+  function fillVariantSelect(sel, scene) {
+    sel.innerHTML = '';
+    const keys = (scene.maps ? Object.keys(scene.maps) : []).filter((k) => variantInMode(scene, k, mapMode));
+    for (const key of keys) {
+      const o = document.createElement('option');
+      o.value = key;
+      o.textContent = (scene.maps && scene.maps[key] === '') ? 'Title screen' : humanize(key);
+      sel.appendChild(o);
+    }
+    sel.value = state.mapState;
+    return keys.length;
   }
 
   // ============================================================
@@ -929,11 +948,11 @@ export function mountGm(root) {
     els.cueRow.hidden = cues.length === 0;
   }
   // ---- Quick actions (live manual surface): background + characters ----
-  // The always-on row of common live tweaks, below the cue bar. Background chips
-  // switch the backdrop instantly; each character side has a hot-swap dropdown
-  // (picking someone brings them on at once) and a Hide/Show toggle.
+  // The always-on row of common live tweaks, below the cue bar. Three consistent
+  // rows: Background is a variant dropdown + the Black-out toggle; each character
+  // side is a hot-swap dropdown + a Hide/Show toggle.
   function renderQuick(scene) {
-    buildVariantButtons(els.quickBgButtons, scene);   // cinematic variants; lights the active one
+    fillVariantSelect(els.quickBgSelect, scene);   // background variant dropdown
     for (const side of ['left', 'right']) {
       const hasChar = charRoster(scene.characters && scene.characters[side]).length > 0 || !!state.stage[side].srcOverride;
       fillCharSelect(els.quickSwap[side], state.stage[side].srcOverride || '', true);   // first option = Scene default
