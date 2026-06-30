@@ -488,7 +488,19 @@ body.view-gm {
 .view-gm .quick-row:last-child { margin-bottom: 0; }
 .view-gm .quick-row .control-label { flex: 0 0 6rem; min-width: 0; white-space: nowrap; }
 .view-gm .quick-bg-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
-.view-gm .quick-row .vis-toggle { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
+/* Black-out is NOT a backdrop chip -- it drops a global curtain over the whole
+   stage, so it gets a distinct "dark stage" look, pushed to the end of the row
+   (away from the variant chips), and a red alert tint while the screen is out. */
+.view-gm .quick-row .vis-toggle {
+  flex: 0 0 auto; margin-left: auto;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: var(--fs-200); padding: 0.45rem 0.8rem;
+  background: var(--stage); color: var(--paper); border-color: var(--ink);
+}
+.view-gm .quick-row .vis-toggle svg { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
+.view-gm .quick-row .vis-toggle:hover { background: var(--stage); filter: brightness(1.35); }
+.view-gm .quick-row .vis-toggle.is-on { background: var(--offense); color: var(--paper); border-color: var(--offense); }
+.view-gm .quick-row .vis-toggle.is-on:hover { background: var(--offense); filter: brightness(1.08); }
 .view-gm .quick-swap { flex: 1 1 0; min-width: 0; }
 /* Fixed width so the button does not resize as its label flips Hide <-> Show
    (min-width exceeds the wider "Show" so both states render identically). */

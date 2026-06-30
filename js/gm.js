@@ -91,7 +91,7 @@ export function mountGm(root) {
             <div class="quick-row quick-bg-row">
               <span class="control-label">Background</span>
               <div class="quick-bg-buttons"></div>
-              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)">Black out</button>
+              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
             </div>
             <div class="quick-row quick-char-row" data-side="left">
               <span class="control-label">Left</span>
@@ -521,13 +521,13 @@ export function mountGm(root) {
     state.stage[side].shown = !state.stage[side].shown;
     commit();
   }
-  // Quick hot-swap: picking someone from the dropdown brings them on INSTANTLY
-  // (overriding the scene default). Choosing "Scene default" clears the override
-  // and shows the scene's own character there -- or hides the side if it has none.
+  // Quick hot-swap: picking someone from the dropdown ARMS that side but leaves it
+  // HIDDEN -- the GM queues who is next, then presses Show (the Hide/Show toggle) to
+  // reveal on cue. Choosing "Scene default" clears the override; either way the side
+  // stays hidden until Show, so a selection never pops on screen on its own.
   function quickSwap(side, src) {
-    const scene = sceneById(state.sceneId);
     state.stage[side].srcOverride = src || null;
-    state.stage[side].shown = !!src || charRoster(scene && scene.characters && scene.characters[side]).length > 0;
+    state.stage[side].shown = false;
     commit();
   }
 
@@ -2854,8 +2854,9 @@ export function mountGm(root) {
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.
     if (scene && !building) {
-      els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
-      els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit while blacked out
+      // Set only the label span -- the leading power glyph stays put.
+      (els.visToggle.querySelector('.btn-label') || els.visToggle).textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
+      els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit (red) while blacked out
       els.mapModeToggle.hidden = !sceneHasMap(scene);
       // Icon + label: a folded-map icon to enter, a log-out icon to leave -- the
       // label says which, so the button reads the same in the live rail and the
