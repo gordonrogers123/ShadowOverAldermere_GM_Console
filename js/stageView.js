@@ -112,6 +112,9 @@ export function createStageView(root) {
   //      any number of named variants (scene.maps[state.mapState]). ----
   function bgDescriptor(state, scene) {
     if (!scene) return { kind: 'idle' };
+    // Backdrop hidden -> a blank (black) backdrop; characters still composite on
+    // top (characters-on-black). Distinct from the global curtain (state.visible).
+    if (state.stage && state.stage.bgHidden) return { kind: 'blank' };
     const maps = scene.maps || null;
     const path = maps ? maps[state.mapState] : null;
     if (path) return { kind: 'image', src: path, label: scene.name };
@@ -159,6 +162,13 @@ export function createStageView(root) {
       layers[activeIndex].style.opacity = '0';
       activeIndex = 1 - activeIndex;
     };
+
+    if (d.kind === 'blank') {
+      // Backdrop hidden: fade BOTH layers out so the dark stage shows through, with
+      // the characters still composited over it (characters-on-black).
+      layers.forEach((l) => { l.style.opacity = '0'; });
+      return;
+    }
 
     if (d.kind === 'unrevealed') {
       incoming.innerHTML = '';

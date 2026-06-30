@@ -20,6 +20,7 @@ import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
 import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
+import { CONDITIONS } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
 
@@ -31,6 +32,7 @@ export function mountGm(root) {
   // side's first roster entry.
   let builderPick = { left: null, right: null };
   let mapMode = false;              // map mode replaces the live panel for token play
+  let armedBg = null;               // Stage row: a background variant PICKED but not yet applied (GM-local)
   let activeCueId = null;           // the cue last applied -- lights its rail button
   let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
   let testTimers = [];              // pending setTimeouts for a builder "Test in preview" run
@@ -85,13 +87,19 @@ export function mountGm(root) {
             <div class="cue-buttons"></div>
           </div>
 
-          <!-- Quick actions (live): background hot-swap + black out, and Left/Right
-               character hot-swap + hide -- the common live tweaks, always one tap. -->
+          <!-- Quick actions (live, the "Visual" section): the global Black-out lives
+               on the section header -- it dims the WHOLE stage, not just the backdrop.
+               Below, three aligned rows, each a dropdown: Background variant, then the
+               Left/Right characters with a per-side Show/Hide. -->
           <div class="gm-quick" hidden>
+            <div class="quick-head">
+              <span class="quick-section">Visual</span>
+              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
+            </div>
             <div class="quick-row quick-bg-row">
-              <span class="control-label">Background</span>
-              <div class="quick-bg-buttons"></div>
-              <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)">Black out</button>
+              <span class="control-label">Stage</span>
+              <select class="quick-bg-select" aria-label="Background variant (hot-swap)"></select>
+              <button class="gm-button btn--toggle quick-hide quick-bg-vis" type="button" title="Show the backdrop / hide it (characters on black)">Hide</button>
             </div>
             <div class="quick-row quick-char-row" data-side="left">
               <span class="control-label">Left</span>
@@ -185,37 +193,41 @@ export function mountGm(root) {
 
           <div class="builder-grid">
             <div class="builder-col">
-              <label class="field">
-                <span>Name</span>
-                <input class="b-name" type="text" placeholder="A Word at the Gate">
-              </label>
+              <div class="builder-namerow">
+                <label class="field">
+                  <span>Title</span>
+                  <input class="b-name" type="text" placeholder="A Word at the Gate">
+                </label>
+                <label class="field">
+                  <span>Header</span>
+                  <input class="b-title-header" type="text" placeholder="Aldermere">
+                </label>
+              </div>
 
-              <label class="field">
-                <span>Title-screen header <small>(small line above the name on the title card &mdash; defaults to "Aldermere")</small></span>
-                <input class="b-title-header" type="text" placeholder="Aldermere">
-              </label>
-
-              <div class="field">
-                <span>Background variants <small>(first is shown first; pick "Title screen" for a title card that reveals to a map)</small></span>
+              <details class="field builder-collapse" open>
+                <summary>Background variants</summary>
+                <div class="variant-head" aria-hidden="true">
+                  <span>Name</span><span>Background</span><span>Use</span><span></span>
+                </div>
                 <div class="variant-list"></div>
                 <button class="gm-button btn--quiet add-variant" type="button">Add variant</button>
-              </div>
+              </details>
 
-              <div class="field char-field">
-                <span>Left characters <small>(one shown at a time — cues pick who enters)</small></span>
+              <details class="field char-field builder-collapse" open>
+                <summary>Left characters</summary>
                 <div class="char-roster" data-side="left"></div>
                 <button class="gm-button btn--quiet add-char" data-side="left" type="button">Add character</button>
-              </div>
-              <div class="field char-field">
-                <span>Right characters <small>(one shown at a time — cues pick who enters)</small></span>
+              </details>
+              <details class="field char-field builder-collapse" open>
+                <summary>Right characters</summary>
                 <div class="char-roster" data-side="right"></div>
                 <button class="gm-button btn--quiet add-char" data-side="right" type="button">Add character</button>
-              </div>
+              </details>
             </div>
 
             <div class="builder-col">
               <details class="field builder-collapse">
-                <summary>Roster <small>(map tokens &mdash; who can be placed on the map)</small></summary>
+                <summary>Roster</summary>
                 <div class="roster-pick">
                   <div class="roster-group">
                     <div class="roster-group-head">
@@ -235,20 +247,20 @@ export function mountGm(root) {
               </details>
 
               <details class="field builder-collapse">
-                <summary>Audio <small>(music beds, ambience loops, one-shot SFX)</small></summary>
+                <summary>Audio</summary>
                 <div class="audio-pick">
-                  <div class="audio-pick-group"><span class="audio-pick-label">Music <small>(one or more beds; cues choose which plays)</small></span><div class="b-music"></div></div>
+                  <div class="audio-pick-group"><span class="audio-pick-label">Music</span><div class="b-music"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
                 </div>
               </details>
 
-              <div class="field">
-                <span>Cues <small>(one-press stage transitions &mdash; build each one: pick a background, characters, audio, then keyframe what should be timed)</small></span>
+              <details class="field builder-collapse" open>
+                <summary>Cues</summary>
                 <div class="cue-list"></div>
                 <p class="cue-empty-hint" hidden>No cues yet. Press <strong>+ New cue</strong> to build one.</p>
                 <button class="gm-button btn--quiet cue-new" type="button">+ New cue</button>
-              </div>
+              </details>
 
               <label class="field">
                 <span>GM notes</span>
@@ -293,7 +305,8 @@ export function mountGm(root) {
     cueRow:       root.querySelector('.cue-row'),
     cueButtons:   root.querySelector('.cue-buttons'),
     quick:        root.querySelector('.gm-quick'),
-    quickBgButtons: root.querySelector('.quick-bg-buttons'),
+    quickBgSelect: root.querySelector('.quick-bg-select'),
+    quickBgVis:   root.querySelector('.quick-bg-vis'),
     mixer:        root.querySelector('.gm-mixer'),
     mixerFaders:  root.querySelector('.mixer-faders'),
     mixerExtra:   root.querySelector('.mixer-extra'),
@@ -384,30 +397,29 @@ export function mountGm(root) {
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   els.surface = surface;
   els.scenes = root.querySelector('.gm-scenes');
-  els.scenes.appendChild(els.notes);  // notes fill the rail bottom
-  // Map mode lays the BOARD on top, a controls strip, then the roster + the
-  // initiative tracker SIDE BY SIDE. Lift the roster out of .gm-mapmode and pair
-  // it with the initiative panel in one .mapmode-combat row, so the tracker sits
-  // beside the roster (not far below it); the .is-map layout orders the blocks.
-  const combat = document.createElement('div');
-  combat.className = 'mapmode-combat';
-  els.mapmode.after(combat);
+  els.scenes.appendChild(els.notes);  // notes fill the rail bottom (rail is hidden in map mode)
+  // Map mode is a combat surface: the head row, then a BODY grid
+  // [ initiative + stat-block column | board ], then the rosters full-width below.
+  // The combat column lifts the initiative tracker and the active combatant's stat
+  // card out of the (now-hidden) scenes rail to sit beside the board.
   const initPanel = document.createElement('div');
   initPanel.className = 'gm-initiative'; initPanel.hidden = true;
   els.initiative = initPanel;
-  combat.append(els.mapRoster, initPanel);
-  // The map-mode controls (the map-variant reveal + Save/Reset layout) ride ON the
-  // board header row, next to the title and the Edit/Exit nav -- so the separate
-  // controls strip is gone entirely. They're map-only (inside .gm-mapmode, hidden
-  // in live mode), so this one-time move needs no per-render toggle; the now-empty
-  // .gm-surface is hidden in map mode (CSS).
-  els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
-  // The active enemy's stat sheet sits in the left rail (where GM notes are),
-  // shown only in map mode.
   const statSheet = document.createElement('div');
   statSheet.className = 'gm-statsheet'; statSheet.hidden = true;
   els.statsheet = statSheet;
-  root.querySelector('.gm-scenes').appendChild(statSheet);
+  const combatCol = document.createElement('div');
+  combatCol.className = 'mm-combat-col';
+  combatCol.append(initPanel, statSheet);
+  // Wrap the board in a body grid and seat the combat column to its left. The
+  // roster stays in markup order (after the board) -> full-width row below.
+  const mapBody = document.createElement('div');
+  mapBody.className = 'mapmode-body';
+  els.mapboard.replaceWith(mapBody);
+  mapBody.append(combatCol, els.mapboard);
+  // The map-variant reveal + Save/Reset layout ride ON the board header row, next
+  // to the title and the Edit/Exit nav -- no separate controls strip.
+  els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
 
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
@@ -521,17 +533,34 @@ export function mountGm(root) {
     state.stage[side].shown = !state.stage[side].shown;
     commit();
   }
-  // Quick hot-swap: picking someone from the dropdown brings them on INSTANTLY
-  // (overriding the scene default). Choosing "Scene default" clears the override
-  // and shows the scene's own character there -- or hides the side if it has none.
+  // Quick hot-swap: picking someone from the dropdown ARMS that side but leaves it
+  // HIDDEN -- the GM queues who is next, then presses Show (the Hide/Show toggle) to
+  // reveal on cue. Choosing "Scene default" clears the override; either way the side
+  // stays hidden until Show, so a selection never pops on screen on its own.
   function quickSwap(side, src) {
-    const scene = sceneById(state.sceneId);
     state.stage[side].srcOverride = src || null;
-    state.stage[side].shown = !!src || charRoster(scene && scene.characters && scene.characters[side]).length > 0;
+    state.stage[side].shown = false;
+    commit();
+  }
+  // Stage row Show/Hide. "Show" (a variant is armed, or the backdrop is hidden):
+  // apply the armed variant + reveal the backdrop. "Hide": black the backdrop only,
+  // leaving the characters composited on black -- separate from the global Black-out.
+  function toggleBackdrop() {
+    if (bgPending() || (state.stage && state.stage.bgHidden)) {
+      if (bgPending()) state.mapState = armedBg;
+      if (state.stage) state.stage.bgHidden = false;
+      armedBg = null;
+    } else if (state.stage) {
+      state.stage.bgHidden = true;
+    }
     commit();
   }
 
   els.visToggle.addEventListener('click', toggleVisible);
+  // Picking a Stage variant ARMS it (does not change the backdrop live) -- the Stage
+  // Show button applies it. Re-render the quick panel so the button flips to "Show".
+  els.quickBgSelect.addEventListener('change', () => { armedBg = els.quickBgSelect.value; const sc = sceneById(state.sceneId); if (sc) renderQuick(sc); });
+  els.quickBgVis.addEventListener('click', toggleBackdrop);
   els.cueNew.addEventListener('click', () => addCue());
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
   els.previewSize.addEventListener('click', () => {
@@ -579,6 +608,22 @@ export function mountGm(root) {
     // (a mode often has a single backdrop -- e.g. the one map in map mode -- that
     // the GM still needs to activate/reveal), and hide it only when none do.
     els.variantRow.hidden = buildVariantButtons(els.variantButtons, scene) < 1;
+  }
+  // The live Background picker is a dropdown (matching the Left/Right character
+  // rows) instead of chips, so the quick panel reads as three consistent rows and
+  // never wraps when a scene has many backgrounds. Same variant filter as the chips.
+  function fillVariantSelect(sel, scene) {
+    sel.innerHTML = '';
+    const keys = (scene.maps ? Object.keys(scene.maps) : []).filter((k) => variantInMode(scene, k, mapMode));
+    for (const key of keys) {
+      const o = document.createElement('option');
+      o.value = key;
+      o.textContent = (scene.maps && scene.maps[key] === '') ? 'Title screen' : humanize(key);
+      sel.appendChild(o);
+    }
+    // Show the ARMED (pending) variant if one is picked, else the live backdrop.
+    sel.value = (armedBg != null && keys.includes(armedBg)) ? armedBg : state.mapState;
+    return keys.length;
   }
 
   // ============================================================
@@ -655,7 +700,9 @@ export function mountGm(root) {
       // the music library still play (tracks are 'mus:<i>' now).
       const set = new Set((snap.audio.playing || []).map((k) => (k === 'music' ? 'mus:0' : k)));
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
-      if (snap.audio.master != null) state.audio.master = snap.audio.master;
+      // A cue sets WHICH beds play, not the master OUTPUT level -- master is the
+      // GM's live mix fader, so applying a cue must never reset it (it was snapping
+      // back to the 0.8 default every cue press).
     }
     // SFX one-shots -- independent of the bed set, so a cue can fire a sound
     // without touching the music. Gated by 'sfx' so its lane can be keyframed.
@@ -792,8 +839,7 @@ export function mountGm(root) {
     } else if (name === 'audioIn') {
       const set = new Set(((snap.audio && snap.audio.playing) || []).map((k) => (k === 'music' ? 'mus:0' : k)));
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
-      if (snap.audio && snap.audio.master != null) state.audio.master = snap.audio.master;
-      state.audio.ramp = Math.max(0, +lane.ramp || 0);
+      state.audio.ramp = Math.max(0, +lane.ramp || 0);   // master is the GM's live mix; cues don't set it
     } else if (name === 'reveal') {
       state.stage.visible = !(snap.visible === false);
       setStageFx('curtain', lane.ramp);
@@ -926,12 +972,20 @@ export function mountGm(root) {
     // editor now, not captured live, so there is no always-on Save button here).
     els.cueRow.hidden = cues.length === 0;
   }
+  // Is a different background variant armed (picked) but not yet applied?
+  function bgPending() { return armedBg != null && armedBg !== state.mapState; }
   // ---- Quick actions (live manual surface): background + characters ----
-  // The always-on row of common live tweaks, below the cue bar. Background chips
-  // switch the backdrop instantly; each character side has a hot-swap dropdown
-  // (picking someone brings them on at once) and a Hide/Show toggle.
+  // The always-on "Visual" section: three rows, each a dropdown + a Show/Hide. The
+  // Stage row's Show/Hide applies the armed variant + reveals the backdrop, or hides
+  // it (characters on black); the global Black-out sits on the section header.
   function renderQuick(scene) {
-    buildVariantButtons(els.quickBgButtons, scene);   // cinematic variants; lights the active one
+    fillVariantSelect(els.quickBgSelect, scene);   // background variant dropdown (shows the armed pick)
+    // Stage backdrop Show/Hide: "Show" when a new variant is armed OR the backdrop
+    // is hidden (press to apply / reveal); "Hide" when it is live (press for
+    // characters-on-black). Lit while the backdrop is hidden.
+    const bgHidden = !!(state.stage && state.stage.bgHidden);
+    els.quickBgVis.textContent = (bgPending() || bgHidden) ? 'Show' : 'Hide';
+    els.quickBgVis.classList.toggle('is-on', bgHidden);
     for (const side of ['left', 'right']) {
       const hasChar = charRoster(scene.characters && scene.characters[side]).length > 0 || !!state.stage[side].srcOverride;
       fillCharSelect(els.quickSwap[side], state.stage[side].srcOverride || '', true);   // first option = Scene default
@@ -1317,7 +1371,10 @@ export function mountGm(root) {
     const k = tokens.length;
     const x = clamp01(0.5 + ((k % 5) - 2) * 0.045);
     const y = clamp01(0.5 + ((Math.floor(k / 5) % 5) - 2) * 0.045);
-    tokens.push({ instId: 'tk' + (++tokenSeq), castId, kind, label, x, y, visible });
+    // Seed combat tracking: HP starts full from the cast stat block (null when the
+    // type has no stats yet -- e.g. heroes before their sheet is added).
+    const maxHp = (cast.stats && cast.stats.hp != null && isFinite(+cast.stats.hp)) ? Math.round(+cast.stats.hp) : null;
+    tokens.push({ instId: 'tk' + (++tokenSeq), castId, kind, label, x, y, visible, hp: { current: maxHp, max: maxHp }, conditions: [] });
     commit();
   }
   function removeToken(instId) {
@@ -1336,6 +1393,45 @@ export function mountGm(root) {
     ensureTokens();
     const t = state.stage.tokens.find((x) => x.instId === instId);
     if (t) { t.visible = t.visible === false; commit(); }
+  }
+  function findToken(instId) {
+    ensureTokens();
+    return state.stage.tokens.find((x) => x.instId === instId) || null;
+  }
+  // ---- Per-token HP + conditions (map-mode combat tracking) --------------------
+  //  applyHp(delta): +heal / -damage on current HP, clamped to [0, max]. Seeds max
+  //  on first edit if it was never set (e.g. a hero before stats existed).
+  function applyHp(instId, delta) {
+    const t = findToken(instId);
+    if (!t || !isFinite(+delta) || !delta) return;
+    if (!t.hp || typeof t.hp !== 'object') t.hp = { current: null, max: null };
+    const cast = castEntry(t.castId, t.kind);
+    if (t.hp.max == null && cast && cast.stats && cast.stats.hp != null) t.hp.max = Math.round(+cast.stats.hp);
+    const base = t.hp.current != null ? t.hp.current : (t.hp.max != null ? t.hp.max : 0);
+    let next = Math.round(base + (+delta));
+    if (next < 0) next = 0;
+    if (t.hp.max != null && next > t.hp.max) next = t.hp.max;
+    t.hp.current = next;
+    commit();
+  }
+  function setHpMax(instId, max) {
+    const t = findToken(instId); if (!t) return;
+    if (!t.hp || typeof t.hp !== 'object') t.hp = { current: null, max: null };
+    const m = (max == null || max === '' || !isFinite(+max)) ? null : Math.max(0, Math.round(+max));
+    t.hp.max = m;
+    if (m != null && (t.hp.current == null || t.hp.current > m)) t.hp.current = m;
+    commit();
+  }
+  function addCondition(instId, name) {
+    const t = findToken(instId); if (!t || !name) return;
+    name = String(name).trim(); if (!name) return;
+    if (!Array.isArray(t.conditions)) t.conditions = [];
+    if (!t.conditions.some((c) => c.toLowerCase() === name.toLowerCase())) { t.conditions.push(name); commit(); }
+  }
+  function removeCondition(instId, name) {
+    const t = findToken(instId); if (!t || !Array.isArray(t.conditions)) return;
+    t.conditions = t.conditions.filter((c) => c.toLowerCase() !== String(name).toLowerCase());
+    commit();
   }
 
   // ---- Initiative tracker (GM-only combat state) -------------------------------
@@ -1531,26 +1627,96 @@ export function mountGm(root) {
     }
     commit();
   }
+  // ---- Per-token combat controls in the roster (map mode) ----
+  // HP: cur/max + a typed amount with Damage(-) / Heal(+) -- the quick
+  // D&D-Beyond style. Max seeds from the cast stat block; applyHp clamps [0,max].
+  function tokenHpControl(t) {
+    const wrap = document.createElement('div'); wrap.className = 'mmr-hp';
+    const cast = castEntry(t.castId, t.kind);
+    const hp = t.hp || {};
+    const max = hp.max != null ? hp.max : ((cast && cast.stats && cast.stats.hp != null) ? Math.round(+cast.stats.hp) : null);
+    const cur = hp.current != null ? hp.current : max;
+    const num = document.createElement('span');
+    num.className = 'mmr-hpnum' + (max != null && cur != null && cur < max ? ' is-hurt' : '');
+    num.textContent = (cur != null ? cur : '—') + ' / ' + (max != null ? max : '—');
+    const amt = document.createElement('input');
+    amt.type = 'number'; amt.className = 'mmr-hpamt'; amt.placeholder = '0'; amt.min = '0';
+    amt.title = 'Amount to apply'; amt.setAttribute('aria-label', t.label + ' damage / heal amount');
+    const mk = (cls, sign, glyph, label) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'mmr-hpbtn ' + cls; b.textContent = glyph;
+      b.title = label; b.setAttribute('aria-label', label + ' ' + t.label);
+      b.addEventListener('click', () => { const v = parseInt(amt.value, 10); if (isFinite(v) && v > 0) applyHp(t.instId, sign * v); });
+      return b;
+    };
+    wrap.append(num, amt, mk('is-dmg', -1, '−', 'Damage'), mk('is-heal', 1, '+', 'Heal'));
+    return wrap;
+  }
+  // Conditions: removable chips + an add control (5e presets + a custom entry).
+  function tokenConditionsControl(t) {
+    const wrap = document.createElement('div'); wrap.className = 'mmr-cond';
+    const conds = Array.isArray(t.conditions) ? t.conditions : [];
+    for (const cn of conds) {
+      const chip = document.createElement('span'); chip.className = 'cond-chip';
+      chip.append(document.createTextNode(cn));
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'cond-x'; x.textContent = '✕';
+      x.title = 'Remove ' + cn; x.setAttribute('aria-label', 'Remove ' + cn + ' from ' + t.label);
+      x.addEventListener('click', () => removeCondition(t.instId, cn));
+      chip.append(x); wrap.append(chip);
+    }
+    const sel = document.createElement('select'); sel.className = 'cond-add';
+    sel.setAttribute('aria-label', 'Add a condition to ' + t.label);
+    const ph = document.createElement('option'); ph.value = ''; ph.textContent = '+ condition'; sel.append(ph);
+    for (const name of CONDITIONS) {
+      if (conds.some((c) => c.toLowerCase() === name.toLowerCase())) continue;
+      const o = document.createElement('option'); o.value = name; o.textContent = name; sel.append(o);
+    }
+    const cu = document.createElement('option'); cu.value = '__custom__'; cu.textContent = 'Custom…'; sel.append(cu);
+    sel.addEventListener('change', () => {
+      const v = sel.value; sel.value = '';
+      if (!v) return;
+      if (v === '__custom__') { const name = (window.prompt('Condition name?') || '').trim(); if (name) addCondition(t.instId, name); return; }
+      addCondition(t.instId, v);
+    });
+    wrap.append(sel);
+    return wrap;
+  }
+  // A roster category as a columnar table: Name · Init · HP · Condition · Vis · ✕.
   function rosterColumn(label, addAll, placed) {
     const col = document.createElement('div'); col.className = 'mmr-cat';
     const head = document.createElement('div'); head.className = 'mmr-head';
     const lab = document.createElement('span'); lab.className = 'mmr-label'; lab.textContent = label;
-    const all = document.createElement('button');
-    all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
+    const all = document.createElement('button'); all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
     all.addEventListener('click', addAll);
     head.append(lab, all);
-    // Reveal all / Hide all once at least one of the group is on the board.
     if (placed && placed.length) {
       const anyHidden = placed.some((t) => t.visible === false);
-      const rev = document.createElement('button');
-      rev.className = 'gm-button btn--quiet mmr-revealall'; rev.type = 'button';
+      const rev = document.createElement('button'); rev.className = 'gm-button btn--quiet mmr-revealall'; rev.type = 'button';
       rev.textContent = anyHidden ? 'Reveal all' : 'Hide all';
       rev.addEventListener('click', () => setGroupVisible(placed, anyHidden));
       head.append(rev);
     }
-    const list = document.createElement('div'); list.className = 'mmr-list';
-    col.append(head, list);
-    return { col, list };
+    const table = document.createElement('table'); table.className = 'mmr-table';
+    const thead = document.createElement('thead'); const htr = document.createElement('tr');
+    for (const [txt, cls] of [['Name', ''], ['Init', 'c'], ['HP · dmg / heal', ''], ['Condition', ''], ['Vis', 'c'], ['', 'c']]) {
+      const th = document.createElement('th'); if (cls) th.className = cls; th.textContent = txt; htr.append(th);
+    }
+    thead.append(htr);
+    const tbody = document.createElement('tbody');
+    table.append(thead, tbody); col.append(head, table);
+    return { col, tbody };
+  }
+  // A placed token's full row (hero, or an enemy instance via rowClass 'mmr-copy').
+  function placedRow(t, c, rowClass) {
+    const tr = document.createElement('tr'); tr.className = 'mmr-row is-placed' + (rowClass ? ' ' + rowClass : '');
+    const nameTd = document.createElement('td'); nameTd.className = 'mmr-namecell';
+    nameTd.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(t.label, t.visible === false));
+    const initTd = document.createElement('td'); initTd.className = 'c'; initTd.append(tokenRollInput(t));
+    const hpTd = document.createElement('td'); hpTd.append(tokenHpControl(t));
+    const condTd = document.createElement('td'); condTd.append(tokenConditionsControl(t));
+    const visTd = document.createElement('td'); visTd.className = 'c'; visTd.append(rosterVisBtn(t));
+    const delTd = document.createElement('td'); delTd.className = 'c'; delTd.append(rosterDelBtn(t));
+    tr.append(nameTd, initTd, hpTd, condTd, visTd, delTd);
+    return tr;
   }
 
   function renderRoster(scene) {
@@ -1561,50 +1727,36 @@ export function mountGm(root) {
     els.mapRoster.innerHTML = '';
 
     if (!heroes.length && !enemies.length) {
-      const p = document.createElement('p');
-      p.className = 'mmr-empty';
+      const p = document.createElement('p'); p.className = 'mmr-empty';
       p.textContent = 'No roster set. Edit the scene to choose heroes and enemies.';
-      els.mapRoster.append(p);
-      return;
+      els.mapRoster.append(p); return;
     }
 
+    const cell = (cls, span) => { const e = document.createElement('td'); if (cls) e.className = cls; if (span) e.colSpan = span; return e; };
+    const nameCell = (c, label, hidden) => { const e = cell('mmr-namecell'); e.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(label, hidden)); return e; };
+    const addRow = (tbody, cells, cls) => { const tr = document.createElement('tr'); tr.className = 'mmr-row' + (cls ? ' ' + cls : ''); for (const td of cells) tr.append(td); tbody.append(tr); };
+
     if (heroes.length) {
-      // Add all skips heroes already placed (addToken is a no-op for those).
-      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
+      const { col, tbody } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
       for (const id of heroes) {
         const c = castEntry(id, 'hero'); if (!c) continue;
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
-        const row = rosterRow(inst ? 'is-placed' : null);
-        row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
-        if (inst) row.append(tokenRollInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
-        else row.append(rosterAddBtn(id, 'hero'));
-        list.append(row);
+        if (inst) tbody.append(placedRow(inst, c));
+        else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'hero')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 4), addTd]); }
       }
       els.mapRoster.append(col);
     }
 
     if (enemies.length) {
-      // Add all drops one copy of each enemy type.
-      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
-      // "Roll enemies" lives over the enemies roster: it fills each enemy's own
-      // initiative field (d20 + the type modifier). The GM then presses Apply to
-      // sort -- rolling does not build the order on its own.
-      const rollBtn = document.createElement('button');
-      rollBtn.className = 'gm-button btn--quiet mmr-rollenemies'; rollBtn.type = 'button';
-      rollBtn.textContent = 'Roll enemies';
-      rollBtn.title = "Roll a d20 + the type modifier into every enemy's initiative field";
-      rollBtn.addEventListener('click', () => rollEnemies());
-      col.querySelector('.mmr-head').append(rollBtn);
+      const { col, tbody } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
+      // (Roll enemies lives in the initiative panel footer; the per-type modifier
+      // field stays here on the type row.)
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
-        const typeRow = rosterRow('mmr-type');
-        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), enemyModInput(id), rosterAddBtn(id, 'enemy'));
-        list.append(typeRow);
-        for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) {
-          const row = rosterRow('mmr-copy');
-          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), tokenRollInput(t), rosterVisBtn(t), rosterDelBtn(t));
-          list.append(row);
-        }
+        const modTd = cell('c'); modTd.append(enemyModInput(id));
+        const addTd = cell('c', 2); addTd.append(rosterAddBtn(id, 'enemy'));
+        addRow(tbody, [nameCell(c, c.name, false), modTd, cell('mmr-spacer', 2), addTd], 'mmr-type');
+        for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) tbody.append(placedRow(t, c, 'mmr-copy'));
       }
       els.mapRoster.append(col);
     }
@@ -1613,98 +1765,171 @@ export function mountGm(root) {
   // The initiative panel (map mode): per-enemy-type modifiers, Roll enemies /
   // Roll all, then the sorted tracker with prev/next. Active row + active token
   // ride state.stage.activeTokenId (the gold ring on both screens).
+  let initShowAll = false;   // expand the sliding window to the full order
+  const INIT_WINDOW = 5;     // how many combatants the "who's next" window shows
   function renderInitiative(scene) {
     if (!els.initiative) return;
     const host = els.initiative; host.innerHTML = '';
     const i = ensureInit();
     const placed = (state.stage && state.stage.tokens) || [];
+    const tokenFor = (instId) => placed.find((x) => x.instId === instId);
 
+    // ---- Header: title + Turn x/y + Prev/Next (the per-turn nav lives up here) ----
     const head = document.createElement('div'); head.className = 'init-head';
     const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
-    const apply = document.createElement('button'); apply.className = 'gm-button init-apply'; apply.type = 'button';
-    apply.textContent = 'Apply'; apply.title = 'Sort the order from the entered initiative values (highest first)';
-    apply.addEventListener('click', applyInitiative);
-    const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
-    clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
-    clr.addEventListener('click', clearInitiative);
-    head.append(title, apply, clr);
+    head.append(title);
+    if (i.order.length) {
+      const prev = document.createElement('button'); prev.className = 'gm-button btn--quiet init-prev'; prev.type = 'button';
+      prev.textContent = '◀ Prev'; prev.title = 'Previous turn'; prev.addEventListener('click', () => initStep(-1));
+      const next = document.createElement('button'); next.className = 'gm-button init-next'; next.type = 'button';
+      next.textContent = 'Next ▶'; next.title = 'Next turn'; next.addEventListener('click', () => initStep(1));
+      head.append(prev, next);
+    }
     host.append(head);
-    // Heroes type their value, "Roll enemies" (over the enemies roster) fills the
-    // enemy fields, then Apply sorts -- so the panel is just the head + the tracker.
 
-    // The tracker.
+    // ---- Tracker: a sliding window that starts at the ACTIVE turn and shows who's
+    //      up next (wrapping past end-of-round), so a big fight stays on screen. ----
     const track = document.createElement('div'); track.className = 'init-track';
     if (!i.order.length) {
       const hint = document.createElement('p'); hint.className = 'init-empty';
       hint.textContent = 'Type the heroes’ rolls, Roll enemies, then Apply to build the order.';
       track.append(hint);
     } else {
-      const nav = document.createElement('div'); nav.className = 'init-nav';
-      const prev = document.createElement('button'); prev.className = 'gm-button btn--quiet init-prev'; prev.type = 'button';
-      prev.textContent = '◀'; prev.title = 'Previous turn'; prev.addEventListener('click', () => initStep(-1));
-      const turn = document.createElement('span'); turn.className = 'init-turn';
-      turn.textContent = 'Turn ' + (i.idx + 1) + ' / ' + i.order.length;
-      const next = document.createElement('button'); next.className = 'gm-button init-next'; next.type = 'button';
-      next.textContent = 'Next ▶'; next.title = 'Next turn'; next.addEventListener('click', () => initStep(1));
-      nav.append(prev, turn, next); track.append(nav);
-
+      const total = i.order.length;
+      const windowed = !initShowAll && total > INIT_WINDOW;
+      const slots = [];
+      if (windowed) { for (let k = 0; k < INIT_WINDOW; k++) slots.push((i.idx + k) % total); }
+      else { for (let n = 0; n < total; n++) slots.push(n); }
+      const cap = document.createElement('div'); cap.className = 'init-win-label';
+      cap.textContent = 'Turn ' + (i.idx + 1) + ' / ' + total + (windowed ? ' · up next' : '');
+      track.append(cap);
       const list = document.createElement('ol'); list.className = 'init-list';
-      i.order.forEach((instId, n) => {
-        const t = placed.find((x) => x.instId === instId); if (!t) return;
+      slots.forEach((n) => {
+        const instId = i.order[n];
+        const t = tokenFor(instId); if (!t) return;
         const c = castEntry(t.castId, t.kind);
         const li = document.createElement('li'); li.className = 'init-row' + (n === i.idx ? ' is-active' : '');
+        if (windowed && n < i.idx) li.classList.add('is-wrap');   // wrapped = next round, faded
+        const ord = document.createElement('span'); ord.className = 'init-ord'; ord.textContent = (n + 1);
         const nm = document.createElement('span'); nm.className = 'init-name'; nm.textContent = t.label;
         const val = document.createElement('span'); val.className = 'init-val'; val.textContent = i.rolls[instId];
-        li.append(rosterSwatch(c ? c.ringColor : '#888'), nm, val);
+        li.append(ord, rosterSwatch(c ? c.ringColor : '#888'), nm, val);
         li.title = 'Jump to this turn';
         li.addEventListener('click', () => setInitIdx(n));
         list.append(li);
       });
       track.append(list);
+      if (total > INIT_WINDOW) {
+        const more = document.createElement('button'); more.className = 'init-more'; more.type = 'button';
+        more.textContent = initShowAll ? 'Show fewer' : ('Show all (' + total + ')');
+        more.addEventListener('click', () => { initShowAll = !initShowAll; renderInitiative(scene); });
+        track.append(more);
+      }
     }
     host.append(track);
+
+    // ---- Footer: the once-per-combat setup cluster, divided off below the list so
+    //      it sits far from the Prev/Next up top (no mid-fight mis-clicks). ----
+    const foot = document.createElement('div'); foot.className = 'init-foot';
+    const roll = document.createElement('button'); roll.className = 'gm-button btn--quiet init-roll'; roll.type = 'button';
+    roll.textContent = 'Roll enemies'; roll.title = "Roll a d20 + each type's modifier into every enemy's initiative field";
+    roll.addEventListener('click', rollEnemies);
+    const apply = document.createElement('button'); apply.className = 'gm-button init-apply'; apply.type = 'button';
+    apply.textContent = 'Apply'; apply.title = 'Sort the order from the entered initiative values (highest first)';
+    apply.addEventListener('click', applyInitiative);
+    const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
+    clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
+    clr.addEventListener('click', clearInitiative);
+    foot.append(roll, apply, clr);
+    host.append(foot);
   }
 
-  // The stat block to show: the active token's type when it is an enemy with a
-  // stat block; otherwise the last enemy shown (so a hero's turn keeps the foe's
-  // card up), else the first placed enemy type that has one.
-  let lastStatCastId = null;
-  function activeEnemyStats() {
+  // The card to show: the ACTIVE combatant (hero or enemy). When no turn is set
+  // yet, keep the last-shown card if its token is still placed, else fall to the
+  // first placed enemy with a stat block (a foe card during setup). Tracking by
+  // instId keeps it scene-local -- a previous scene's token is never resurrected.
+  let lastStatToken = null;
+  function activeStatContext() {
     const placed = (state.stage && state.stage.tokens) || [];
-    const activeId = state.stage && state.stage.activeTokenId;
-    const active = activeId && placed.find((t) => t.instId === activeId);
-    if (active && active.kind === 'enemy') {
-      const c = castEntry(active.castId, 'enemy');
-      if (c && c.stats) { lastStatCastId = active.castId; return c.stats; }
-    }
-    const fallbackId = lastStatCastId || placed.filter((t) => t.kind === 'enemy').map((t) => t.castId)
-      .find((id) => { const c = castEntry(id, 'enemy'); return c && c.stats; });
-    if (fallbackId) { const c = castEntry(fallbackId, 'enemy'); if (c && c.stats) { lastStatCastId = fallbackId; return c.stats; } }
+    const byId = (id) => placed.find((t) => t.instId === id);
+    const ctxFor = (t) => { if (!t) return null; const c = castEntry(t.castId, t.kind); return { token: t, cast: c, stats: (c && c.stats) || null }; };
+    const active = (state.stage && state.stage.activeTokenId) && byId(state.stage.activeTokenId);
+    if (active) { lastStatToken = active.instId; return ctxFor(active); }
+    if (lastStatToken && byId(lastStatToken)) return ctxFor(byId(lastStatToken));
+    lastStatToken = null;
+    const foe = placed.find((t) => t.kind === 'enemy' && (castEntry(t.castId, 'enemy') || {}).stats);
+    if (foe) { lastStatToken = foe.instId; return ctxFor(foe); }
     return null;
   }
   function renderStatSheet() {
     if (!els.statsheet) return;
     const host = els.statsheet; host.innerHTML = '';
-    const s = activeEnemyStats();
-    if (!s) {
+    const ctx = activeStatContext();
+    host.classList.toggle('is-hero', !!ctx && ctx.token.kind === 'hero');
+    if (!ctx) {
       const p = document.createElement('p'); p.className = 'stat-empty';
-      p.textContent = 'No stat block for the active enemy. Add a `stats` block in data/cast.js.';
+      p.textContent = 'Place a combatant and apply initiative to see its card.';
       host.append(p); return;
     }
-    const head = document.createElement('h3'); head.className = 'gm-h3 stat-name'; head.textContent = s.name;
-    host.append(head);
+    const { token, cast, stats } = ctx;
+
+    // ---- Head: face-centered profile picture + name / subtitle / active tag ----
+    const head = document.createElement('div'); head.className = 'stat-head';
+    if (cast && cast.tokenImage) {
+      const pic = document.createElement('img'); pic.className = 'stat-pic'; pic.src = cast.tokenImage; pic.alt = '';
+      if (cast.face) pic.style.objectPosition = cast.face;
+      head.append(pic);
+    }
+    const idBox = document.createElement('div'); idBox.className = 'stat-id';
+    const nameRow = document.createElement('div'); nameRow.className = 'stat-name-row';
+    const nm = document.createElement('h3'); nm.className = 'stat-name'; nm.textContent = (stats && stats.name) || token.label;
+    const tag = document.createElement('span'); tag.className = 'stat-tag ' + (token.kind === 'hero' ? 'is-hero' : 'is-enemy');
+    tag.textContent = 'Active · ' + (token.kind === 'hero' ? 'Hero' : 'Enemy');
+    nameRow.append(nm, tag); idBox.append(nameRow);
+    if (stats && stats.subtitle) { const sub = document.createElement('div'); sub.className = 'stat-sub'; sub.textContent = stats.subtitle; idBox.append(sub); }
+    head.append(idBox); host.append(head);
+
+    // ---- Conditions on the active combatant (read-only here; edited in the roster) ----
+    const conds = Array.isArray(token.conditions) ? token.conditions : [];
+    if (conds.length) {
+      const cw = document.createElement('div'); cw.className = 'stat-conditions';
+      const cl = document.createElement('span'); cl.className = 'stat-cond-label'; cl.textContent = 'Conditions'; cw.append(cl);
+      for (const cn of conds) { const chip = document.createElement('span'); chip.className = 'cond-chip'; chip.textContent = cn; cw.append(chip); }
+      host.append(cw);
+    }
+
+    // ---- HP first (live, from the token), then AC + Speed ----
     const line = (k, v) => { const r = document.createElement('div'); r.className = 'stat-line';
       const a = document.createElement('span'); a.className = 'stat-k'; a.textContent = k;
       const b = document.createElement('span'); b.className = 'stat-v'; b.textContent = v; r.append(a, b); return r; };
     const lines = document.createElement('div'); lines.className = 'stat-lines';
-    if (s.ac != null) lines.append(line('Armor Class', s.ac));
-    if (s.hp != null) lines.append(line('Hit Points', s.hp));
-    if (s.speed) lines.append(line('Speed', s.speed));
-    host.append(lines);
-    if (s.abilities) {
+    const hp = token.hp || {};
+    const max = hp.max != null ? hp.max : (stats && stats.hp != null ? stats.hp : null);
+    const cur = hp.current != null ? hp.current : max;
+    if (max != null) {
+      lines.append(line('Hit Points', (cur != null ? cur : '?') + ' / ' + max));
+      const bar = document.createElement('div'); bar.className = 'stat-hpbar';
+      const fill = document.createElement('i');
+      fill.style.width = Math.max(0, Math.min(100, max ? Math.round(((cur != null ? cur : max) / max) * 100) : 0)) + '%';
+      if (cur != null && max && cur / max <= 0.34) fill.classList.add('is-low');
+      bar.append(fill); lines.append(bar);
+    }
+    if (stats && stats.ac != null) lines.append(line('Armor Class', stats.ac));
+    if (stats && stats.speed) lines.append(line('Speed', stats.speed));
+    if (lines.children.length) host.append(lines);
+
+    // ---- No stat block yet (e.g. a hero before their sheet, or a plain enemy):
+    //      a compact card -- name + HP + conditions above is the whole card. ----
+    if (!stats) {
+      if (max == null) { const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p); }
+      return;
+    }
+
+    // ---- Abilities ----
+    if (stats.abilities) {
       const ab = document.createElement('div'); ab.className = 'stat-abils';
       for (const [k, lab] of [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']]) {
-        const v = s.abilities[k] == null ? 0 : s.abilities[k];
+        const v = stats.abilities[k] == null ? 0 : stats.abilities[k];
         const tile = document.createElement('div'); tile.className = 'stat-abil';
         const t = document.createElement('span'); t.className = 'stat-abil-k'; t.textContent = lab;
         const n = document.createElement('span'); n.className = 'stat-abil-v'; n.textContent = (v >= 0 ? '+' : '') + v;
@@ -1712,12 +1937,14 @@ export function mountGm(root) {
       }
       host.append(ab);
     }
-    for (const atk of (s.attacks || [])) {
+    // ---- Attacks (append " to hit" only to a numeric bonus, not a save/keyword) ----
+    for (const atk of (stats.attacks || [])) {
       const a = document.createElement('div'); a.className = 'stat-attack';
-      const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name;
+      const nm2 = document.createElement('div'); nm2.className = 'stat-attack-name'; nm2.textContent = atk.name;
       const d = document.createElement('div'); d.className = 'stat-attack-line';
-      d.textContent = [atk.toHit ? atk.toHit + ' to hit' : '', atk.range, atk.damage].filter(Boolean).join(' · ');
-      a.append(nm, d); host.append(a);
+      const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
+      d.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
+      a.append(nm2, d); host.append(a);
     }
   }
 
@@ -1923,6 +2150,49 @@ export function mountGm(root) {
     return scene;
   }
 
+  // A small themed confirmation modal -- the in-app replacement for window.confirm
+  // on destructive edits (delete a saved scene, remove a variant / character /
+  // cue). Returns a Promise<boolean>: true on confirm, false on cancel / backdrop
+  // click / Esc. Confirm is autofocused so Enter accepts and Esc rejects -- a
+  // one-keystroke gate that still stops an accidental click.
+  function confirmDialog({ title = 'Are you sure?', message = '', confirmText = 'Delete', cancelText = 'Cancel' } = {}) {
+    return new Promise((resolve) => {
+      const prevFocus = document.activeElement;
+      const overlay = document.createElement('div');
+      overlay.className = 'gm-confirm';
+      const box = document.createElement('div');
+      box.className = 'gm-confirm-box';
+      box.setAttribute('role', 'alertdialog');
+      box.setAttribute('aria-modal', 'true');
+      const h = document.createElement('h4'); h.className = 'gm-confirm-title'; h.textContent = title;
+      box.appendChild(h);
+      if (message) { const p = document.createElement('p'); p.className = 'gm-confirm-msg'; p.textContent = message; box.appendChild(p); }
+      const row = document.createElement('div'); row.className = 'gm-confirm-actions';
+      const no = document.createElement('button'); no.type = 'button'; no.className = 'gm-button btn--quiet gm-confirm-no'; no.textContent = cancelText;
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'gm-button gm-confirm-yes'; yes.textContent = confirmText;
+      row.append(no, yes); box.appendChild(row); overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      let done = false;
+      const close = (val) => {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey, true);
+        overlay.remove();
+        if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (_) {} }
+        resolve(val);
+      };
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(false); }
+        else if (e.key === 'Enter') { e.preventDefault(); close(true); }
+      }
+      document.addEventListener('keydown', onKey, true);
+      overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(false); });
+      no.addEventListener('click', () => close(false));
+      yes.addEventListener('click', () => close(true));
+      yes.focus();
+    });
+  }
+
   function openBuilder(scene) {
     cancelCueTimeline();   // stop any running sequence before editing
     draft = scene ? sceneToDraft(scene) : blankDraft();
@@ -1952,7 +2222,7 @@ export function mountGm(root) {
       sel.appendChild(none);
       const title = document.createElement('option');
       title.value = TITLE_SRC;
-      title.textContent = 'Title screen (Aldermere)';
+      title.textContent = 'Title screen';
       sel.appendChild(title);
       // Group the backdrops so the GM can tell a top-down MAP from a cinematic
       // BACKGROUND at a glance; the kind comes from the asset folder (assets/maps
@@ -1985,10 +2255,6 @@ export function mountGm(root) {
       sel.value = v.src;
       sel.addEventListener('change', () => { v.src = sel.value; renderBuilderPreview(); });
 
-      const tag = document.createElement('span');
-      tag.className = 'v-tag';
-      tag.textContent = i === 0 ? 'shown first' : '';
-
       // Per-variant visibility: which mode(s) this backdrop appears in. The rail
       // picker filters by the current mode, so map backdrops stay out of the
       // cinematic view and vice versa.
@@ -2011,15 +2277,18 @@ export function mountGm(root) {
       const rm = document.createElement('button');
       rm.className = 'v-remove';
       rm.type = 'button';
-      rm.textContent = 'Remove';
+      rm.textContent = '✕';
+      rm.title = 'Remove this variant';
+      rm.setAttribute('aria-label', 'Remove variant');
       rm.disabled = draft.variants.length <= 1;
-      rm.addEventListener('click', () => {
+      rm.addEventListener('click', async () => {
+        if (!(await confirmDialog({ title: 'Remove variant?', message: 'Remove the “' + (v.key || 'untitled') + '” background variant?', confirmText: 'Remove' }))) return;
         draft.variants.splice(i, 1);
         renderVariantRows();
         renderBuilderPreview();
       });
 
-      row.append(keyInput, sel, modes, tag, rm);
+      row.append(keyInput, sel, modes, rm);
       els.variantList.appendChild(row);
     });
   }
@@ -2062,8 +2331,11 @@ export function mountGm(root) {
       // letterboxed cutout only needs ~1.8x to fill it -- 2..4 was dead travel, so
       // the usable band now spans the whole slider (finer 0.05 step to match).
       mkRange('Size', 'cc-scale', 0.5, 2, 0.05, entry.scale || 1, '', (v) => { entry.scale = v; }),
-      mkRange('↔', 'cc-x', -10, 45, 1, entry.x || 0, 'Horizontal position', (v) => { entry.x = v; }),
-      mkRange('↕', 'cc-y', -10, 30, 1, entry.y || 0, 'Vertical position — raise to align with the backdrop bottom', (v) => { entry.y = v; })
+      // Symmetric around 0 so the default sits CENTERED on the slider with equal,
+      // useful travel each way (the old -10..45 / -10..30 ranges parked 0 near the
+      // left end and ran far past anything useful on the right).
+      mkRange('↔', 'cc-x', -20, 20, 1, entry.x || 0, 'Horizontal position (0 = centered)', (v) => { entry.x = v; }),
+      mkRange('↕', 'cc-y', -20, 20, 1, entry.y || 0, 'Vertical position (0 = centered; raise to lift toward the backdrop bottom)', (v) => { entry.y = v; })
     );
 
     const flip = document.createElement('button');
@@ -2073,9 +2345,11 @@ export function mountGm(root) {
     flip.addEventListener('click', () => { entry.flip = !entry.flip; flip.classList.toggle('is-on', entry.flip); spotlight(); });
 
     const del = document.createElement('button');
-    del.type = 'button'; del.className = 'gm-button btn--quiet cc-del';
+    del.type = 'button'; del.className = 'cc-del';
     del.textContent = '✕'; del.title = 'Remove this character from the side';
-    del.addEventListener('click', () => {
+    del.setAttribute('aria-label', 'Remove character');
+    del.addEventListener('click', async () => {
+      if (!(await confirmDialog({ title: 'Remove character?', message: 'Remove this character from the ' + side + ' side?', confirmText: 'Remove' }))) return;
       draft[side].splice(i, 1);
       builderPick[side] = (draft[side][0] && draft[side][0].src) || null;
       renderCharRoster(side);
@@ -2083,7 +2357,11 @@ export function mountGm(root) {
     });
 
     adjust.append(flip, del);
-    card.append(src, enter, adjust);
+    // Two-row card: pickers (character + entrance) on top, placement on the bottom.
+    const row1 = document.createElement('div');
+    row1.className = 'cc-row';
+    row1.append(src, enter);
+    card.append(row1, adjust);
     return card;
   }
 
@@ -2293,18 +2571,28 @@ export function mountGm(root) {
       down.addEventListener('click', () => move(i, i + 1));
       const rm = document.createElement('button');
       rm.className = 'cue-remove';
-      rm.type = 'button'; rm.textContent = 'Remove'; rm.title = 'Delete this cue';
-      rm.addEventListener('click', () => { cueOpen.delete(cue.id); cues.splice(i, 1); renderCueRows(); });
+      rm.type = 'button'; rm.textContent = '✕'; rm.title = 'Delete this cue';
+      rm.setAttribute('aria-label', 'Delete cue');
+      rm.addEventListener('click', async () => {
+        if (!(await confirmDialog({ title: 'Delete cue?', message: 'Delete the cue “' + (cue.label || 'untitled') + '”? Its keyframes will be lost.', confirmText: 'Delete cue' }))) return;
+        cueOpen.delete(cue.id); cues.splice(i, 1); renderCueRows();
+      });
 
       // Play THIS cue -- with its keyframe transitions -- in the docked preview,
       // without scrolling up or opening the keyframe editor.
       const prev = document.createElement('button');
       prev.className = 'gm-button btn--quiet cue-preview';
-      prev.type = 'button'; prev.textContent = '▶ Preview';
+      prev.type = 'button'; prev.textContent = '▶';
       prev.title = 'Play this cue (with its keyframe transitions) in the preview, and leave it up';
+      prev.setAttribute('aria-label', 'Preview this cue');
       prev.addEventListener('click', () => testCueTimeline(cue, { hold: true }));
 
-      head.append(chev, label, prev, open, up, down, rm);
+      // The action cluster stays together at the row end so a tight column wraps
+      // the whole group (never an orphaned ✕) -- collapsed, the cue is one row.
+      const actions = document.createElement('div');
+      actions.className = 'cue-head-actions';
+      actions.append(prev, open, up, down, rm);
+      head.append(chev, label, actions);
       card.append(head);
 
       // ---- Body: content pickers + per-element keyframes (only when expanded) ----
@@ -2481,7 +2769,7 @@ export function mountGm(root) {
     const noteF = field('Notes');
     const ta = document.createElement('textarea');
     ta.className = 'cue-notes'; ta.rows = 2;
-    ta.placeholder = 'Shown while this cue is live (falls back to the scene note)';
+    ta.placeholder = 'Shown while this cue is live';
     ta.value = cue.notes || '';
     ta.addEventListener('input', () => { cue.notes = ta.value; });
     noteF.append(ta); host.append(noteF);
@@ -2537,7 +2825,7 @@ export function mountGm(root) {
 
     if (!lanes.length) {
       const hint = document.createElement('p'); hint.className = 'cue-tl-empty';
-      hint.textContent = 'Pick some content above (background, characters, audio…) to choose what to keyframe.';
+      hint.textContent = 'Pick some content above to choose what to keyframe.';
       host.append(hint);
       return;
     }
@@ -2695,16 +2983,67 @@ export function mountGm(root) {
     rebuildSceneList();
   }
 
+  // The GM's custom scene order: an array of scene ids the drag handle rewrites.
+  // Persisted locally; scenes not yet in it (freshly added) keep their natural
+  // position at the end, so a new scene never vanishes.
+  const ORDER_KEY = 'aldermere.gm.sceneOrder.v1';
+  function loadOrder() {
+    try { const a = JSON.parse(localStorage.getItem(ORDER_KEY)); return Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []; }
+    catch (e) { return []; }
+  }
+  function saveOrder() { try { localStorage.setItem(ORDER_KEY, JSON.stringify(sceneOrder)); } catch (e) {} }
+  let sceneOrder = loadOrder();
+  let draggingLi = null;
+  // Read the live DOM row order back into sceneOrder after a drag, then rebuild
+  // so pin-float re-applies canonically.
+  function persistSceneOrder() {
+    const ids = [...els.sceneList.querySelectorAll('.scene-button')].map((b) => b.dataset.id);
+    if (ids.length) { sceneOrder = ids; saveOrder(); }
+    rebuildSceneList();
+  }
+
   function rebuildSceneList() {
     els.sceneList.innerHTML = '';
-    // Pinned scenes float to the top; order is otherwise preserved within each
-    // group (a stable partition), so unpinning drops a scene back into place.
+    // Order: the GM's custom drag order first (unknown ids fall to the end in
+    // natural order), then pinned scenes float to the top -- a stable partition,
+    // so unpinning drops a scene back into its ordered place.
     const all = allScenes();
-    const ordered = [...all.filter((s) => pinned.has(s.id)), ...all.filter((s) => !pinned.has(s.id))];
+    const rank = new Map(sceneOrder.map((id, i) => [id, i]));
+    const base = [...all].sort((a, b) => {
+      const ra = rank.has(a.id) ? rank.get(a.id) : Infinity;
+      const rb = rank.has(b.id) ? rank.get(b.id) : Infinity;
+      return ra === rb ? 0 : ra - rb;
+    });
+    const ordered = [...base.filter((s) => pinned.has(s.id)), ...base.filter((s) => !pinned.has(s.id))];
     for (const scene of ordered) {
       const li = document.createElement('li');
       const isPinned = pinned.has(scene.id);
       if (isPinned) li.classList.add('is-pinned');
+
+      // Drag handle: the only draggable element, so a click on the row still
+      // selects/edits while a grab on the grip reorders. dragover on each row
+      // live-moves the dragged row above/below by the pointer's midpoint test.
+      const grip = document.createElement('span');
+      grip.className = 'scene-grip';
+      grip.draggable = true;
+      grip.textContent = '⠿';
+      grip.title = 'Drag to reorder';
+      grip.setAttribute('aria-label', 'Drag to reorder ' + scene.name);
+      grip.addEventListener('dragstart', (e) => {
+        draggingLi = li; li.classList.add('dragging');
+        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', scene.id); } catch (_) {} }
+      });
+      grip.addEventListener('dragend', () => { li.classList.remove('dragging'); draggingLi = null; persistSceneOrder(); });
+      li.appendChild(grip);
+      li.addEventListener('dragover', (e) => {
+        if (!draggingLi || draggingLi === li) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        const rect = li.getBoundingClientRect();
+        const after = (e.clientY - rect.top) > rect.height / 2;
+        if (after) li.after(draggingLi); else li.before(draggingLi);
+      });
+      li.addEventListener('drop', (e) => { if (draggingLi) e.preventDefault(); });
 
       const pin = document.createElement('button');
       pin.className = 'scene-pin' + (isPinned ? ' is-pinned' : '');
@@ -2743,10 +3082,10 @@ export function mountGm(root) {
         del.textContent = '×';
         del.title = 'Delete this saved scene';
         del.setAttribute('aria-label', 'Delete this saved scene');
-        del.addEventListener('click', (e) => {
+        del.addEventListener('click', async (e) => {
           e.stopPropagation();
           // Deleting a saved scene is destructive and irreversible -- confirm first.
-          if (!window.confirm('Delete the saved scene "' + scene.name + '"? This cannot be undone.')) return;
+          if (!(await confirmDialog({ title: 'Delete saved scene?', message: 'Delete the saved scene “' + scene.name + '”? This cannot be undone.', confirmText: 'Delete scene' }))) return;
           deleteScene(scene.id);
         });
         li.appendChild(del);
@@ -2775,9 +3114,17 @@ export function mountGm(root) {
     renderUI();
   }
 
-  function setStatus(msg) {
-    els.rescanStatus.hidden = false;
-    els.rescanStatus.textContent = msg;
+  // A transient toast: shows the message, then auto-dismisses after a few seconds
+  // (pass sticky=true to keep an error up until the next status). It used to be a
+  // permanent line in the rail, so "Saved ..." lingered forever.
+  let statusTimer = 0;
+  function setStatus(msg, sticky) {
+    const el = els.rescanStatus;
+    el.hidden = false;
+    el.textContent = msg;
+    el.classList.add('is-visible');
+    if (statusTimer) { clearTimeout(statusTimer); statusTimer = 0; }
+    if (!sticky) statusTimer = setTimeout(() => { el.classList.remove('is-visible'); statusTimer = 0; }, 3200);
   }
 
   async function rescan() {
@@ -2798,7 +3145,7 @@ export function mountGm(root) {
       setStatus('Rescanned: ' + backgrounds.length + ' backgrounds, ' + characters.length + ' characters, '
         + audioMusic.length + ' music, ' + audioAmbience.length + ' ambience, ' + audioSfx.length + ' sfx.');
     } catch (err) {
-      setStatus('Rescan needs the local server (run: python3 scripts/serve.py). Or run scripts/sync-assets.sh and reload. (' + err.message + ')');
+      setStatus('Rescan needs the local server (run: python3 scripts/serve.py). Or run scripts/sync-assets.sh and reload. (' + err.message + ')', true);
     }
   }
   els.rescanBtn.addEventListener('click', rescan);
@@ -2854,8 +3201,9 @@ export function mountGm(root) {
     // Persistent rail nav -- Black out + Background + Map<->Exit at one fixed spot,
     // so a quick transition never hunts for a button that moved.
     if (scene && !building) {
-      els.visToggle.textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
-      els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit while blacked out
+      // Set only the label span -- the leading power glyph stays put.
+      (els.visToggle.querySelector('.btn-label') || els.visToggle).textContent = state.stage.visible === false ? 'Show scene' : 'Black out';
+      els.visToggle.classList.toggle('is-on', state.stage.visible === false);  // lit (red) while blacked out
       els.mapModeToggle.hidden = !sceneHasMap(scene);
       // Icon + label: a folded-map icon to enter, a log-out icon to leave -- the
       // label says which, so the button reads the same in the live rail and the
