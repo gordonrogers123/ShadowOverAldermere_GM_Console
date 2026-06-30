@@ -2049,7 +2049,7 @@ export function mountGm(root) {
       sel.appendChild(none);
       const title = document.createElement('option');
       title.value = TITLE_SRC;
-      title.textContent = 'Title screen (Aldermere)';
+      title.textContent = 'Title screen';
       sel.appendChild(title);
       // Group the backdrops so the GM can tell a top-down MAP from a cinematic
       // BACKGROUND at a glance; the kind comes from the asset folder (assets/maps
