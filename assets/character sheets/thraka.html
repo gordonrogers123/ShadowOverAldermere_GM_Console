@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thraka — Orc Barbarian (Trishna)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tier-elder">
+
+<!-- =========================== FRONT: PLAY SIDE =========================== -->
+<section class="page front">
+
+  <div class="identity">
+    <div class="art-box"><img src="art/thraka.png" alt="Thraka"></div>
+    <div class="who">
+      <h1 class="name">THRAKA</h1>
+      <div class="subtitle">Orc Barbarian, Path of the Bear</div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><div class="label">Hit Points</div><div class="num hp"><span class="hp-blank"></span> <span class="slash">/ 35</span></div></div>
+      <div class="vital"><div class="label">Armor Class</div><div class="num">14</div></div>
+      <div class="vital"><div class="label">Initiative</div><div class="num">+1</div></div>
+    </div>
+  </div>
+
+  <div class="abilities">
+    <div class="ability"><span class="ab-name">Strength</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Dexterity</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Constitution</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Intelligence</span><span class="ab-mod">&minus;1</span></div>
+    <div class="ability"><span class="ab-name">Wisdom</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Charisma</span><span class="ab-mod">+0</span></div>
+  </div>
+
+  <div class="skills">
+    <h3>Skills</h3>
+    <div class="skills-grid">
+      <div class="skill"><span class="sk-name">Acrobatics</span><span class="sk-num">+1</span></div>
+      <div class="skill trained"><span class="sk-name">Animal Handling</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Arcana</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill trained"><span class="sk-name">Athletics</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Deception</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">History</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill trained"><span class="sk-name">Insight</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Intimidation</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Investigation</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Medicine</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Nature</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Perception</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Performance</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">Persuasion</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Religion</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Sleight of Hand</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Stealth</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Survival</span><span class="sk-num">+1</span></div>
+    </div>
+    <div class="hint">Roll d20 and add the modifier.</div>
+  </div>
+
+  <div class="actions fill">
+    <div class="action-head"><span>Name</span><span>What it does</span><span>To hit</span><span>Damage</span><span>Type</span></div>
+
+    <div class="action-group">
+      <div class="section-bar offense">Attacks &amp; Damage</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Greataxe</span><span class="a-desc">A mighty overhead swing (1d12+5 while raging).</span><span class="a-hit">+5</span><span class="a-dmg">1d12+3</span><span class="a-type">weapon</span></div>
+        <div class="action"><span class="a-name">Handaxe</span><span class="a-desc">Thrown at a foe who is out of reach.</span><span class="a-hit">+5</span><span class="a-dmg">1d6+3</span><span class="a-type">thrown</span></div>
+        <div class="action"><span class="a-name">Reckless Attack</span><span class="a-desc">Swing all out; enemies also hit you more easily.</span><span class="a-hit">advantage</span><span class="a-dmg"></span><span class="a-type">your choice</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar support">Rage &amp; Roar</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Rage</span><span class="a-desc">Half damage from almost everything, and hit harder.</span><span class="a-hit"></span><span class="a-dmg">+2 damage</span><span class="a-type">bonus, 3/day</span></div>
+        <div class="action"><span class="a-name">Ursine Roar</span><span class="a-desc">You roar and the bear spirit answers.</span><span class="a-hit"></span><span class="a-dmg">temp HP</span><span class="a-type">1/day, raging</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar control">Special</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Spirit Seeker</span><span class="a-desc">Speak with Animals and Beast Sense, for free.</span><span class="a-hit"></span><span class="a-dmg"></span><span class="a-type">ritual</span></div>
+        <div class="action"><span class="a-name">Danger Sense</span><span class="a-desc">Advantage on Dex saves against things you see.</span><span class="a-hit"></span><span class="a-dmg"></span><span class="a-type">always on</span></div>
+        <div class="action"><span class="a-name">Relentless</span><span class="a-desc">A killing blow leaves you at 1 HP instead of 0.</span><span class="a-hit"></span><span class="a-dmg"></span><span class="a-type">1/rest</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="turn-helper">
+    <div class="th-title">On your turn</div>
+    <div class="th-grid">
+      <div class="th-item"><span class="t-key">Move</span><span class="t-sub">up to 30 feet</span></div>
+      <div class="th-item"><span class="t-key">Action</span><span class="t-sub">attack, or another move</span></div>
+      <div class="th-item"><span class="t-key">Bonus Action</span><span class="t-sub">Rage</span></div>
+      <div class="th-item"><span class="t-key">Reaction</span><span class="t-sub">one quick response</span></div>
+    </div>
+  </div>
+
+  <div class="trackers">
+    <div class="tracker"><span class="tk-label">Rage</span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Ursine Roar</span><span class="pips"><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Relentless Endurance</span><span class="pips"><span class="pip"></span></span></div>
+  </div>
+
+</section>
+
+<!-- =========================== BACK: REFERENCE SIDE =========================== -->
+<section class="page back">
+
+  <div class="block">
+    <div class="section-bar offense">Abilities</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Rage.</span> As a bonus action you fly into a fury for up to a minute. You take only half damage from nearly everything (all but psychic), and your melee hits do +2. Plant yourself in front and soak the blows. <span class="a-type">3 per day</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Reckless Attack.</span> Choose to attack with advantage for a better chance to land big hits. The trade is that enemies have advantage against you until your next turn.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Ursine Roar.</span> Once a day while raging, you roar and the bear spirit answers. You gain a chunk of temporary hit points and a little extra force on your next hit. You stay an Orc, just briefly wrapped in bear spirit.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Spirit Seeker.</span> You can cast Speak with Animals and Beast Sense as rituals, with no spell slots. Pure joy for an animal lover.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar support">Features &amp; traits</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Bear Totem.</span> While raging you resist all damage except psychic. This is why your huge hit points make you nearly unkillable in a fight.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Unarmored Defense.</span> With no armour, your AC is 10 plus your Dexterity plus your Constitution (already worked out as 14).</div></div>
+      <div class="def"><div class="gloss"><span class="term">Danger Sense.</span> Advantage on Dexterity saving throws against effects you can see, such as traps and blasts.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Orc Aggression.</span> As a bonus action you can put on a burst of speed and move straight toward an enemy.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Relentless Endurance.</span> Once between rests, a hit that would drop you to 0 leaves you at 1 hit point instead. Orcs refuse to fall.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar">Inventory &amp; coins</div>
+    <div class="rows">
+      <ul class="inv-list">
+        <li>Greataxe</li>
+        <li>Two throwing handaxes</li>
+        <li>No armour (you rely on toughness and Rage)</li>
+        <li>Carved bear totem (Ursine Roar focus)</li>
+        <li>Travel journal</li>
+        <li>Meditation beads</li>
+      </ul>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="coins">Coins: ____ gp&nbsp;&nbsp; ____ sp&nbsp;&nbsp; ____ cp</div>
+    </div>
+  </div>
+
+  <div class="block notes-block fill">
+    <div class="section-bar">Notes</div>
+    <div class="notes-fill"></div>
+  </div>
+
+</section>
+
+</body>
+</html>

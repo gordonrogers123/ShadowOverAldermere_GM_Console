@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lysander — Halfling Cleric (Ruth)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tier-elder">
+
+<!-- =========================== FRONT: PLAY SIDE =========================== -->
+<section class="page front">
+
+  <div class="identity">
+    <div class="art-box"><img src="art/lysander.png" alt="Lysander"></div>
+    <div class="who">
+      <h1 class="name">LYSANDER</h1>
+      <div class="subtitle">Halfling Cleric, Life Domain</div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><div class="label">Hit Points</div><div class="num hp"><span class="hp-blank"></span> <span class="slash">/ 24</span></div></div>
+      <div class="vital"><div class="label">Armor Class</div><div class="num">17</div></div>
+      <div class="vital"><div class="label">Initiative</div><div class="num">+1</div></div>
+    </div>
+  </div>
+
+  <div class="abilities">
+    <div class="ability"><span class="ab-name">Strength</span><span class="ab-mod">&minus;1</span></div>
+    <div class="ability"><span class="ab-name">Dexterity</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Constitution</span><span class="ab-mod">+2</span></div>
+    <div class="ability"><span class="ab-name">Intelligence</span><span class="ab-mod">+0</span></div>
+    <div class="ability"><span class="ab-name">Wisdom</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Charisma</span><span class="ab-mod">+1</span></div>
+  </div>
+
+  <div class="skills">
+    <h3>Skills</h3>
+    <div class="skills-grid">
+      <div class="skill"><span class="sk-name">Acrobatics</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Animal Handling</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Arcana</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Athletics</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Deception</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">History</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">Insight</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Intimidation</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Investigation</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">Medicine</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Nature</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Perception</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Performance</span><span class="sk-num">+1</span></div>
+      <div class="skill trained"><span class="sk-name">Persuasion</span><span class="sk-num">+3</span></div>
+      <div class="skill trained"><span class="sk-name">Religion</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Sleight of Hand</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Stealth</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Survival</span><span class="sk-num">+3</span></div>
+    </div>
+    <div class="hint">Roll d20 and add the modifier.</div>
+  </div>
+
+  <div class="actions fill">
+    <div class="action-head"><span>Name</span><span>What it does</span><span>To hit</span><span>Damage</span><span>Type</span></div>
+
+    <div class="action-group">
+      <div class="section-bar offense">Attacks &amp; Damage</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Sacred Flame</span><span class="a-desc">Holy fire falls on a foe you can see.</span><span class="a-hit">DEX save 13</span><span class="a-dmg">1d8 radiant</span><span class="a-type">cantrip</span></div>
+        <div class="action"><span class="a-name">Guiding Bolt</span><span class="a-desc">A lance of light; the next ally to hit it has advantage.</span><span class="a-hit">+5</span><span class="a-dmg">4d6 radiant</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">Mace</span><span class="a-desc">A swing with your mace when magic is not needed.</span><span class="a-hit">+1</span><span class="a-dmg">1d6</span><span class="a-type">backup</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar support">Healing &amp; Support</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Cure Wounds</span><span class="a-desc">Touch a hurt friend and mend them.</span><span class="a-hit"></span><span class="a-dmg">heal 1d8+6</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">Healing Word</span><span class="a-desc">Heal a friend you can see, from across the room.</span><span class="a-hit"></span><span class="a-dmg">heal 1d4+6</span><span class="a-type">1st level, bonus</span></div>
+        <div class="action"><span class="a-name">Bless</span><span class="a-desc">Up to 3 friends add to their attacks and saves.</span><span class="a-hit"></span><span class="a-dmg">+1d4</span><span class="a-type">1st level, conc.</span></div>
+        <div class="action"><span class="a-name">Guidance</span><span class="a-desc">Touch a friend just before they try something.</span><span class="a-hit"></span><span class="a-dmg">+1d4</span><span class="a-type">cantrip</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar control">Control &amp; Special</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Hold Person</span><span class="a-desc">Freeze one humanoid enemy in place.</span><span class="a-hit">WIS save 13</span><span class="a-dmg">frozen</span><span class="a-type">2nd level, conc.</span></div>
+        <div class="action"><span class="a-name">Turn Undead</span><span class="a-desc">Undead nearby flee from your holy symbol.</span><span class="a-hit">WIS save 13</span><span class="a-dmg">flee 1 min</span><span class="a-type">Channel Div.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="turn-helper">
+    <div class="th-title">On your turn</div>
+    <div class="th-grid">
+      <div class="th-item"><span class="t-key">Move</span><span class="t-sub">up to 25 feet</span></div>
+      <div class="th-item"><span class="t-key">Action</span><span class="t-sub">cast a spell or attack</span></div>
+      <div class="th-item"><span class="t-key">Bonus Action</span><span class="t-sub">a quick extra move</span></div>
+      <div class="th-item"><span class="t-key">Reaction</span><span class="t-sub">one quick response</span></div>
+    </div>
+  </div>
+
+  <div class="trackers">
+    <div class="tracker"><span class="tk-label">1st-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">2nd-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Channel Divinity</span><span class="pips"><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Hit Dice</span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></div>
+  </div>
+
+</section>
+
+<!-- =========================== BACK: REFERENCE SIDE =========================== -->
+<section class="page back">
+
+  <div class="block">
+    <div class="section-bar control">Spells</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Sacred Flame.</span> Holy fire falls on a foe you can see. They make a Dexterity save (beat 13) or take 1d8 radiant damage. There is no roll to hit, and cover does not help them. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Guidance.</span> Touch a friend and lend a little divine help. They add 1d4 to one ability check of their choice. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Cure Wounds.</span> Touch a wounded friend and heal them 1d8 + 6 hit points. Your Disciple of Life blessing is already in that number. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Healing Word.</span> Call out and a friend you can see is healed 1d4 + 6. It is only a bonus action, so you can still move or cast. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Bless.</span> Up to three friends each add 1d4 to their attack rolls and saving throws while you concentrate. Your signature opener. <span class="a-type">1st level, concentration</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Guiding Bolt.</span> Hurl a lance of light. On a hit (roll +5) it deals 4d6 radiant, and the next ally to attack that foe has advantage. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Hold Person.</span> Point at one humanoid. They make a Wisdom save (beat 13) or freeze in place, helpless, while you concentrate. <span class="a-type">2nd level, concentration</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Turn Undead.</span> Raise your holy symbol. Every undead within 30 feet makes a Wisdom save (beat 13) or flees from you for one minute. <span class="a-type">Channel Divinity</span></div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar support">Features &amp; traits</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Disciple of Life.</span> Your healing spells restore extra hit points (already counted in your Cure Wounds and Healing Word numbers).</div></div>
+      <div class="def"><div class="gloss"><span class="term">Halfling Luck.</span> When you roll a natural 1 on the d20, reroll it and take the new number. Famously, infuriatingly lucky.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Brave.</span> You have advantage on saving throws against being frightened.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Naturally Stealthy.</span> You can hide even when only a larger creature is shielding you.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Halfling Nimbleness.</span> You can move through the space of any creature larger than you.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar">Inventory &amp; coins</div>
+    <div class="rows">
+      <ul class="inv-list">
+        <li>Ornate breastplate</li>
+        <li>Shield</li>
+        <li>Mace</li>
+        <li>Ornate holy symbol (casting focus)</li>
+        <li>Healer's kit (10 uses)</li>
+        <li>Traveller's pack: rope, torches, rations, bedroll, waterskin</li>
+      </ul>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="coins">Coins: ____ gp&nbsp;&nbsp; ____ sp&nbsp;&nbsp; ____ cp</div>
+    </div>
+  </div>
+
+  <div class="block notes-block fill">
+    <div class="section-bar">Notes</div>
+    <div class="notes-fill"></div>
+  </div>
+
+</section>
+
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telstar — Kenku Druid (Bob)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tier-elder">
+
+<!-- =========================== FRONT: PLAY SIDE =========================== -->
+<section class="page front">
+
+  <div class="identity">
+    <div class="art-box"><img src="art/telstar.png" alt="Telstar"></div>
+    <div class="who">
+      <h1 class="name">TELSTAR</h1>
+      <div class="subtitle">Kenku Druid, Circle of the Land</div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><div class="label">Hit Points</div><div class="num hp"><span class="hp-blank"></span> <span class="slash">/ 21</span></div></div>
+      <div class="vital"><div class="label">Armor Class</div><div class="num">14</div></div>
+      <div class="vital"><div class="label">Initiative</div><div class="num">+2</div></div>
+    </div>
+  </div>
+
+  <div class="abilities">
+    <div class="ability"><span class="ab-name">Strength</span><span class="ab-mod">&minus;1</span></div>
+    <div class="ability"><span class="ab-name">Dexterity</span><span class="ab-mod">+2</span></div>
+    <div class="ability"><span class="ab-name">Constitution</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Intelligence</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Wisdom</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Charisma</span><span class="ab-mod">+0</span></div>
+  </div>
+
+  <div class="skills">
+    <h3>Skills</h3>
+    <div class="skills-grid">
+      <div class="skill trained"><span class="sk-name">Acrobatics</span><span class="sk-num">+4</span></div>
+      <div class="skill trained"><span class="sk-name">Animal Handling</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Arcana</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Athletics</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Deception</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">History</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Insight</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Intimidation</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Investigation</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Medicine</span><span class="sk-num">+3</span></div>
+      <div class="skill trained"><span class="sk-name">Nature</span><span class="sk-num">+3</span></div>
+      <div class="skill trained"><span class="sk-name">Perception</span><span class="sk-num">+5</span></div>
+      <div class="skill trained"><span class="sk-name">Performance</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Persuasion</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Religion</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Sleight of Hand</span><span class="sk-num">+2</span></div>
+      <div class="skill trained"><span class="sk-name">Stealth</span><span class="sk-num">+4</span></div>
+      <div class="skill"><span class="sk-name">Survival</span><span class="sk-num">+3</span></div>
+    </div>
+    <div class="hint">Roll d20 and add the modifier.</div>
+  </div>
+
+  <!-- Actions table -->
+  <div class="actions fill">
+    <div class="action-head"><span>Name</span><span>What it does</span><span>To hit</span><span>Damage</span><span>Type</span></div>
+
+    <div class="action-group">
+      <div class="section-bar offense">Attacks &amp; Damage</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Shillelagh</span><span class="a-desc">Your gnarled staff glows and strikes with nature's force.</span><span class="a-hit">+5</span><span class="a-dmg">1d8+3</span><span class="a-type">cantrip</span></div>
+        <div class="action"><span class="a-name">Thorn Whip</span><span class="a-desc">A vine lashes out and drags an enemy 10 feet closer.</span><span class="a-hit">+5</span><span class="a-dmg">1d6</span><span class="a-type">cantrip</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar control">Snare &amp; Control</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Entangle</span><span class="a-desc">Grasping vines erupt and root enemies in place.</span><span class="a-hit">STR save 13</span><span class="a-dmg">rooted</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">Spike Growth</span><span class="a-desc">The ground sprouts thorns that shred anything moving through.</span><span class="a-hit"></span><span class="a-dmg">2d4 per 5 ft</span><span class="a-type">1st level</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar support">Support &amp; Utility</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Cure Wounds</span><span class="a-desc">Lay your hands on a hurt friend and heal them.</span><span class="a-hit"></span><span class="a-dmg">heal 1d8+3</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">Speak with Animals</span><span class="a-desc">Talk with any beast for ten minutes.</span><span class="a-hit"></span><span class="a-dmg">talk to beasts</span><span class="a-type">ritual, free</span></div>
+        <div class="action"><span class="a-name">Wild Shape: Raven</span><span class="a-desc">Turn into a raven to scout ahead or slip away.</span><span class="a-hit"></span><span class="a-dmg">become a raven</span><span class="a-type">2 per rest</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="turn-helper">
+    <div class="th-title">On your turn</div>
+    <div class="th-grid">
+      <div class="th-item"><span class="t-key">Move</span><span class="t-sub">up to 30 feet</span></div>
+      <div class="th-item"><span class="t-key">Action</span><span class="t-sub">cast a spell or attack</span></div>
+      <div class="th-item"><span class="t-key">Bonus Action</span><span class="t-sub">a quick extra move</span></div>
+      <div class="th-item"><span class="t-key">Reaction</span><span class="t-sub">one quick response</span></div>
+    </div>
+  </div>
+
+  <div class="trackers">
+    <div class="tracker"><span class="tk-label">1st-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">2nd-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Wild Shape</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+  </div>
+
+</section>
+
+<!-- =========================== BACK: REFERENCE SIDE =========================== -->
+<section class="page back">
+
+  <div class="block">
+    <div class="section-bar control">Spells</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Shillelagh.</span> Your gnarled quarterstaff glows with nature's power and strikes hard. On a hit (roll +5) it deals 1d8 + 3. Your reliable melee attack. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Thorn Whip.</span> A vine-like whip lashes out. On a hit (roll +5) it deals 1d6 and drags the enemy 10 feet toward you. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Entangle.</span> Thick vines burst from the ground in a wide area. Each enemy there makes a Strength save (beat 13) or is rooted in place while you concentrate. <span class="a-type">1st level, concentration</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Spike Growth.</span> A patch of ground sprouts sharp thorns. Anything that moves through it takes 2d4 damage for every 5 feet travelled. <span class="a-type">1st level, concentration</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Cure Wounds.</span> Lay your hands on a hurt friend and heal them 1d8 + 3. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Speak with Animals.</span> Chat with any beast for 10 minutes. It is a ritual, so it costs no spell slot.<span class="a-type">ritual</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Wild Shape: Raven.</span> Turn into a raven to scout ahead, fly over a wall, or slip away, then change back. You can do this twice between rests. <span class="a-type">2 per rest</span></div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar support">Features &amp; traits</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Kenku Mimicry.</span> You are able to mimic sounds and voices you have heard.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Expert Forgery.</span> You copy handwriting and duplicate small objects with uncanny skill.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Wild Shape.</span> Twice between rests you may turn into a raven, then change back to yourself.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Circle of the Land and Sky.</span> Your druid order is tied to the forest and the sky.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar">Inventory &amp; coins</div>
+    <div class="rows">
+      <ul class="inv-list">
+        <li>Hide armour</li>
+        <li>Gnarled quarterstaff (Shillelagh focus)</li>
+        <li>Lute</li>
+        <li>Feathered totem</li>
+        <li>Pipe and herb pouch</li>
+        <li>Poison dagger (3 doses)</li>
+        <li>3 smoke bombs</li>
+      </ul>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="coins">Coins: ____ gp&nbsp;&nbsp; ____ sp&nbsp;&nbsp; ____ cp</div>
+    </div>
+  </div>
+
+  <div class="block notes-block fill">
+    <div class="section-bar">Notes</div>
+    <div class="notes-fill"></div>
+  </div>
+
+</section>
+
+</body>
+</html>

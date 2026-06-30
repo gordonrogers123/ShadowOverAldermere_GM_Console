@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Samsara — Gnome Wizard (Sachin)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tier-young">
+
+<!-- =========================== FRONT: PLAY SIDE =========================== -->
+<section class="page front">
+
+  <!-- Identity: picture top-left, name, then three vitals -->
+  <div class="identity">
+    <div class="art-box"><img src="art/samsara.png" alt="Samsara"></div>
+    <div class="who">
+      <h1 class="name">SAMSARA</h1>
+      <div class="subtitle">Gnome Wizard, School of Divination</div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><div class="label">Hit Points</div><div class="num hp"><span class="hp-blank"></span> <span class="slash">/ 17</span></div></div>
+      <div class="vital"><div class="label">Armor Class</div><div class="num">12</div></div>
+      <div class="vital"><div class="label">Initiative</div><div class="num">+2</div></div>
+    </div>
+  </div>
+
+  <!-- Abilities, spelled out -->
+  <div class="abilities">
+    <div class="ability"><span class="ab-name">Strength</span><span class="ab-mod">&minus;1</span></div>
+    <div class="ability"><span class="ab-name">Dexterity</span><span class="ab-mod">+2</span></div>
+    <div class="ability"><span class="ab-name">Constitution</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Intelligence</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Wisdom</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Charisma</span><span class="ab-mod">+0</span></div>
+  </div>
+
+  <!-- Skills: all 18 -->
+  <div class="skills">
+    <h3>Skills</h3>
+    <div class="skills-grid">
+      <div class="skill"><span class="sk-name">Acrobatics</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Animal Handling</span><span class="sk-num">+1</span></div>
+      <div class="skill trained"><span class="sk-name">Arcana</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Athletics</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Deception</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">History</span><span class="sk-num">+5</span></div>
+      <div class="skill trained"><span class="sk-name">Insight</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Intimidation</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">Investigation</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Medicine</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Nature</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Perception</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Performance</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Persuasion</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Religion</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Sleight of Hand</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Stealth</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Survival</span><span class="sk-num">+1</span></div>
+    </div>
+    <div class="hint">Roll d20 and add the modifier.</div>
+  </div>
+
+  <!-- Portent: the centrepiece -->
+  <div class="spotlight" style="flex:0 0 auto; margin-bottom:0.1in;">
+    <div class="sl-title">Portent, bend fate</div>
+    <div class="sl-body">Each morning roll <strong>two d20</strong> and note them here: <strong>(__) (__)</strong>. Before your next long rest, swap one of them in for any d20 roll at the table, yours or an enemy's.</div>
+  </div>
+
+  <!-- Actions table -->
+  <div class="actions fill">
+    <div class="action-head"><span>Name</span><span>What it does</span><span>To hit</span><span>Damage</span><span>Type</span></div>
+
+    <div class="action-group">
+      <div class="section-bar offense">Attacks &amp; Damage</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Fire Bolt</span><span class="a-desc">A small dart of fire shoots from your hand.</span><span class="a-hit">+5</span><span class="a-dmg">1d10 fire</span><span class="a-type">cantrip</span></div>
+        <div class="action"><span class="a-name">Magic Missile</span><span class="a-desc">Three glowing darts streak out and always hit.</span><span class="a-hit">auto</span><span class="a-dmg">1d4+1 each</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">Dagger</span><span class="a-desc">A quick stab if something gets too close.</span><span class="a-hit">+4</span><span class="a-dmg">1d4+2</span><span class="a-type">weapon</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar support">Defend &amp; Escape</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Shield</span><span class="a-desc">A wall of force guards you for one round.</span><span class="a-hit"></span><span class="a-dmg">AC 17</span><span class="a-type">1st level, reaction</span></div>
+        <div class="action"><span class="a-name">Misty Step</span><span class="a-desc">You blink to a spot you can see nearby.</span><span class="a-hit"></span><span class="a-dmg">blink 30 ft</span><span class="a-type">2nd level, bonus</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar control">Control</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Sleep</span><span class="a-desc">Enemies fall into a deep sleep, weakest first.</span><span class="a-hit"></span><span class="a-dmg">5d8 worth</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">Web</span><span class="a-desc">Sticky webs fill the area and trap foes.</span><span class="a-hit">DEX save 13</span><span class="a-dmg">stuck fast</span><span class="a-type">2nd level</span></div>
+        <div class="action"><span class="a-name">Mage Hand</span><span class="a-desc">A ghostly hand appears to fetch or move things.</span><span class="a-hit"></span><span class="a-dmg">30 ft reach</span><span class="a-type">cantrip</span></div>
+        <div class="action"><span class="a-name">Minor Illusion</span><span class="a-desc">You conjure a small sound or image to fool foes.</span><span class="a-hit"></span><span class="a-dmg"></span><span class="a-type">cantrip</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- On your turn -->
+  <div class="turn-helper">
+    <div class="th-title">On your turn</div>
+    <div class="th-grid">
+      <div class="th-item"><span class="t-key">Move</span><span class="t-sub">up to 25 feet</span></div>
+      <div class="th-item"><span class="t-key">Action</span><span class="t-sub">cast a spell or attack</span></div>
+      <div class="th-item"><span class="t-key">Bonus Action</span><span class="t-sub">a quick extra move</span></div>
+      <div class="th-item"><span class="t-key">Reaction</span><span class="t-sub">one quick response</span></div>
+    </div>
+  </div>
+
+  <!-- Spell slots: just the boxes -->
+  <div class="trackers">
+    <div class="tracker"><span class="tk-label">1st-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">2nd-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Portent dice</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Arcane Recovery</span><span class="pips"><span class="pip"></span></span></div>
+  </div>
+
+</section>
+
+<!-- =========================== BACK: REFERENCE SIDE =========================== -->
+<section class="page back">
+
+  <div class="block">
+    <div class="section-bar control">Spells</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Fire Bolt.</span> A small dart of fire shoots from your hand. On a hit (roll +5) it deals 1d10 fire damage. Your dependable attack, usable all day. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Magic Missile.</span> Three glowing darts streak out and strike automatically, with no roll to hit, for 1d4+1 each. Great for finishing a weak or fleeing enemy. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Shield.</span> As a reaction the instant you are hit, a wall of force flares up and your AC jumps to 17 until your next turn, often turning the hit into a miss. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Misty Step.</span> You vanish in a puff of silvery mist and reappear up to 30 feet away. A quick escape, used as a bonus action. <span class="a-type">2nd level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Sleep.</span> Roll 5d8. That many hit points of creatures drop into a magical sleep, weakest first, with no save. Best early in a fight. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Web.</span> Thick, sticky webs fill a 20 foot cube. Each creature there makes a Dexterity save (beat 13) or is stuck fast. <span class="a-type">2nd level, concentration</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Mage Hand.</span> A faint, ghostly hand appears and can fetch, push, or fiddle with objects up to 30 feet away. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Minor Illusion.</span> You create a small sound or a small image for a short while to fool, distract, or misdirect. <span class="a-type">cantrip</span></div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar support">Features &amp; traits</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Portent.</span> Each morning you roll two d20 and note them. Before your next long rest you may replace any one d20 roll at the table, yours or an enemy's, with one of your numbers.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Arcane Recovery.</span> Once a day, on a short rest, you recover some of your spent spell slots.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Gnome Cunning.</span> You have advantage on Intelligence, Wisdom, and Charisma saving throws against magic.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Darkvision.</span> You can see in dim light and in darkness in shades of grey.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar">Inventory &amp; coins</div>
+    <div class="rows">
+      <ul class="inv-list">
+        <li>Dagger (last resort)</li>
+        <li>Spellbook (annotated)</li>
+        <li>Crystal lens (spell focus)</li>
+        <li>Fine writing inks</li>
+      </ul>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="coins">Coins: ____ gp&nbsp;&nbsp; ____ sp&nbsp;&nbsp; ____ cp</div>
+    </div>
+  </div>
+
+  <div class="block notes-block fill">
+    <div class="section-bar">Notes</div>
+    <div class="notes-fill"></div>
+  </div>
+
+</section>
+
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truf — Tiefling Rogue (Laxmi)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tier-elder">
+
+<!-- =========================== FRONT: PLAY SIDE =========================== -->
+<section class="page front">
+
+  <div class="identity">
+    <div class="art-box"><img src="art/truf.png" alt="Truf"></div>
+    <div class="who">
+      <h1 class="name">TRUF</h1>
+      <div class="subtitle">Tiefling Rogue, Arcane Trickster</div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><div class="label">Hit Points</div><div class="num hp"><span class="hp-blank"></span> <span class="slash">/ 21</span></div></div>
+      <div class="vital"><div class="label">Armor Class</div><div class="num">15</div></div>
+      <div class="vital"><div class="label">Initiative</div><div class="num">+3</div></div>
+    </div>
+  </div>
+
+  <div class="abilities">
+    <div class="ability"><span class="ab-name">Strength</span><span class="ab-mod">&minus;1</span></div>
+    <div class="ability"><span class="ab-name">Dexterity</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Constitution</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Intelligence</span><span class="ab-mod">+2</span></div>
+    <div class="ability"><span class="ab-name">Wisdom</span><span class="ab-mod">+0</span></div>
+    <div class="ability"><span class="ab-name">Charisma</span><span class="ab-mod">+2</span></div>
+  </div>
+
+  <div class="skills">
+    <h3>Skills</h3>
+    <div class="skills-grid">
+      <div class="skill"><span class="sk-name">Acrobatics</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Animal Handling</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Arcana</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Athletics</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill trained"><span class="sk-name">Deception</span><span class="sk-num">+6</span></div>
+      <div class="skill"><span class="sk-name">History</span><span class="sk-num">+2</span></div>
+      <div class="skill trained"><span class="sk-name">Insight</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Intimidation</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Investigation</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Medicine</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Nature</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Perception</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">Performance</span><span class="sk-num">+4</span></div>
+      <div class="skill trained"><span class="sk-name">Persuasion</span><span class="sk-num">+6</span></div>
+      <div class="skill"><span class="sk-name">Religion</span><span class="sk-num">+2</span></div>
+      <div class="skill trained"><span class="sk-name">Sleight of Hand</span><span class="sk-num">+5</span></div>
+      <div class="skill trained"><span class="sk-name">Stealth</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Survival</span><span class="sk-num">+0</span></div>
+    </div>
+    <div class="hint">Roll d20 and add the modifier. Persuasion and Deception are doubled.</div>
+  </div>
+
+  <!-- The tarot hook -->
+  <div class="spotlight" style="flex:0 0 auto; margin-bottom:0.1in;">
+    <div class="sl-title">Your deck is your spellbook</div>
+    <div class="sl-body">Each card is a real spell wearing a costume. On your turn you may play one: just say its name, for example <strong>"I play The Lovers."</strong></div>
+  </div>
+
+  <div class="actions fill">
+    <div class="action-head"><span>Name</span><span>What it does</span><span>To hit</span><span>Damage</span><span>Type</span></div>
+
+    <div class="action-group">
+      <div class="section-bar offense">Attacks</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Dagger</span><span class="a-desc">A quick stab or hurled blade. Add Sneak Attack if you have advantage or an ally flanks.</span><span class="a-hit">+5</span><span class="a-dmg">1d4+3</span><span class="a-type">throw or slash</span></div>
+        <div class="action"><span class="a-name">Sneak Attack</span><span class="a-desc">Extra damage once per turn when you have advantage or a friend flanks the target.</span><span class="a-hit"></span><span class="a-dmg">+2d6</span><span class="a-type">once/turn</span></div>
+        <div class="action"><span class="a-name">The Tower</span><span class="a-desc">Hellish Rebuke. When you are hit, wreathe the attacker in fire. Reaction, once per day.</span><span class="a-hit"></span><span class="a-dmg">2d10 fire</span><span class="a-type">reaction</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar control">The Deck &mdash; tricks &amp; control</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">The Lovers</span><span class="a-desc">Charm Person. One humanoid sees you as a trusted friend.</span><span class="a-hit">WIS save 12</span><span class="a-dmg">charmed</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">The Hanged Man</span><span class="a-desc">Sleep. Weak or wounded enemies drift into slumber.</span><span class="a-hit"></span><span class="a-dmg">5d8 worth</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">The Moon</span><span class="a-desc">Disguise Self. Cloak yourself in a new appearance.</span><span class="a-hit"></span><span class="a-dmg">new look</span><span class="a-type">1st level</span></div>
+        <div class="action"><span class="a-name">The Magician</span><span class="a-desc">Mage Hand. An invisible hand fetches, lifts, and picks locks or pockets.</span><span class="a-hit"></span><span class="a-dmg">30 ft reach</span><span class="a-type">cantrip</span></div>
+        <div class="action"><span class="a-name">The Devil</span><span class="a-desc">Thaumaturgy. Boom your voice, flicker flames, or unsettle a room.</span><span class="a-hit"></span><span class="a-dmg">at will</span><span class="a-type">cantrip</span></div>
+        <div class="action"><span class="a-name">The High Priestess</span><span class="a-desc">Minor Illusion. A false sound or small silent image to misdirect.</span><span class="a-hit"></span><span class="a-dmg">at will</span><span class="a-type">cantrip</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar support">Help &amp; Escape</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Cunning Action</span><span class="a-desc">Dash, Disengage, or Hide.</span><span class="a-hit"></span><span class="a-dmg"></span><span class="a-type">bonus action</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="turn-helper">
+    <div class="th-title">On your turn</div>
+    <div class="th-grid">
+      <div class="th-item"><span class="t-key">Move</span><span class="t-sub">up to 30 feet</span></div>
+      <div class="th-item"><span class="t-key">Action</span><span class="t-sub">stab, or play a card</span></div>
+      <div class="th-item"><span class="t-key">Bonus Action</span><span class="t-sub">Cunning Action</span></div>
+      <div class="th-item"><span class="t-key">Reaction</span><span class="t-sub">The Tower, when hurt</span></div>
+    </div>
+  </div>
+
+  <div class="trackers">
+    <div class="tracker"><span class="tk-label">1st-level slots</span><span class="pips"><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Hellish Rebuke</span><span class="pips"><span class="pip"></span></span></div>
+  </div>
+
+</section>
+
+<!-- =========================== BACK: REFERENCE SIDE =========================== -->
+<section class="page back">
+
+  <div class="block">
+    <div class="section-bar control">Your deck, card by card</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">The Magician &mdash; Mage Hand.</span> An invisible spectral hand appears and can fetch, lift, and pick locks or pockets up to 30 feet away. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">The Devil &mdash; Thaumaturgy.</span> Boom your voice, make distant flames flicker, or create other minor unsettling effects. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">The High Priestess &mdash; Minor Illusion.</span> Create a false sound or a small, silent image to misdirect attention. <span class="a-type">cantrip</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">The Lovers &mdash; Charm Person.</span> One humanoid you can see makes a Wisdom save (beat 12) or treats you as a trusted friend. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">The Moon &mdash; Disguise Self.</span> You cloak yourself in an illusory new appearance until you end it. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">The Hanged Man &mdash; Sleep.</span> Roll 5d8; that many hit points of creatures fall asleep, weakest first, with no save. <span class="a-type">1st level</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">The Tower &mdash; Hellish Rebuke.</span> As a reaction, when something damages you, wreathe it in 2d10 fire. Once per day, from your tiefling blood. <span class="a-type">reaction</span></div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar support">Features &amp; traits</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Sneak Attack.</span> Once a turn, add 2d6 damage when you have advantage or a friend stands beside your target.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Cunning Action.</span> Every turn you may Dash, Disengage, or Hide as a bonus action. This is how you slip away.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Tiefling.</span> You see in the dark, resist fire, and carry the innate magic of The Devil and The Tower.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar">Inventory &amp; coins</div>
+    <div class="rows">
+      <ul class="inv-list">
+        <li>Fine studded leather armour</li>
+        <li>Two daggers</li>
+        <li>Ornate tarot deck (arcane focus)</li>
+        <li>Thieves' tools</li>
+        <li>Disguise kit</li>
+        <li>Fine clothes</li>
+        <li>3 trinkets</li>
+      </ul>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="coins">Coins: ____ gp&nbsp;&nbsp; ____ sp&nbsp;&nbsp; ____ cp</div>
+    </div>
+  </div>
+
+  <div class="block notes-block fill">
+    <div class="section-bar">Notes</div>
+    <div class="notes-fill"></div>
+  </div>
+
+</section>
+
+</body>
+</html>
