@@ -204,7 +204,7 @@ export function mountGm(root) {
               </div>
 
               <details class="field builder-collapse" open>
-                <summary>Background variants <small>(first is shown first; &ldquo;Title screen&rdquo; reveals to a map)</small></summary>
+                <summary>Background variants</summary>
                 <div class="variant-head" aria-hidden="true">
                   <span>Name</span><span>Background</span><span>Use</span><span></span>
                 </div>
@@ -213,12 +213,12 @@ export function mountGm(root) {
               </details>
 
               <details class="field char-field builder-collapse" open>
-                <summary>Left characters <small>(one shown at a time — cues pick who enters)</small></summary>
+                <summary>Left characters</summary>
                 <div class="char-roster" data-side="left"></div>
                 <button class="gm-button btn--quiet add-char" data-side="left" type="button">Add character</button>
               </details>
               <details class="field char-field builder-collapse" open>
-                <summary>Right characters <small>(one shown at a time — cues pick who enters)</small></summary>
+                <summary>Right characters</summary>
                 <div class="char-roster" data-side="right"></div>
                 <button class="gm-button btn--quiet add-char" data-side="right" type="button">Add character</button>
               </details>
@@ -226,7 +226,7 @@ export function mountGm(root) {
 
             <div class="builder-col">
               <details class="field builder-collapse">
-                <summary>Roster <small>(map tokens &mdash; who can be placed on the map)</small></summary>
+                <summary>Roster</summary>
                 <div class="roster-pick">
                   <div class="roster-group">
                     <div class="roster-group-head">
@@ -246,16 +246,16 @@ export function mountGm(root) {
               </details>
 
               <details class="field builder-collapse">
-                <summary>Audio <small>(music beds, ambience loops, one-shot SFX)</small></summary>
+                <summary>Audio</summary>
                 <div class="audio-pick">
-                  <div class="audio-pick-group"><span class="audio-pick-label">Music <small>(one or more beds; cues choose which plays)</small></span><div class="b-music"></div></div>
+                  <div class="audio-pick-group"><span class="audio-pick-label">Music</span><div class="b-music"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">Ambience</span><div class="b-ambience"></div></div>
                   <div class="audio-pick-group"><span class="audio-pick-label">SFX</span><div class="b-sfx"></div></div>
                 </div>
               </details>
 
               <details class="field builder-collapse" open>
-                <summary>Cues <small>(one-press stage transitions — pick a background, characters, audio, then keyframe what&rsquo;s timed)</small></summary>
+                <summary>Cues</summary>
                 <div class="cue-list"></div>
                 <p class="cue-empty-hint" hidden>No cues yet. Press <strong>+ New cue</strong> to build one.</p>
                 <button class="gm-button btn--quiet cue-new" type="button">+ New cue</button>
@@ -2596,7 +2596,7 @@ export function mountGm(root) {
     const noteF = field('Notes');
     const ta = document.createElement('textarea');
     ta.className = 'cue-notes'; ta.rows = 2;
-    ta.placeholder = 'Shown while this cue is live (falls back to the scene note)';
+    ta.placeholder = 'Shown while this cue is live';
     ta.value = cue.notes || '';
     ta.addEventListener('input', () => { cue.notes = ta.value; });
     noteF.append(ta); host.append(noteF);
@@ -2652,7 +2652,7 @@ export function mountGm(root) {
 
     if (!lanes.length) {
       const hint = document.createElement('p'); hint.className = 'cue-tl-empty';
-      hint.textContent = 'Pick some content above (background, characters, audio…) to choose what to keyframe.';
+      hint.textContent = 'Pick some content above to choose what to keyframe.';
       host.append(hint);
       return;
     }
