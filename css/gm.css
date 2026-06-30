@@ -482,11 +482,19 @@ body.view-gm {
 .view-gm .scene-edit:hover { background: var(--paper); }
 .view-gm .scene-list li:has(.scene-del) .scene-edit { right: 2.2rem; }
 .view-gm .scene-list li:has(.scene-del) .scene-button { padding-right: 4.2rem; }
+/* Transient toast: a floating dark pill at the bottom-centre that fades in and
+   auto-dismisses (see setStatus). Was a permanent rail line, so "Saved ..."
+   never went away. */
 .view-gm .rescan-status {
-  margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--neutral);
-  background: var(--gm-panel); border: 1px solid var(--rule);
-  border-radius: 8px; padding: 0.5rem 0.7rem;
+  position: fixed; left: 50%; bottom: 1.5rem; z-index: 300;
+  margin: 0; max-width: min(90vw, 32rem); font-size: 0.92rem; line-height: 1.35;
+  color: var(--fill); background: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: var(--radius-pill);
+  padding: 0.6rem 1.15rem; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(0.6rem);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
+.view-gm .rescan-status.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ---- Live controls ---- */
 .view-gm .control-row {

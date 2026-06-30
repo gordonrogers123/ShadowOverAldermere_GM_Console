@@ -1731,8 +1731,15 @@ export function mountGm(root) {
       const c = castEntry(active.castId, 'enemy');
       if (c && c.stats) { lastStatCastId = active.castId; return c.stats; }
     }
-    const fallbackId = lastStatCastId || placed.filter((t) => t.kind === 'enemy').map((t) => t.castId)
-      .find((id) => { const c = castEntry(id, 'enemy'); return c && c.stats; });
+    // Keep the last-shown foe's card up during a hero's turn -- but ONLY while
+    // that enemy is still placed in THIS scene. Otherwise it lingers from an
+    // earlier scene (e.g. a stale "Roadside Raider" over a scene whose only foe
+    // is a "Pale Husk") until the first Apply sets an active token. Drop it if
+    // it's no longer on the board, then fall to the first placed enemy with stats.
+    const enemyIds = placed.filter((t) => t.kind === 'enemy').map((t) => t.castId);
+    if (lastStatCastId && !enemyIds.includes(lastStatCastId)) lastStatCastId = null;
+    const fallbackId = (lastStatCastId && enemyIds.includes(lastStatCastId)) ? lastStatCastId
+      : enemyIds.find((id) => { const c = castEntry(id, 'enemy'); return c && c.stats; });
     if (fallbackId) { const c = castEntry(fallbackId, 'enemy'); if (c && c.stats) { lastStatCastId = fallbackId; return c.stats; } }
     return null;
   }
@@ -2941,9 +2948,17 @@ export function mountGm(root) {
     renderUI();
   }
 
-  function setStatus(msg) {
-    els.rescanStatus.hidden = false;
-    els.rescanStatus.textContent = msg;
+  // A transient toast: shows the message, then auto-dismisses after a few seconds
+  // (pass sticky=true to keep an error up until the next status). It used to be a
+  // permanent line in the rail, so "Saved ..." lingered forever.
+  let statusTimer = 0;
+  function setStatus(msg, sticky) {
+    const el = els.rescanStatus;
+    el.hidden = false;
+    el.textContent = msg;
+    el.classList.add('is-visible');
+    if (statusTimer) { clearTimeout(statusTimer); statusTimer = 0; }
+    if (!sticky) statusTimer = setTimeout(() => { el.classList.remove('is-visible'); statusTimer = 0; }, 3200);
   }
 
   async function rescan() {
@@ -2964,7 +2979,7 @@ export function mountGm(root) {
       setStatus('Rescanned: ' + backgrounds.length + ' backgrounds, ' + characters.length + ' characters, '
         + audioMusic.length + ' music, ' + audioAmbience.length + ' ambience, ' + audioSfx.length + ' sfx.');
     } catch (err) {
-      setStatus('Rescan needs the local server (run: python3 scripts/serve.py). Or run scripts/sync-assets.sh and reload. (' + err.message + ')');
+      setStatus('Rescan needs the local server (run: python3 scripts/serve.py). Or run scripts/sync-assets.sh and reload. (' + err.message + ')', true);
     }
   }
   els.rescanBtn.addEventListener('click', rescan);
