@@ -1627,26 +1627,96 @@ export function mountGm(root) {
     }
     commit();
   }
+  // ---- Per-token combat controls in the roster (map mode) ----
+  // HP: cur/max + a typed amount with Damage(-) / Heal(+) -- the quick
+  // D&D-Beyond style. Max seeds from the cast stat block; applyHp clamps [0,max].
+  function tokenHpControl(t) {
+    const wrap = document.createElement('div'); wrap.className = 'mmr-hp';
+    const cast = castEntry(t.castId, t.kind);
+    const hp = t.hp || {};
+    const max = hp.max != null ? hp.max : ((cast && cast.stats && cast.stats.hp != null) ? Math.round(+cast.stats.hp) : null);
+    const cur = hp.current != null ? hp.current : max;
+    const num = document.createElement('span');
+    num.className = 'mmr-hpnum' + (max != null && cur != null && cur < max ? ' is-hurt' : '');
+    num.textContent = (cur != null ? cur : '—') + ' / ' + (max != null ? max : '—');
+    const amt = document.createElement('input');
+    amt.type = 'number'; amt.className = 'mmr-hpamt'; amt.placeholder = '0'; amt.min = '0';
+    amt.title = 'Amount to apply'; amt.setAttribute('aria-label', t.label + ' damage / heal amount');
+    const mk = (cls, sign, glyph, label) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'mmr-hpbtn ' + cls; b.textContent = glyph;
+      b.title = label; b.setAttribute('aria-label', label + ' ' + t.label);
+      b.addEventListener('click', () => { const v = parseInt(amt.value, 10); if (isFinite(v) && v > 0) applyHp(t.instId, sign * v); });
+      return b;
+    };
+    wrap.append(num, amt, mk('is-dmg', -1, '−', 'Damage'), mk('is-heal', 1, '+', 'Heal'));
+    return wrap;
+  }
+  // Conditions: removable chips + an add control (5e presets + a custom entry).
+  function tokenConditionsControl(t) {
+    const wrap = document.createElement('div'); wrap.className = 'mmr-cond';
+    const conds = Array.isArray(t.conditions) ? t.conditions : [];
+    for (const cn of conds) {
+      const chip = document.createElement('span'); chip.className = 'cond-chip';
+      chip.append(document.createTextNode(cn));
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'cond-x'; x.textContent = '✕';
+      x.title = 'Remove ' + cn; x.setAttribute('aria-label', 'Remove ' + cn + ' from ' + t.label);
+      x.addEventListener('click', () => removeCondition(t.instId, cn));
+      chip.append(x); wrap.append(chip);
+    }
+    const sel = document.createElement('select'); sel.className = 'cond-add';
+    sel.setAttribute('aria-label', 'Add a condition to ' + t.label);
+    const ph = document.createElement('option'); ph.value = ''; ph.textContent = '+ condition'; sel.append(ph);
+    for (const name of CONDITIONS) {
+      if (conds.some((c) => c.toLowerCase() === name.toLowerCase())) continue;
+      const o = document.createElement('option'); o.value = name; o.textContent = name; sel.append(o);
+    }
+    const cu = document.createElement('option'); cu.value = '__custom__'; cu.textContent = 'Custom…'; sel.append(cu);
+    sel.addEventListener('change', () => {
+      const v = sel.value; sel.value = '';
+      if (!v) return;
+      if (v === '__custom__') { const name = (window.prompt('Condition name?') || '').trim(); if (name) addCondition(t.instId, name); return; }
+      addCondition(t.instId, v);
+    });
+    wrap.append(sel);
+    return wrap;
+  }
+  // A roster category as a columnar table: Name · Init · HP · Condition · Vis · ✕.
   function rosterColumn(label, addAll, placed) {
     const col = document.createElement('div'); col.className = 'mmr-cat';
     const head = document.createElement('div'); head.className = 'mmr-head';
     const lab = document.createElement('span'); lab.className = 'mmr-label'; lab.textContent = label;
-    const all = document.createElement('button');
-    all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
+    const all = document.createElement('button'); all.className = 'gm-button btn--quiet mmr-addall'; all.type = 'button'; all.textContent = 'Add all';
     all.addEventListener('click', addAll);
     head.append(lab, all);
-    // Reveal all / Hide all once at least one of the group is on the board.
     if (placed && placed.length) {
       const anyHidden = placed.some((t) => t.visible === false);
-      const rev = document.createElement('button');
-      rev.className = 'gm-button btn--quiet mmr-revealall'; rev.type = 'button';
+      const rev = document.createElement('button'); rev.className = 'gm-button btn--quiet mmr-revealall'; rev.type = 'button';
       rev.textContent = anyHidden ? 'Reveal all' : 'Hide all';
       rev.addEventListener('click', () => setGroupVisible(placed, anyHidden));
       head.append(rev);
     }
-    const list = document.createElement('div'); list.className = 'mmr-list';
-    col.append(head, list);
-    return { col, list };
+    const table = document.createElement('table'); table.className = 'mmr-table';
+    const thead = document.createElement('thead'); const htr = document.createElement('tr');
+    for (const [txt, cls] of [['Name', ''], ['Init', 'c'], ['HP · dmg / heal', ''], ['Condition', ''], ['Vis', 'c'], ['', 'c']]) {
+      const th = document.createElement('th'); if (cls) th.className = cls; th.textContent = txt; htr.append(th);
+    }
+    thead.append(htr);
+    const tbody = document.createElement('tbody');
+    table.append(thead, tbody); col.append(head, table);
+    return { col, tbody };
+  }
+  // A placed token's full row (hero, or an enemy instance via rowClass 'mmr-copy').
+  function placedRow(t, c, rowClass) {
+    const tr = document.createElement('tr'); tr.className = 'mmr-row is-placed' + (rowClass ? ' ' + rowClass : '');
+    const nameTd = document.createElement('td'); nameTd.className = 'mmr-namecell';
+    nameTd.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(t.label, t.visible === false));
+    const initTd = document.createElement('td'); initTd.className = 'c'; initTd.append(tokenRollInput(t));
+    const hpTd = document.createElement('td'); hpTd.append(tokenHpControl(t));
+    const condTd = document.createElement('td'); condTd.append(tokenConditionsControl(t));
+    const visTd = document.createElement('td'); visTd.className = 'c'; visTd.append(rosterVisBtn(t));
+    const delTd = document.createElement('td'); delTd.className = 'c'; delTd.append(rosterDelBtn(t));
+    tr.append(nameTd, initTd, hpTd, condTd, visTd, delTd);
+    return tr;
   }
 
   function renderRoster(scene) {
@@ -1657,43 +1727,36 @@ export function mountGm(root) {
     els.mapRoster.innerHTML = '';
 
     if (!heroes.length && !enemies.length) {
-      const p = document.createElement('p');
-      p.className = 'mmr-empty';
+      const p = document.createElement('p'); p.className = 'mmr-empty';
       p.textContent = 'No roster set. Edit the scene to choose heroes and enemies.';
-      els.mapRoster.append(p);
-      return;
+      els.mapRoster.append(p); return;
     }
 
+    const cell = (cls, span) => { const e = document.createElement('td'); if (cls) e.className = cls; if (span) e.colSpan = span; return e; };
+    const nameCell = (c, label, hidden) => { const e = cell('mmr-namecell'); e.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(label, hidden)); return e; };
+    const addRow = (tbody, cells, cls) => { const tr = document.createElement('tr'); tr.className = 'mmr-row' + (cls ? ' ' + cls : ''); for (const td of cells) tr.append(td); tbody.append(tr); };
+
     if (heroes.length) {
-      // Add all skips heroes already placed (addToken is a no-op for those).
-      const { col, list } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
+      const { col, tbody } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
       for (const id of heroes) {
         const c = castEntry(id, 'hero'); if (!c) continue;
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
-        const row = rosterRow(inst ? 'is-placed' : null);
-        row.append(rosterSwatch(c.ringColor), rosterName(c.name, inst && inst.visible === false));
-        if (inst) row.append(tokenRollInput(inst), rosterVisBtn(inst), rosterDelBtn(inst));
-        else row.append(rosterAddBtn(id, 'hero'));
-        list.append(row);
+        if (inst) tbody.append(placedRow(inst, c));
+        else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'hero')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 4), addTd]); }
       }
       els.mapRoster.append(col);
     }
 
     if (enemies.length) {
-      // Add all drops one copy of each enemy type.
-      const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
-      // (Roll enemies now lives in the initiative panel footer -- it fills each
-      // enemy's own initiative field with d20 + the type modifier; Apply sorts.)
+      const { col, tbody } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
+      // (Roll enemies lives in the initiative panel footer; the per-type modifier
+      // field stays here on the type row.)
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
-        const typeRow = rosterRow('mmr-type');
-        typeRow.append(rosterSwatch(c.ringColor), rosterName(c.name), enemyModInput(id), rosterAddBtn(id, 'enemy'));
-        list.append(typeRow);
-        for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) {
-          const row = rosterRow('mmr-copy');
-          row.append(rosterSwatch(c.ringColor), rosterName(t.label, t.visible === false), tokenRollInput(t), rosterVisBtn(t), rosterDelBtn(t));
-          list.append(row);
-        }
+        const modTd = cell('c'); modTd.append(enemyModInput(id));
+        const addTd = cell('c', 2); addTd.append(rosterAddBtn(id, 'enemy'));
+        addRow(tbody, [nameCell(c, c.name, false), modTd, cell('mmr-spacer', 2), addTd], 'mmr-type');
+        for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) tbody.append(placedRow(t, c, 'mmr-copy'));
       }
       els.mapRoster.append(col);
     }

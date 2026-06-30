@@ -888,27 +888,46 @@ body.view-gm {
    under a type row that adds more. Collapses to one column on a narrow rail. */
 .view-gm .mapmode-roster { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
 .view-gm .mmr-head {
-  display: flex; align-items: center; gap: var(--space-2);
-  margin-bottom: var(--space-2); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);
 }
 .view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-right: auto; }
 .view-gm .mmr-addall, .view-gm .mmr-revealall, .view-gm .mmr-rollenemies { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
-.view-gm .mmr-list { display: flex; flex-direction: column; gap: var(--space-1); }
-.view-gm .mmr-row { display: flex; align-items: center; gap: var(--space-2); }
-.view-gm .mmr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.view-gm .mmr-init { flex: 0 0 3.6rem; width: 3.6rem; padding: 0.25rem 0.4rem; text-align: center; }
+/* Roster as a columnar table: Name · Init · HP · Condition · Vis · ✕. */
+.view-gm .mmr-table { width: 100%; border-collapse: collapse; }
+.view-gm .mmr-table th { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.04em; color: var(--neutral); font-weight: 700; text-align: left; padding: 0.1rem 0.4rem 0.3rem; border-bottom: 1px solid var(--rule); }
+.view-gm .mmr-table th.c, .view-gm .mmr-table td.c { text-align: center; }
+.view-gm .mmr-table td { padding: 0.3rem 0.4rem; border-bottom: 1px solid #ece5d4; vertical-align: middle; }
+.view-gm .mmr-table tr:last-child td { border-bottom: none; }
+.view-gm .mmr-namecell { display: flex; align-items: center; gap: var(--space-2); }
+.view-gm .mmr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .view-gm .mmr-name.is-hidden-name { opacity: 0.55; font-style: italic; }   /* staged, not yet revealed */
-.view-gm .mmr-copy { margin-left: var(--space-4); }                        /* numbered copies under their type */
+.view-gm .mmr-type .mmr-name { font-weight: 700; }
+.view-gm .mmr-copy .mmr-namecell { padding-left: var(--space-4); }          /* numbered copies indent under their type */
 .view-gm .mmr-copy .mmr-name { font-style: italic; }
-.view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-init { width: 3.2rem; padding: 0.25rem 0.3rem; text-align: center; }
+.view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
 .view-gm .mmr-vis.is-hidden { background: var(--support); color: var(--paper); border-color: var(--support); }  /* Reveal stands out */
 .view-gm .mmr-del {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 1.9rem; height: 1.9rem; padding: 0; line-height: 1;
-  border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--gm-panel); color: var(--offense); font-size: 1.05rem; cursor: pointer;
+  width: 1.7rem; height: 1.7rem; padding: 0; line-height: 1;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--offense); font-size: 1rem; cursor: pointer;
 }
-.view-gm .mmr-del:hover { background: var(--paper); }
+.view-gm .mmr-del:hover { background: var(--offense); border-color: var(--offense); color: var(--paper); }
+/* HP damage/heal: running cur/max + a typed amount, then - (damage) / + (heal). */
+.view-gm .mmr-hp { display: inline-flex; align-items: center; gap: 0.25rem; }
+.view-gm .mmr-hpnum { min-width: 2.9rem; text-align: right; font-variant-numeric: tabular-nums; font-size: var(--fs-100); }
+.view-gm .mmr-hpnum.is-hurt { color: var(--offense); font-weight: 700; }
+.view-gm .mmr-hpamt { width: 2.4rem; padding: 0.2rem 0.15rem; text-align: center; }
+.view-gm .mmr-hpbtn { width: 1.5rem; height: 1.5rem; padding: 0; line-height: 1; border: 1px solid var(--rule); border-radius: 5px; background: var(--gm-panel); font-weight: 700; font-size: 0.95rem; cursor: pointer; }
+.view-gm .mmr-hpbtn.is-dmg { color: var(--offense); }
+.view-gm .mmr-hpbtn.is-heal { color: var(--support); }
+/* Condition cell: removable chips + an add picker (presets + a custom entry). */
+.view-gm .mmr-cond { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+.view-gm .mmr-cond .cond-chip { padding: 0.04rem 0.4rem 0.04rem 0.5rem; }
+.view-gm .mmr-cond .cond-x { border: none; background: transparent; color: inherit; cursor: pointer; padding: 0; font-size: 0.68rem; opacity: 0.65; line-height: 1; }
+.view-gm .mmr-cond .cond-x:hover { opacity: 1; }
+.view-gm .cond-add { font-size: var(--fs-100); padding: 0.15rem 0.3rem; max-width: 8.5rem; border: 1px dashed var(--rule); border-radius: var(--radius-pill); background: transparent; color: var(--control); }
 .view-gm .mmr-empty { grid-column: 1 / -1; font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.3rem 0; }
 @media (max-width: 900px) { .view-gm .mapmode-roster { grid-template-columns: 1fr; } }
 
