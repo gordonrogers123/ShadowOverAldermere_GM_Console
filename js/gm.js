@@ -192,32 +192,36 @@ export function mountGm(root) {
 
           <div class="builder-grid">
             <div class="builder-col">
-              <label class="field">
-                <span>Name</span>
-                <input class="b-name" type="text" placeholder="A Word at the Gate">
-              </label>
+              <div class="builder-namerow">
+                <label class="field">
+                  <span>Name</span>
+                  <input class="b-name" type="text" placeholder="A Word at the Gate">
+                </label>
+                <label class="field">
+                  <span>Title header <small>(title-card line; defaults to &ldquo;Aldermere&rdquo;)</small></span>
+                  <input class="b-title-header" type="text" placeholder="Aldermere">
+                </label>
+              </div>
 
-              <label class="field">
-                <span>Title-screen header <small>(small line above the name on the title card &mdash; defaults to "Aldermere")</small></span>
-                <input class="b-title-header" type="text" placeholder="Aldermere">
-              </label>
-
-              <div class="field">
-                <span>Background variants <small>(first is shown first; pick "Title screen" for a title card that reveals to a map)</small></span>
+              <details class="field builder-collapse" open>
+                <summary>Background variants <small>(first is shown first; &ldquo;Title screen&rdquo; reveals to a map)</small></summary>
+                <div class="variant-head" aria-hidden="true">
+                  <span>Name</span><span>Background</span><span>Use</span><span></span>
+                </div>
                 <div class="variant-list"></div>
                 <button class="gm-button btn--quiet add-variant" type="button">Add variant</button>
-              </div>
+              </details>
 
-              <div class="field char-field">
-                <span>Left characters <small>(one shown at a time — cues pick who enters)</small></span>
+              <details class="field char-field builder-collapse" open>
+                <summary>Left characters <small>(one shown at a time — cues pick who enters)</small></summary>
                 <div class="char-roster" data-side="left"></div>
                 <button class="gm-button btn--quiet add-char" data-side="left" type="button">Add character</button>
-              </div>
-              <div class="field char-field">
-                <span>Right characters <small>(one shown at a time — cues pick who enters)</small></span>
+              </details>
+              <details class="field char-field builder-collapse" open>
+                <summary>Right characters <small>(one shown at a time — cues pick who enters)</small></summary>
                 <div class="char-roster" data-side="right"></div>
                 <button class="gm-button btn--quiet add-char" data-side="right" type="button">Add character</button>
-              </div>
+              </details>
             </div>
 
             <div class="builder-col">
@@ -250,12 +254,12 @@ export function mountGm(root) {
                 </div>
               </details>
 
-              <div class="field">
-                <span>Cues <small>(one-press stage transitions &mdash; build each one: pick a background, characters, audio, then keyframe what should be timed)</small></span>
+              <details class="field builder-collapse" open>
+                <summary>Cues <small>(one-press stage transitions — pick a background, characters, audio, then keyframe what&rsquo;s timed)</small></summary>
                 <div class="cue-list"></div>
                 <p class="cue-empty-hint" hidden>No cues yet. Press <strong>+ New cue</strong> to build one.</p>
                 <button class="gm-button btn--quiet cue-new" type="button">+ New cue</button>
-              </div>
+              </details>
 
               <label class="field">
                 <span>GM notes</span>
@@ -1973,6 +1977,49 @@ export function mountGm(root) {
     return scene;
   }
 
+  // A small themed confirmation modal -- the in-app replacement for window.confirm
+  // on destructive edits (delete a saved scene, remove a variant / character /
+  // cue). Returns a Promise<boolean>: true on confirm, false on cancel / backdrop
+  // click / Esc. Confirm is autofocused so Enter accepts and Esc rejects -- a
+  // one-keystroke gate that still stops an accidental click.
+  function confirmDialog({ title = 'Are you sure?', message = '', confirmText = 'Delete', cancelText = 'Cancel' } = {}) {
+    return new Promise((resolve) => {
+      const prevFocus = document.activeElement;
+      const overlay = document.createElement('div');
+      overlay.className = 'gm-confirm';
+      const box = document.createElement('div');
+      box.className = 'gm-confirm-box';
+      box.setAttribute('role', 'alertdialog');
+      box.setAttribute('aria-modal', 'true');
+      const h = document.createElement('h4'); h.className = 'gm-confirm-title'; h.textContent = title;
+      box.appendChild(h);
+      if (message) { const p = document.createElement('p'); p.className = 'gm-confirm-msg'; p.textContent = message; box.appendChild(p); }
+      const row = document.createElement('div'); row.className = 'gm-confirm-actions';
+      const no = document.createElement('button'); no.type = 'button'; no.className = 'gm-button btn--quiet gm-confirm-no'; no.textContent = cancelText;
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'gm-button gm-confirm-yes'; yes.textContent = confirmText;
+      row.append(no, yes); box.appendChild(row); overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      let done = false;
+      const close = (val) => {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey, true);
+        overlay.remove();
+        if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (_) {} }
+        resolve(val);
+      };
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(false); }
+        else if (e.key === 'Enter') { e.preventDefault(); close(true); }
+      }
+      document.addEventListener('keydown', onKey, true);
+      overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(false); });
+      no.addEventListener('click', () => close(false));
+      yes.addEventListener('click', () => close(true));
+      yes.focus();
+    });
+  }
+
   function openBuilder(scene) {
     cancelCueTimeline();   // stop any running sequence before editing
     draft = scene ? sceneToDraft(scene) : blankDraft();
@@ -2035,10 +2082,6 @@ export function mountGm(root) {
       sel.value = v.src;
       sel.addEventListener('change', () => { v.src = sel.value; renderBuilderPreview(); });
 
-      const tag = document.createElement('span');
-      tag.className = 'v-tag';
-      tag.textContent = i === 0 ? 'shown first' : '';
-
       // Per-variant visibility: which mode(s) this backdrop appears in. The rail
       // picker filters by the current mode, so map backdrops stay out of the
       // cinematic view and vice versa.
@@ -2061,15 +2104,18 @@ export function mountGm(root) {
       const rm = document.createElement('button');
       rm.className = 'v-remove';
       rm.type = 'button';
-      rm.textContent = 'Remove';
+      rm.textContent = '✕';
+      rm.title = 'Remove this variant';
+      rm.setAttribute('aria-label', 'Remove variant');
       rm.disabled = draft.variants.length <= 1;
-      rm.addEventListener('click', () => {
+      rm.addEventListener('click', async () => {
+        if (!(await confirmDialog({ title: 'Remove variant?', message: 'Remove the “' + (v.key || 'untitled') + '” background variant?', confirmText: 'Remove' }))) return;
         draft.variants.splice(i, 1);
         renderVariantRows();
         renderBuilderPreview();
       });
 
-      row.append(keyInput, sel, modes, tag, rm);
+      row.append(keyInput, sel, modes, rm);
       els.variantList.appendChild(row);
     });
   }
@@ -2123,9 +2169,11 @@ export function mountGm(root) {
     flip.addEventListener('click', () => { entry.flip = !entry.flip; flip.classList.toggle('is-on', entry.flip); spotlight(); });
 
     const del = document.createElement('button');
-    del.type = 'button'; del.className = 'gm-button btn--quiet cc-del';
+    del.type = 'button'; del.className = 'cc-del';
     del.textContent = '✕'; del.title = 'Remove this character from the side';
-    del.addEventListener('click', () => {
+    del.setAttribute('aria-label', 'Remove character');
+    del.addEventListener('click', async () => {
+      if (!(await confirmDialog({ title: 'Remove character?', message: 'Remove this character from the ' + side + ' side?', confirmText: 'Remove' }))) return;
       draft[side].splice(i, 1);
       builderPick[side] = (draft[side][0] && draft[side][0].src) || null;
       renderCharRoster(side);
@@ -2133,7 +2181,11 @@ export function mountGm(root) {
     });
 
     adjust.append(flip, del);
-    card.append(src, enter, adjust);
+    // Two-row card: pickers (character + entrance) on top, placement on the bottom.
+    const row1 = document.createElement('div');
+    row1.className = 'cc-row';
+    row1.append(src, enter);
+    card.append(row1, adjust);
     return card;
   }
 
@@ -2343,18 +2395,28 @@ export function mountGm(root) {
       down.addEventListener('click', () => move(i, i + 1));
       const rm = document.createElement('button');
       rm.className = 'cue-remove';
-      rm.type = 'button'; rm.textContent = 'Remove'; rm.title = 'Delete this cue';
-      rm.addEventListener('click', () => { cueOpen.delete(cue.id); cues.splice(i, 1); renderCueRows(); });
+      rm.type = 'button'; rm.textContent = '✕'; rm.title = 'Delete this cue';
+      rm.setAttribute('aria-label', 'Delete cue');
+      rm.addEventListener('click', async () => {
+        if (!(await confirmDialog({ title: 'Delete cue?', message: 'Delete the cue “' + (cue.label || 'untitled') + '”? Its keyframes will be lost.', confirmText: 'Delete cue' }))) return;
+        cueOpen.delete(cue.id); cues.splice(i, 1); renderCueRows();
+      });
 
       // Play THIS cue -- with its keyframe transitions -- in the docked preview,
       // without scrolling up or opening the keyframe editor.
       const prev = document.createElement('button');
       prev.className = 'gm-button btn--quiet cue-preview';
-      prev.type = 'button'; prev.textContent = '▶ Preview';
+      prev.type = 'button'; prev.textContent = '▶';
       prev.title = 'Play this cue (with its keyframe transitions) in the preview, and leave it up';
+      prev.setAttribute('aria-label', 'Preview this cue');
       prev.addEventListener('click', () => testCueTimeline(cue, { hold: true }));
 
-      head.append(chev, label, prev, open, up, down, rm);
+      // The action cluster stays together at the row end so a tight column wraps
+      // the whole group (never an orphaned ✕) -- collapsed, the cue is one row.
+      const actions = document.createElement('div');
+      actions.className = 'cue-head-actions';
+      actions.append(prev, open, up, down, rm);
+      head.append(chev, label, actions);
       card.append(head);
 
       // ---- Body: content pickers + per-element keyframes (only when expanded) ----
@@ -2793,10 +2855,10 @@ export function mountGm(root) {
         del.textContent = '×';
         del.title = 'Delete this saved scene';
         del.setAttribute('aria-label', 'Delete this saved scene');
-        del.addEventListener('click', (e) => {
+        del.addEventListener('click', async (e) => {
           e.stopPropagation();
           // Deleting a saved scene is destructive and irreversible -- confirm first.
-          if (!window.confirm('Delete the saved scene "' + scene.name + '"? This cannot be undone.')) return;
+          if (!(await confirmDialog({ title: 'Delete saved scene?', message: 'Delete the saved scene “' + scene.name + '”? This cannot be undone.', confirmText: 'Delete scene' }))) return;
           deleteScene(scene.id);
         });
         li.appendChild(del);
