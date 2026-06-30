@@ -194,11 +194,11 @@ export function mountGm(root) {
             <div class="builder-col">
               <div class="builder-namerow">
                 <label class="field">
-                  <span>Name</span>
+                  <span>Title</span>
                   <input class="b-name" type="text" placeholder="A Word at the Gate">
                 </label>
                 <label class="field">
-                  <span>Title header <small>(title-card line; defaults to &ldquo;Aldermere&rdquo;)</small></span>
+                  <span>Header</span>
                   <input class="b-title-header" type="text" placeholder="Aldermere">
                 </label>
               </div>
