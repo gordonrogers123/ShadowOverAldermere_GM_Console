@@ -66,6 +66,16 @@ function clamp01(n) {
 // must not silently delete the GM's board. Drop only entries that are
 // genuinely unusable (no castId); fix up the rest. instId is normally set by
 // the writer (gm.js); a fallback is minted only for legacy/malformed entries.
+// Per-token combat tracking (map mode): current/max HP and a list of condition
+// labels. Optional + additive -- absent on older saves and ignored by the Player
+// (GM-only), so no STATE_VERSION bump, same as `visible`.
+function normHp(h) {
+  const num = (v) => (v == null || v === '' || !isFinite(+v)) ? null : Math.max(0, Math.round(+v));
+  const max = num(h && h.max);
+  let current = num(h && h.current);
+  if (max != null && current != null && current > max) current = max;
+  return { current, max };
+}
 function normalizeToken(t, i) {
   if (!t || typeof t !== 'object') return null;
   const castId = typeof t.castId === 'string' ? t.castId.trim() : '';
@@ -74,7 +84,8 @@ function normalizeToken(t, i) {
   const instId = (typeof t.instId === 'string' && t.instId) ? t.instId : ('t' + i + '_' + castId);
   let label = castId;
   if (t.label != null && String(t.label).trim()) label = String(t.label);
-  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false };
+  const conditions = Array.isArray(t.conditions) ? t.conditions.filter((c) => typeof c === 'string' && c.trim()).map((c) => String(c).trim()) : [];
+  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false, hp: normHp(t.hp), conditions };
 }
 
 // Fill any missing piece of the nested stage block from defaults, so a

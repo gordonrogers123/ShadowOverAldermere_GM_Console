@@ -20,6 +20,7 @@ import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
 import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
+import { CONDITIONS } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
 
@@ -1371,7 +1372,10 @@ export function mountGm(root) {
     const k = tokens.length;
     const x = clamp01(0.5 + ((k % 5) - 2) * 0.045);
     const y = clamp01(0.5 + ((Math.floor(k / 5) % 5) - 2) * 0.045);
-    tokens.push({ instId: 'tk' + (++tokenSeq), castId, kind, label, x, y, visible });
+    // Seed combat tracking: HP starts full from the cast stat block (null when the
+    // type has no stats yet -- e.g. heroes before their sheet is added).
+    const maxHp = (cast.stats && cast.stats.hp != null && isFinite(+cast.stats.hp)) ? Math.round(+cast.stats.hp) : null;
+    tokens.push({ instId: 'tk' + (++tokenSeq), castId, kind, label, x, y, visible, hp: { current: maxHp, max: maxHp }, conditions: [] });
     commit();
   }
   function removeToken(instId) {
@@ -1390,6 +1394,45 @@ export function mountGm(root) {
     ensureTokens();
     const t = state.stage.tokens.find((x) => x.instId === instId);
     if (t) { t.visible = t.visible === false; commit(); }
+  }
+  function findToken(instId) {
+    ensureTokens();
+    return state.stage.tokens.find((x) => x.instId === instId) || null;
+  }
+  // ---- Per-token HP + conditions (map-mode combat tracking) --------------------
+  //  applyHp(delta): +heal / -damage on current HP, clamped to [0, max]. Seeds max
+  //  on first edit if it was never set (e.g. a hero before stats existed).
+  function applyHp(instId, delta) {
+    const t = findToken(instId);
+    if (!t || !isFinite(+delta) || !delta) return;
+    if (!t.hp || typeof t.hp !== 'object') t.hp = { current: null, max: null };
+    const cast = castEntry(t.castId, t.kind);
+    if (t.hp.max == null && cast && cast.stats && cast.stats.hp != null) t.hp.max = Math.round(+cast.stats.hp);
+    const base = t.hp.current != null ? t.hp.current : (t.hp.max != null ? t.hp.max : 0);
+    let next = Math.round(base + (+delta));
+    if (next < 0) next = 0;
+    if (t.hp.max != null && next > t.hp.max) next = t.hp.max;
+    t.hp.current = next;
+    commit();
+  }
+  function setHpMax(instId, max) {
+    const t = findToken(instId); if (!t) return;
+    if (!t.hp || typeof t.hp !== 'object') t.hp = { current: null, max: null };
+    const m = (max == null || max === '' || !isFinite(+max)) ? null : Math.max(0, Math.round(+max));
+    t.hp.max = m;
+    if (m != null && (t.hp.current == null || t.hp.current > m)) t.hp.current = m;
+    commit();
+  }
+  function addCondition(instId, name) {
+    const t = findToken(instId); if (!t || !name) return;
+    name = String(name).trim(); if (!name) return;
+    if (!Array.isArray(t.conditions)) t.conditions = [];
+    if (!t.conditions.some((c) => c.toLowerCase() === name.toLowerCase())) { t.conditions.push(name); commit(); }
+  }
+  function removeCondition(instId, name) {
+    const t = findToken(instId); if (!t || !Array.isArray(t.conditions)) return;
+    t.conditions = t.conditions.filter((c) => c.toLowerCase() !== String(name).toLowerCase());
+    commit();
   }
 
   // ---- Initiative tracker (GM-only combat state) -------------------------------
