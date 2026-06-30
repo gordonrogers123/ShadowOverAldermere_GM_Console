@@ -253,13 +253,25 @@ body.view-gm {
 .view-gm .perf-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .view-gm .perf-side > .gm-quick,
 .view-gm .perf-side > .gm-mixer { margin: 0; }
-/* Legibility in the narrow side panel: the Background label takes its own line so
-   the variant chips never crowd it; the char-row labels shrink; the chips compact
-   -- so every button reads in full and nothing overlaps its label. */
-.view-gm .perf-side .quick-row { flex-wrap: wrap; align-items: center; }
-.view-gm .perf-side .quick-bg-row .control-label { flex: 0 0 100%; min-width: 0; margin-bottom: var(--space-1); }
-.view-gm .perf-side .quick-char-row .control-label { flex: 0 0 3.25rem; }
-.view-gm .perf-side .variant-button { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
+/* The quick panel is the "Visual" section: a header (title + the global Black-out)
+   over three aligned rows -- BG / Left / Right -- each [label | dropdown | toggle].
+   A fixed label + auto toggle column keep the dropdowns lined up; the BG row has no
+   toggle, so its dropdown runs full width. Compact type keeps it all on one line. */
+.view-gm .perf-side .gm-quick { display: flex; flex-direction: column; gap: var(--space-2); }
+.view-gm .perf-side .quick-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding-bottom: var(--space-1); margin-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
+}
+.view-gm .perf-side .quick-section {
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--neutral);
+}
+/* [label] [dropdown] [Show/Hide] -- the toggle column is a FIXED width (matches
+   .quick-hide's min-width) so the button never resizes as it flips Show <-> Hide,
+   and all three rows' dropdowns (the 1fr column) stay exactly equal width. */
+.view-gm .perf-side .quick-row { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) 3.4rem; align-items: center; gap: var(--space-2); margin: 0; }
+.view-gm .perf-side .quick-row .control-label { white-space: nowrap; margin: 0; font-size: var(--fs-100); letter-spacing: 0.03em; }
+.view-gm .perf-side .quick-swap, .view-gm .perf-side .quick-bg-select { min-width: 0; width: 100%; }
 .view-gm .perf-side .quick-swap { flex: 1 1 7rem; }
 
 /* Larger: a full-width preview stacked ABOVE the controls. Under the wide preview
@@ -423,11 +435,22 @@ body.view-gm {
 .view-gm .gm-scenes-head .gm-h2 { margin: 0; }
 .view-gm .new-scene { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
 .view-gm .scene-list li { position: relative; }
-.view-gm .scene-button { padding-left: 2.6rem; padding-right: 2.4rem; }
+.view-gm .scene-button { padding-left: 3.5rem; padding-right: 2.4rem; }
+/* Drag handle (far left): grab to reorder the scene. The only draggable bit, so
+   a click anywhere else on the row still selects/edits. */
+.view-gm .scene-grip {
+  position: absolute; left: 0.15rem; top: 50%; transform: translateY(-50%); z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.3rem; height: 2rem; line-height: 1; letter-spacing: -0.15em;
+  color: var(--neutral); opacity: 0.4; font-size: 1rem; cursor: grab; user-select: none;
+}
+.view-gm .scene-grip:hover { opacity: 0.85; }
+.view-gm .scene-grip:active { cursor: grabbing; }
+.view-gm .scene-list li.dragging { opacity: 0.5; }
 /* Pin/star toggle on the left: hollow when idle, a warm gold star when pinned.
    Sits over the scene button's padding so the row stays one clickable surface. */
 .view-gm .scene-pin {
-  position: absolute; left: 0.35rem; top: 50%; transform: translateY(-50%); z-index: 1;
+  position: absolute; left: 1.4rem; top: 50%; transform: translateY(-50%); z-index: 1;
   display: inline-flex; align-items: center; justify-content: center;
   width: 2rem; height: 2rem; padding: 0; line-height: 1;
   border: none; background: transparent; cursor: pointer;
@@ -459,11 +482,19 @@ body.view-gm {
 .view-gm .scene-edit:hover { background: var(--paper); }
 .view-gm .scene-list li:has(.scene-del) .scene-edit { right: 2.2rem; }
 .view-gm .scene-list li:has(.scene-del) .scene-button { padding-right: 4.2rem; }
+/* Transient toast: a floating dark pill at the bottom-centre that fades in and
+   auto-dismisses (see setStatus). Was a permanent rail line, so "Saved ..."
+   never went away. */
 .view-gm .rescan-status {
-  margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--neutral);
-  background: var(--gm-panel); border: 1px solid var(--rule);
-  border-radius: 8px; padding: 0.5rem 0.7rem;
+  position: fixed; left: 50%; bottom: 1.5rem; z-index: 300;
+  margin: 0; max-width: min(90vw, 32rem); font-size: 0.92rem; line-height: 1.35;
+  color: var(--fill); background: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: var(--radius-pill);
+  padding: 0.6rem 1.15rem; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(0.6rem);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
+.view-gm .rescan-status.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ---- Live controls ---- */
 .view-gm .control-row {
@@ -487,13 +518,22 @@ body.view-gm {
 .view-gm .quick-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: nowrap; margin-bottom: var(--space-2); }
 .view-gm .quick-row:last-child { margin-bottom: 0; }
 .view-gm .quick-row .control-label { flex: 0 0 6rem; min-width: 0; white-space: nowrap; }
-.view-gm .quick-bg-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
-.view-gm .quick-row .vis-toggle { flex: 0 0 auto; font-size: var(--fs-200); padding: 0.45rem 0.7rem; }
-.view-gm .quick-swap { flex: 1 1 0; min-width: 0; }
-/* Fixed width so the button does not resize as its label flips Hide <-> Show
-   (min-width exceeds the wider "Show" so both states render identically). */
-.view-gm .quick-hide { flex: 0 0 auto; min-width: 4.4rem; text-align: center; font-size: var(--fs-200); padding: 0.45rem 0.6rem; }
+/* Per-side Show/Hide: small, fixed width so the dropdowns line up and the label
+   never jiggles as it flips Show <-> Hide. */
+.view-gm .quick-hide { flex: 0 0 auto; min-width: 3.4rem; text-align: center; font-size: var(--fs-100); padding: 0.4rem 0.5rem; }
 .view-gm .quick-hide[disabled] { cursor: not-allowed; opacity: 0.6; }
+/* Black-out lives on the Visual section header (it dims the WHOLE stage, not just
+   the backdrop), so it has room to read at full size with a distinct dark "curtain"
+   fill -- red while the screen is out -- so it never looks like a per-side hide. */
+.view-gm .quick-head .vis-toggle {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  font-size: var(--fs-200); padding: 0.4rem 0.7rem;
+  background: var(--stage); color: var(--paper); border-color: var(--ink);
+}
+.view-gm .quick-head .vis-toggle svg { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
+.view-gm .quick-head .vis-toggle:hover { background: var(--stage); filter: brightness(1.35); }
+.view-gm .quick-head .vis-toggle.is-on { background: var(--offense); color: var(--paper); border-color: var(--offense); }
+.view-gm .quick-head .vis-toggle.is-on:hover { background: var(--offense); filter: brightness(1.08); }
 
 /* ---- Cues: one-press stage transitions (the lead control surface) ----
    Cues sit at the top of the rail in a faint inset banner so they read as the
@@ -600,6 +640,10 @@ body.view-gm {
 .view-gm .builder-collapse[open] > summary::before { transform: rotate(90deg); }
 .view-gm .builder-collapse > summary small { font-family: var(--font-body); font-weight: 400; opacity: 0.7; }
 .view-gm .b-name { width: 100%; }
+.view-gm .b-title-header { width: 100%; }
+/* Name + Title header share one row to save vertical space; stacks under the
+   single-column builder breakpoint below. */
+.view-gm .builder-namerow { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-3); }
 .view-gm .char-field select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
 /* Per-side character roster: a stack of cards, one per cutout (only one shown
    at a time; cues pick who enters). Each card carries the character + transition
@@ -610,29 +654,49 @@ body.view-gm {
   border-radius: var(--radius-sm); background: var(--fill);
   padding: var(--space-2) var(--space-3);
 }
-.view-gm .char-card select { margin-right: 0.5rem; margin-bottom: 0.3rem; }
+/* Two-row character card: pickers (character + entrance) on row 1, placement
+   (size / offset / flip / remove) on row 2. */
+.view-gm .char-card select { margin: 0; }
+.view-gm .cc-row { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-1); }
+.view-gm .cc-row select { flex: 1 1 8rem; min-width: 0; }
 .view-gm .char-empty { margin: 0 0 var(--space-2); font-size: var(--fs-200); color: var(--neutral); font-style: italic; }
 .view-gm .add-char { font-size: var(--fs-200); }
-/* Per-character size + flip controls under each character picker. */
 .view-gm .char-adjust { display: flex; align-items: center; gap: var(--space-2) var(--space-3); margin-top: var(--space-1); flex-wrap: wrap; }
 .view-gm .char-size { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-200); color: var(--neutral); }
 .view-gm .char-size input[type="range"] { width: 5.5rem; }
 .view-gm .char-size input.cc-x, .view-gm .char-size input.cc-y { width: 4.5rem; }
 .view-gm .cc-flip { font-size: var(--fs-200); padding: 0.35rem 0.7rem; }
-.view-gm .cc-del { margin-left: auto; font-size: var(--fs-200); padding: 0.35rem 0.6rem; }
-.view-gm .variant-edit { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
-.view-gm .v-key { width: 9rem; }
+/* Background variants as an aligned grid: Name | Background | Use | remove, with
+   a matching header row so each column reads under its label. */
+.view-gm .variant-head,
+.view-gm .variant-edit {
+  display: grid; grid-template-columns: 7rem minmax(0, 1fr) auto 1.9rem;
+  align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);
+}
+.view-gm .variant-head {
+  margin-bottom: var(--space-1);
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--neutral);
+}
+.view-gm .v-key, .view-gm .v-src { width: 100%; min-width: 0; }
 /* Per-variant Scene/Map visibility toggles (colour from the .btn--toggle role). */
 .view-gm .v-modes { display: inline-flex; gap: var(--space-1); }
 .view-gm .v-mode { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
-.view-gm .v-tag { font-size: 0.8rem; color: var(--neutral); opacity: 0.7; min-width: 4rem; }
-.view-gm .v-remove,
 .view-gm .add-variant { font-size: 0.85rem; padding: 0.4rem 0.7rem; }
-.view-gm .v-remove {
-  background: var(--fill); border: 1px solid var(--rule);
-  border-radius: 8px; cursor: pointer; color: var(--ink);
+/* Shared red ✕ remove control (variant / character / cue rows): a muted red
+   glyph that fills solid red on hover, sized to a tidy square so rows align. */
+.view-gm .v-remove, .view-gm .cc-del, .view-gm .cue-remove {
+  flex: 0 0 auto; width: 1.9rem; height: 1.9rem; padding: 0; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1rem; border-radius: var(--radius-sm); cursor: pointer;
+  background: transparent; border: 1px solid transparent; color: var(--offense);
 }
-.view-gm .v-remove[disabled] { opacity: 0.4; cursor: not-allowed; }
+.view-gm .v-remove:hover, .view-gm .cc-del:hover, .view-gm .cue-remove:hover {
+  background: var(--offense); border-color: var(--offense); color: var(--paper);
+}
+.view-gm .cc-del { margin-left: auto; }
+.view-gm .v-remove[disabled] { opacity: 0.3; cursor: not-allowed; }
+.view-gm .v-remove[disabled]:hover { background: transparent; border-color: transparent; color: var(--offense); }
 /* Builder cue cards: each cue is a collapsible card -- a head (expand | name |
    Opening | reorder | remove) and, when open, a body that AUTHORS the cue
    (background / characters / audio / SFX / fade-to-black) plus the per-element
@@ -644,16 +708,15 @@ body.view-gm {
 .view-gm .cue-edit.is-open { border-left: 4px solid var(--control); }
 .view-gm .cue-edit-head { display: flex; align-items: center; gap: var(--space-2); padding: 0.4rem 0.5rem; flex-wrap: wrap; }
 .view-gm .cue-expand { font-size: var(--fs-200); padding: 0.25rem 0.5rem; line-height: 1; }
-.view-gm .cue-label { flex: 1 1 8rem; min-width: 7rem; }
+.view-gm .cue-label { flex: 1 1 6rem; min-width: 4rem; }
+/* The trailing action cluster (preview · opening · reorder · remove) rides at the
+   row end and wraps as one block, so a narrow column never orphans the ✕. */
+.view-gm .cue-head-actions { display: inline-flex; align-items: center; gap: var(--space-1); margin-left: auto; flex: 0 0 auto; }
 .view-gm .cue-opening { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
-.view-gm .cue-preview { font-size: var(--fs-100); padding: 0.3rem 0.6rem; white-space: nowrap; }
+.view-gm .cue-preview { font-size: var(--fs-100); padding: 0.3rem 0.55rem; white-space: nowrap; }
 .view-gm .cue-up, .view-gm .cue-down { font-size: var(--fs-100); padding: 0.3rem 0.5rem; }
 .view-gm .cue-up[disabled], .view-gm .cue-down[disabled] { opacity: 0.4; cursor: not-allowed; }
-.view-gm .cue-remove {
-  font-size: 0.85rem; padding: 0.4rem 0.7rem;
-  background: var(--fill); border: 1px solid var(--rule);
-  border-radius: 8px; cursor: pointer; color: var(--ink);
-}
+/* .cue-remove is the shared red ✕ (styled with .v-remove / .cc-del above). */
 .view-gm .cue-empty-hint { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0 0.4rem; }
 .view-gm .cue-new { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
 
@@ -707,6 +770,26 @@ body.view-gm {
 .view-gm .b-export-hint { font-size: 0.9rem; opacity: 0.8; margin: 0.8rem 0 0.3rem; }
 .view-gm .b-export-out { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; }
 
+/* In-app confirm modal -- the themed replacement for window.confirm on every
+   destructive edit (delete scene / remove variant / character / cue). A dimmed
+   backdrop centres a parchment card with a red top rule and a red confirm. */
+.view-gm .gm-confirm {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 10, 12, 0.55); padding: var(--space-4);
+}
+.view-gm .gm-confirm-box {
+  background: var(--gm-panel); color: var(--ink);
+  border: 1px solid var(--rule); border-top: 4px solid var(--offense);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5);
+  width: 100%; max-width: 24rem; box-shadow: 0 14px 44px rgba(0, 0, 0, 0.4);
+}
+.view-gm .gm-confirm-title { margin: 0 0 var(--space-2); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-400); }
+.view-gm .gm-confirm-msg { margin: 0 0 var(--space-4); font-size: var(--fs-200); color: var(--neutral); line-height: 1.45; }
+.view-gm .gm-confirm-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.view-gm .gm-confirm-yes { background: var(--offense); border-color: var(--offense); color: var(--paper); }
+.view-gm .gm-confirm-yes:hover { filter: brightness(1.08); }
+
 /* ---- Roster picker (builder) ---- */
 .view-gm .roster-pick { display: flex; gap: 1.5rem; flex-wrap: wrap; }
 .view-gm .roster-group { flex: 1 1 12rem; }
@@ -740,15 +823,16 @@ body.view-gm {
    the Map-variant reveal + Save/Reset), then the roster + initiative tracker row.
    The whole performance surface (preview + live controls + the old controls strip)
    is hidden in map mode, so only those two blocks remain -- ordered explicitly. */
-.view-gm .gm-stage.is-map { display: flex; flex-direction: column; gap: var(--space-3); }
-.view-gm .gm-stage.is-map .gm-mapmode { order: 1; }
-.view-gm .gm-stage.is-map .mapmode-combat { order: 2; }
-/* Roster (left, wider -- it's itself two columns) + initiative tracker (right)
-   side by side, so the tracker sits beside the roster instead of buried far
-   below it. Hidden entirely in live mode (the roster has no [hidden] toggle). */
-.view-gm .mapmode-combat { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
-.view-gm .gm-stage:not(.is-map) .mapmode-combat { display: none; }
-@media (max-width: 1100px) { .view-gm .mapmode-combat { grid-template-columns: 1fr; } }
+.view-gm .gm-stage.is-map { display: block; }
+/* Map mode hides the scenes rail entirely -- combat takes the full width. */
+.view-gm .gm-main:has(.gm-stage.is-map) { grid-template-columns: 1fr; }
+.view-gm .gm-main:has(.gm-stage.is-map) .gm-scenes { display: none; }
+/* Combat surface: a head row, then a BODY grid [ initiative + stat-block column |
+   board ], then the rosters full-width below. The column carries the tracker and
+   the active combatant's card beside the board. Collapses to one column narrow. */
+.view-gm .mapmode-body { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-4); align-items: start; margin-bottom: var(--space-4); }
+.view-gm .mm-combat-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+@media (max-width: 1100px) { .view-gm .mapmode-body { grid-template-columns: 1fr; } }
 /* In map mode the whole performance surface (preview + live controls + the old
    map-controls strip) is gone -- the map-variant reveal and Save/Reset layout now
    ride the board header, so there is no separate strip below the board. */
@@ -804,57 +888,85 @@ body.view-gm {
    under a type row that adds more. Collapses to one column on a narrow rail. */
 .view-gm .mapmode-roster { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
 .view-gm .mmr-head {
-  display: flex; align-items: center; gap: var(--space-2);
-  margin-bottom: var(--space-2); padding-bottom: var(--space-1); border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);
 }
 .view-gm .mmr-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-right: auto; }
 .view-gm .mmr-addall, .view-gm .mmr-revealall, .view-gm .mmr-rollenemies { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
-.view-gm .mmr-list { display: flex; flex-direction: column; gap: var(--space-1); }
-.view-gm .mmr-row { display: flex; align-items: center; gap: var(--space-2); }
-.view-gm .mmr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.view-gm .mmr-init { flex: 0 0 3.6rem; width: 3.6rem; padding: 0.25rem 0.4rem; text-align: center; }
+/* Roster as a columnar table: Name · Init · HP · Condition · Vis · ✕. */
+.view-gm .mmr-table { width: 100%; border-collapse: collapse; }
+.view-gm .mmr-table th { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.04em; color: var(--neutral); font-weight: 700; text-align: left; padding: 0.1rem 0.4rem 0.3rem; border-bottom: 1px solid var(--rule); }
+.view-gm .mmr-table th.c, .view-gm .mmr-table td.c { text-align: center; }
+.view-gm .mmr-table td { padding: 0.3rem 0.4rem; border-bottom: 1px solid #ece5d4; vertical-align: middle; }
+.view-gm .mmr-table tr:last-child td { border-bottom: none; }
+.view-gm .mmr-namecell { display: flex; align-items: center; gap: var(--space-2); }
+.view-gm .mmr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .view-gm .mmr-name.is-hidden-name { opacity: 0.55; font-style: italic; }   /* staged, not yet revealed */
-.view-gm .mmr-copy { margin-left: var(--space-4); }                        /* numbered copies under their type */
+.view-gm .mmr-type .mmr-name { font-weight: 700; }
+.view-gm .mmr-copy .mmr-namecell { padding-left: var(--space-4); }          /* numbered copies indent under their type */
 .view-gm .mmr-copy .mmr-name { font-style: italic; }
-.view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.6rem; }
+.view-gm .mmr-init { width: 3.2rem; padding: 0.25rem 0.3rem; text-align: center; }
+.view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
 .view-gm .mmr-vis.is-hidden { background: var(--support); color: var(--paper); border-color: var(--support); }  /* Reveal stands out */
 .view-gm .mmr-del {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 1.9rem; height: 1.9rem; padding: 0; line-height: 1;
-  border: 1px solid var(--rule); border-radius: var(--radius-sm);
-  background: var(--gm-panel); color: var(--offense); font-size: 1.05rem; cursor: pointer;
+  width: 1.7rem; height: 1.7rem; padding: 0; line-height: 1;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--offense); font-size: 1rem; cursor: pointer;
 }
-.view-gm .mmr-del:hover { background: var(--paper); }
+.view-gm .mmr-del:hover { background: var(--offense); border-color: var(--offense); color: var(--paper); }
+/* HP damage/heal: running cur/max + a typed amount, then - (damage) / + (heal). */
+.view-gm .mmr-hp { display: inline-flex; align-items: center; gap: 0.25rem; }
+.view-gm .mmr-hpnum { min-width: 2.9rem; text-align: right; font-variant-numeric: tabular-nums; font-size: var(--fs-100); }
+.view-gm .mmr-hpnum.is-hurt { color: var(--offense); font-weight: 700; }
+.view-gm .mmr-hpamt { width: 2.4rem; padding: 0.2rem 0.15rem; text-align: center; }
+.view-gm .mmr-hpbtn { width: 1.5rem; height: 1.5rem; padding: 0; line-height: 1; border: 1px solid var(--rule); border-radius: 5px; background: var(--gm-panel); font-weight: 700; font-size: 0.95rem; cursor: pointer; }
+.view-gm .mmr-hpbtn.is-dmg { color: var(--offense); }
+.view-gm .mmr-hpbtn.is-heal { color: var(--support); }
+/* Condition cell: removable chips + an add picker (presets + a custom entry). */
+.view-gm .mmr-cond { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+.view-gm .mmr-cond .cond-chip { padding: 0.04rem 0.4rem 0.04rem 0.5rem; }
+.view-gm .mmr-cond .cond-x { border: none; background: transparent; color: inherit; cursor: pointer; padding: 0; font-size: 0.68rem; opacity: 0.65; line-height: 1; }
+.view-gm .mmr-cond .cond-x:hover { opacity: 1; }
+.view-gm .cond-add { font-size: var(--fs-100); padding: 0.15rem 0.3rem; max-width: 8.5rem; border: 1px dashed var(--rule); border-radius: var(--radius-pill); background: transparent; color: var(--control); }
 .view-gm .mmr-empty { grid-column: 1 / -1; font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.3rem 0; }
 @media (max-width: 900px) { .view-gm .mapmode-roster { grid-template-columns: 1fr; } }
 
 /* ---- Initiative tracker (map mode) ---- */
+/* Initiative panel: a sectioned card -- header (title + Turn + Prev/Next), the
+   sliding "who's next" window, and a footer with the once-per-combat setup. */
 .view-gm .gm-initiative {
   background: var(--gm-panel); border: 1px solid var(--rule);
-  border-left: 6px solid #b07d2b; border-radius: 8px; padding: 0.8rem 1rem;
+  border-left: 6px solid #b07d2b; border-radius: 8px; padding: 0;
 }
-.view-gm .init-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
-.view-gm .init-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-right: auto; }
-.view-gm .init-apply, .view-gm .init-clear { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
-.view-gm .init-nav { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-.view-gm .init-turn { font-size: var(--fs-200); color: var(--neutral); margin-left: auto; }
-.view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
+.view-gm .init-head { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+.view-gm .init-title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 1rem; margin-right: auto; }
+.view-gm .init-turn { font-family: var(--font-display); font-size: var(--fs-100); color: var(--neutral); margin-right: var(--space-1); }
+.view-gm .init-prev, .view-gm .init-next { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
+.view-gm .init-track { padding: 0.35rem 0.45rem 0.15rem; }
+.view-gm .init-win-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.62rem; letter-spacing: 0.06em; color: var(--neutral); padding: 0.1rem 0.2rem 0.3rem; }
+.view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; padding: 0.3rem 0.2rem; }
 .view-gm .init-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .view-gm .init-row {
   display: flex; align-items: center; gap: var(--space-2);
-  padding: 0.35rem 0.6rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  padding: 0.32rem 0.5rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
   background: var(--fill); cursor: pointer;
 }
+.view-gm .init-row .init-ord { flex: 0 0 1.1rem; text-align: center; font-family: var(--font-display); font-size: 0.78rem; color: var(--neutral); }
 .view-gm .init-row .init-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .view-gm .init-row .init-val {
   flex: 0 0 auto; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
   min-width: 1.6rem; text-align: right;
 }
 /* The active turn: a warm gold band that matches the token's golden ring. */
-.view-gm .init-row.is-active {
-  background: #fbf1da; border-color: #b07d2b; box-shadow: inset 3px 0 0 #b07d2b;
-}
+.view-gm .init-row.is-active { background: #fbf1da; border-color: #b07d2b; box-shadow: inset 3px 0 0 #b07d2b; }
+.view-gm .init-row.is-active .init-name { font-weight: 700; }
 .view-gm .init-row.is-active .init-val { color: #8a5a16; }
+.view-gm .init-row.is-wrap { opacity: 0.55; }   /* a wrapped (next-round) entry reads quieter */
+.view-gm .init-more { width: 100%; text-align: center; border: none; background: transparent; color: var(--control); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; padding: 0.4rem; margin-top: 0.2rem; cursor: pointer; }
+.view-gm .init-more:hover { text-decoration: underline; }
+.view-gm .init-foot { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding: 0.5rem 0.6rem; border-top: 1px solid var(--rule); }
+.view-gm .init-roll, .view-gm .init-clear { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
+.view-gm .init-apply { font-size: var(--fs-100); padding: 0.35rem 0.7rem; background: var(--fill); color: var(--support); border-color: var(--support); }
 
 /* ---- Enemy stat sheet (map mode, left rail) ---- */
 /* In map mode the stat sheet REPLACES GM notes in the rail, sized to its own
@@ -870,22 +982,39 @@ body.view-gm {
    so the content-height stat card sits right beneath it instead of being pushed
    to the rail bottom by a stretched list. */
 .view-gm .gm-scenes:has(.gm-statsheet:not([hidden])) .scene-list { flex: 0 1 auto; max-height: 45vh; }
-.view-gm .gm-statsheet .stat-name { margin: 0 0 0.5rem; }
+.view-gm .gm-statsheet.is-hero { border-left-color: var(--support); }   /* green spine on a hero's turn */
+/* Head: face-centered profile picture + name / class subtitle / active tag. */
+.view-gm .stat-head { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: 0.5rem; }
+.view-gm .stat-pic { width: 3.4rem; height: 3.4rem; flex: 0 0 auto; border-radius: 8px; border: 1px solid var(--rule); object-fit: cover; object-position: 50% 18%; }
+.view-gm .stat-id { min-width: 0; }
+.view-gm .stat-name-row { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.view-gm .gm-statsheet .stat-name { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
+.view-gm .stat-tag { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--paper); border-radius: 999px; padding: 0.1rem 0.45rem; }
+.view-gm .stat-tag.is-enemy { background: var(--offense); }
+.view-gm .stat-tag.is-hero { background: var(--support); }
+.view-gm .stat-sub { font-size: 0.8rem; color: var(--neutral); font-style: italic; margin-top: 0.1rem; }
+.view-gm .stat-conditions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.5rem; }
+.view-gm .stat-cond-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--neutral); }
 .view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
 .view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }
 .view-gm .stat-line .stat-k { color: var(--neutral); }
 .view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
-.view-gm .stat-abils { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
+.view-gm .stat-hpbar { height: 6px; border-radius: 3px; background: #e7ddc7; overflow: hidden; margin: 0.15rem 0 0.3rem; }
+.view-gm .stat-hpbar > i { display: block; height: 100%; background: var(--support); }
+.view-gm .stat-hpbar > i.is-low { background: var(--offense); }
+.view-gm .stat-abils { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
 .view-gm .stat-abil {
-  display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
-  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.3rem 0.2rem; background: var(--fill);
+  display: flex; flex-direction: column; align-items: center; gap: 0.05rem;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.25rem 0.1rem; background: var(--fill);
 }
-.view-gm .stat-abil-k { font-size: var(--fs-100); letter-spacing: 0.05em; color: var(--neutral); }
-.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+.view-gm .stat-abil-k { font-size: 0.6rem; letter-spacing: 0.02em; color: var(--neutral); }
+.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
 .view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
 .view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
 .view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
-.view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
+.view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0; }
+/* Condition chip (shared by the stat card + the roster) -- conditions read as afflictions. */
+.view-gm .cond-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; border-radius: 999px; padding: 0.06rem 0.5rem; background: #f0dada; color: #7a2626; border: 1px solid #d9b3b3; }
 
 /* Interactive board: tokens are grabbable; a hidden token shows as a ghost so
    the GM sees what the Player does not (the Player keeps it fully hidden). */
