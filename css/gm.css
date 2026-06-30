@@ -266,7 +266,10 @@ body.view-gm {
   font-family: var(--font-display); font-weight: 700; font-size: var(--fs-100);
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--neutral);
 }
-.view-gm .perf-side .quick-row { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); margin: 0; }
+/* [label] [dropdown] [Show/Hide] -- the toggle column is a FIXED width (matches
+   .quick-hide's min-width) so the button never resizes as it flips Show <-> Hide,
+   and all three rows' dropdowns (the 1fr column) stay exactly equal width. */
+.view-gm .perf-side .quick-row { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) 3.4rem; align-items: center; gap: var(--space-2); margin: 0; }
 .view-gm .perf-side .quick-row .control-label { white-space: nowrap; margin: 0; font-size: var(--fs-100); letter-spacing: 0.03em; }
 .view-gm .perf-side .quick-swap, .view-gm .perf-side .quick-bg-select { min-width: 0; width: 100%; }
 .view-gm .perf-side .quick-swap { flex: 1 1 7rem; }
