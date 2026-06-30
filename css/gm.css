@@ -963,22 +963,39 @@ body.view-gm {
    so the content-height stat card sits right beneath it instead of being pushed
    to the rail bottom by a stretched list. */
 .view-gm .gm-scenes:has(.gm-statsheet:not([hidden])) .scene-list { flex: 0 1 auto; max-height: 45vh; }
-.view-gm .gm-statsheet .stat-name { margin: 0 0 0.5rem; }
+.view-gm .gm-statsheet.is-hero { border-left-color: var(--support); }   /* green spine on a hero's turn */
+/* Head: face-centered profile picture + name / class subtitle / active tag. */
+.view-gm .stat-head { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: 0.5rem; }
+.view-gm .stat-pic { width: 3.4rem; height: 3.4rem; flex: 0 0 auto; border-radius: 8px; border: 1px solid var(--rule); object-fit: cover; object-position: 50% 18%; }
+.view-gm .stat-id { min-width: 0; }
+.view-gm .stat-name-row { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.view-gm .gm-statsheet .stat-name { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
+.view-gm .stat-tag { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--paper); border-radius: 999px; padding: 0.1rem 0.45rem; }
+.view-gm .stat-tag.is-enemy { background: var(--offense); }
+.view-gm .stat-tag.is-hero { background: var(--support); }
+.view-gm .stat-sub { font-size: 0.8rem; color: var(--neutral); font-style: italic; margin-top: 0.1rem; }
+.view-gm .stat-conditions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.5rem; }
+.view-gm .stat-cond-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--neutral); }
 .view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
 .view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }
 .view-gm .stat-line .stat-k { color: var(--neutral); }
 .view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
-.view-gm .stat-abils { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
+.view-gm .stat-hpbar { height: 6px; border-radius: 3px; background: #e7ddc7; overflow: hidden; margin: 0.15rem 0 0.3rem; }
+.view-gm .stat-hpbar > i { display: block; height: 100%; background: var(--support); }
+.view-gm .stat-hpbar > i.is-low { background: var(--offense); }
+.view-gm .stat-abils { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
 .view-gm .stat-abil {
-  display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
-  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.3rem 0.2rem; background: var(--fill);
+  display: flex; flex-direction: column; align-items: center; gap: 0.05rem;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.25rem 0.1rem; background: var(--fill);
 }
-.view-gm .stat-abil-k { font-size: var(--fs-100); letter-spacing: 0.05em; color: var(--neutral); }
-.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+.view-gm .stat-abil-k { font-size: 0.6rem; letter-spacing: 0.02em; color: var(--neutral); }
+.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
 .view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
 .view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
 .view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
-.view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
+.view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0; }
+/* Condition chip (shared by the stat card + the roster) -- conditions read as afflictions. */
+.view-gm .cond-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; border-radius: 999px; padding: 0.06rem 0.5rem; background: #f0dada; color: #7a2626; border: 1px solid #d9b3b3; }
 
 /* Interactive board: tokens are grabbable; a hidden token shows as a ghost so
    the GM sees what the Player does not (the Player keeps it fully hidden). */

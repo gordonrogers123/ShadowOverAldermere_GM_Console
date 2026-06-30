@@ -1781,53 +1781,92 @@ export function mountGm(root) {
     host.append(foot);
   }
 
-  // The stat block to show: the active token's type when it is an enemy with a
-  // stat block; otherwise the last enemy shown (so a hero's turn keeps the foe's
-  // card up), else the first placed enemy type that has one.
-  let lastStatCastId = null;
-  function activeEnemyStats() {
+  // The card to show: the ACTIVE combatant (hero or enemy). When no turn is set
+  // yet, keep the last-shown card if its token is still placed, else fall to the
+  // first placed enemy with a stat block (a foe card during setup). Tracking by
+  // instId keeps it scene-local -- a previous scene's token is never resurrected.
+  let lastStatToken = null;
+  function activeStatContext() {
     const placed = (state.stage && state.stage.tokens) || [];
-    const activeId = state.stage && state.stage.activeTokenId;
-    const active = activeId && placed.find((t) => t.instId === activeId);
-    if (active && active.kind === 'enemy') {
-      const c = castEntry(active.castId, 'enemy');
-      if (c && c.stats) { lastStatCastId = active.castId; return c.stats; }
-    }
-    // Keep the last-shown foe's card up during a hero's turn -- but ONLY while
-    // that enemy is still placed in THIS scene. Otherwise it lingers from an
-    // earlier scene (e.g. a stale "Roadside Raider" over a scene whose only foe
-    // is a "Pale Husk") until the first Apply sets an active token. Drop it if
-    // it's no longer on the board, then fall to the first placed enemy with stats.
-    const enemyIds = placed.filter((t) => t.kind === 'enemy').map((t) => t.castId);
-    if (lastStatCastId && !enemyIds.includes(lastStatCastId)) lastStatCastId = null;
-    const fallbackId = (lastStatCastId && enemyIds.includes(lastStatCastId)) ? lastStatCastId
-      : enemyIds.find((id) => { const c = castEntry(id, 'enemy'); return c && c.stats; });
-    if (fallbackId) { const c = castEntry(fallbackId, 'enemy'); if (c && c.stats) { lastStatCastId = fallbackId; return c.stats; } }
+    const byId = (id) => placed.find((t) => t.instId === id);
+    const ctxFor = (t) => { if (!t) return null; const c = castEntry(t.castId, t.kind); return { token: t, cast: c, stats: (c && c.stats) || null }; };
+    const active = (state.stage && state.stage.activeTokenId) && byId(state.stage.activeTokenId);
+    if (active) { lastStatToken = active.instId; return ctxFor(active); }
+    if (lastStatToken && byId(lastStatToken)) return ctxFor(byId(lastStatToken));
+    lastStatToken = null;
+    const foe = placed.find((t) => t.kind === 'enemy' && (castEntry(t.castId, 'enemy') || {}).stats);
+    if (foe) { lastStatToken = foe.instId; return ctxFor(foe); }
     return null;
   }
   function renderStatSheet() {
     if (!els.statsheet) return;
     const host = els.statsheet; host.innerHTML = '';
-    const s = activeEnemyStats();
-    if (!s) {
+    const ctx = activeStatContext();
+    host.classList.toggle('is-hero', !!ctx && ctx.token.kind === 'hero');
+    if (!ctx) {
       const p = document.createElement('p'); p.className = 'stat-empty';
-      p.textContent = 'No stat block for the active enemy. Add a `stats` block in data/cast.js.';
+      p.textContent = 'Place a combatant and apply initiative to see its card.';
       host.append(p); return;
     }
-    const head = document.createElement('h3'); head.className = 'gm-h3 stat-name'; head.textContent = s.name;
-    host.append(head);
+    const { token, cast, stats } = ctx;
+
+    // ---- Head: face-centered profile picture + name / subtitle / active tag ----
+    const head = document.createElement('div'); head.className = 'stat-head';
+    if (cast && cast.tokenImage) {
+      const pic = document.createElement('img'); pic.className = 'stat-pic'; pic.src = cast.tokenImage; pic.alt = '';
+      if (cast.face) pic.style.objectPosition = cast.face;
+      head.append(pic);
+    }
+    const idBox = document.createElement('div'); idBox.className = 'stat-id';
+    const nameRow = document.createElement('div'); nameRow.className = 'stat-name-row';
+    const nm = document.createElement('h3'); nm.className = 'stat-name'; nm.textContent = (stats && stats.name) || token.label;
+    const tag = document.createElement('span'); tag.className = 'stat-tag ' + (token.kind === 'hero' ? 'is-hero' : 'is-enemy');
+    tag.textContent = 'Active · ' + (token.kind === 'hero' ? 'Hero' : 'Enemy');
+    nameRow.append(nm, tag); idBox.append(nameRow);
+    if (stats && stats.subtitle) { const sub = document.createElement('div'); sub.className = 'stat-sub'; sub.textContent = stats.subtitle; idBox.append(sub); }
+    head.append(idBox); host.append(head);
+
+    // ---- Conditions on the active combatant (read-only here; edited in the roster) ----
+    const conds = Array.isArray(token.conditions) ? token.conditions : [];
+    if (conds.length) {
+      const cw = document.createElement('div'); cw.className = 'stat-conditions';
+      const cl = document.createElement('span'); cl.className = 'stat-cond-label'; cl.textContent = 'Conditions'; cw.append(cl);
+      for (const cn of conds) { const chip = document.createElement('span'); chip.className = 'cond-chip'; chip.textContent = cn; cw.append(chip); }
+      host.append(cw);
+    }
+
+    // ---- HP first (live, from the token), then AC + Speed ----
     const line = (k, v) => { const r = document.createElement('div'); r.className = 'stat-line';
       const a = document.createElement('span'); a.className = 'stat-k'; a.textContent = k;
       const b = document.createElement('span'); b.className = 'stat-v'; b.textContent = v; r.append(a, b); return r; };
     const lines = document.createElement('div'); lines.className = 'stat-lines';
-    if (s.ac != null) lines.append(line('Armor Class', s.ac));
-    if (s.hp != null) lines.append(line('Hit Points', s.hp));
-    if (s.speed) lines.append(line('Speed', s.speed));
-    host.append(lines);
-    if (s.abilities) {
+    const hp = token.hp || {};
+    const max = hp.max != null ? hp.max : (stats && stats.hp != null ? stats.hp : null);
+    const cur = hp.current != null ? hp.current : max;
+    if (max != null) {
+      lines.append(line('Hit Points', (cur != null ? cur : '?') + ' / ' + max));
+      const bar = document.createElement('div'); bar.className = 'stat-hpbar';
+      const fill = document.createElement('i');
+      fill.style.width = Math.max(0, Math.min(100, max ? Math.round(((cur != null ? cur : max) / max) * 100) : 0)) + '%';
+      if (cur != null && max && cur / max <= 0.34) fill.classList.add('is-low');
+      bar.append(fill); lines.append(bar);
+    }
+    if (stats && stats.ac != null) lines.append(line('Armor Class', stats.ac));
+    if (stats && stats.speed) lines.append(line('Speed', stats.speed));
+    if (lines.children.length) host.append(lines);
+
+    // ---- No stat block yet (e.g. a hero before their sheet, or a plain enemy):
+    //      a compact card -- name + HP + conditions above is the whole card. ----
+    if (!stats) {
+      if (max == null) { const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p); }
+      return;
+    }
+
+    // ---- Abilities ----
+    if (stats.abilities) {
       const ab = document.createElement('div'); ab.className = 'stat-abils';
       for (const [k, lab] of [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']]) {
-        const v = s.abilities[k] == null ? 0 : s.abilities[k];
+        const v = stats.abilities[k] == null ? 0 : stats.abilities[k];
         const tile = document.createElement('div'); tile.className = 'stat-abil';
         const t = document.createElement('span'); t.className = 'stat-abil-k'; t.textContent = lab;
         const n = document.createElement('span'); n.className = 'stat-abil-v'; n.textContent = (v >= 0 ? '+' : '') + v;
@@ -1835,12 +1874,14 @@ export function mountGm(root) {
       }
       host.append(ab);
     }
-    for (const atk of (s.attacks || [])) {
+    // ---- Attacks (append " to hit" only to a numeric bonus, not a save/keyword) ----
+    for (const atk of (stats.attacks || [])) {
       const a = document.createElement('div'); a.className = 'stat-attack';
-      const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name;
+      const nm2 = document.createElement('div'); nm2.className = 'stat-attack-name'; nm2.textContent = atk.name;
       const d = document.createElement('div'); d.className = 'stat-attack-line';
-      d.textContent = [atk.toHit ? atk.toHit + ' to hit' : '', atk.range, atk.damage].filter(Boolean).join(' · ');
-      a.append(nm, d); host.append(a);
+      const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
+      d.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
+      a.append(nm2, d); host.append(a);
     }
   }
 
