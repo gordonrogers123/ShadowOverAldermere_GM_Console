@@ -2158,8 +2158,11 @@ export function mountGm(root) {
       // letterboxed cutout only needs ~1.8x to fill it -- 2..4 was dead travel, so
       // the usable band now spans the whole slider (finer 0.05 step to match).
       mkRange('Size', 'cc-scale', 0.5, 2, 0.05, entry.scale || 1, '', (v) => { entry.scale = v; }),
-      mkRange('↔', 'cc-x', -10, 45, 1, entry.x || 0, 'Horizontal position', (v) => { entry.x = v; }),
-      mkRange('↕', 'cc-y', -10, 30, 1, entry.y || 0, 'Vertical position — raise to align with the backdrop bottom', (v) => { entry.y = v; })
+      // Symmetric around 0 so the default sits CENTERED on the slider with equal,
+      // useful travel each way (the old -10..45 / -10..30 ranges parked 0 near the
+      // left end and ran far past anything useful on the right).
+      mkRange('↔', 'cc-x', -20, 20, 1, entry.x || 0, 'Horizontal position (0 = centered)', (v) => { entry.x = v; }),
+      mkRange('↕', 'cc-y', -20, 20, 1, entry.y || 0, 'Vertical position (0 = centered; raise to lift toward the backdrop bottom)', (v) => { entry.y = v; })
     );
 
     const flip = document.createElement('button');
@@ -2807,16 +2810,67 @@ export function mountGm(root) {
     rebuildSceneList();
   }
 
+  // The GM's custom scene order: an array of scene ids the drag handle rewrites.
+  // Persisted locally; scenes not yet in it (freshly added) keep their natural
+  // position at the end, so a new scene never vanishes.
+  const ORDER_KEY = 'aldermere.gm.sceneOrder.v1';
+  function loadOrder() {
+    try { const a = JSON.parse(localStorage.getItem(ORDER_KEY)); return Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []; }
+    catch (e) { return []; }
+  }
+  function saveOrder() { try { localStorage.setItem(ORDER_KEY, JSON.stringify(sceneOrder)); } catch (e) {} }
+  let sceneOrder = loadOrder();
+  let draggingLi = null;
+  // Read the live DOM row order back into sceneOrder after a drag, then rebuild
+  // so pin-float re-applies canonically.
+  function persistSceneOrder() {
+    const ids = [...els.sceneList.querySelectorAll('.scene-button')].map((b) => b.dataset.id);
+    if (ids.length) { sceneOrder = ids; saveOrder(); }
+    rebuildSceneList();
+  }
+
   function rebuildSceneList() {
     els.sceneList.innerHTML = '';
-    // Pinned scenes float to the top; order is otherwise preserved within each
-    // group (a stable partition), so unpinning drops a scene back into place.
+    // Order: the GM's custom drag order first (unknown ids fall to the end in
+    // natural order), then pinned scenes float to the top -- a stable partition,
+    // so unpinning drops a scene back into its ordered place.
     const all = allScenes();
-    const ordered = [...all.filter((s) => pinned.has(s.id)), ...all.filter((s) => !pinned.has(s.id))];
+    const rank = new Map(sceneOrder.map((id, i) => [id, i]));
+    const base = [...all].sort((a, b) => {
+      const ra = rank.has(a.id) ? rank.get(a.id) : Infinity;
+      const rb = rank.has(b.id) ? rank.get(b.id) : Infinity;
+      return ra === rb ? 0 : ra - rb;
+    });
+    const ordered = [...base.filter((s) => pinned.has(s.id)), ...base.filter((s) => !pinned.has(s.id))];
     for (const scene of ordered) {
       const li = document.createElement('li');
       const isPinned = pinned.has(scene.id);
       if (isPinned) li.classList.add('is-pinned');
+
+      // Drag handle: the only draggable element, so a click on the row still
+      // selects/edits while a grab on the grip reorders. dragover on each row
+      // live-moves the dragged row above/below by the pointer's midpoint test.
+      const grip = document.createElement('span');
+      grip.className = 'scene-grip';
+      grip.draggable = true;
+      grip.textContent = '⠿';
+      grip.title = 'Drag to reorder';
+      grip.setAttribute('aria-label', 'Drag to reorder ' + scene.name);
+      grip.addEventListener('dragstart', (e) => {
+        draggingLi = li; li.classList.add('dragging');
+        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', scene.id); } catch (_) {} }
+      });
+      grip.addEventListener('dragend', () => { li.classList.remove('dragging'); draggingLi = null; persistSceneOrder(); });
+      li.appendChild(grip);
+      li.addEventListener('dragover', (e) => {
+        if (!draggingLi || draggingLi === li) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        const rect = li.getBoundingClientRect();
+        const after = (e.clientY - rect.top) > rect.height / 2;
+        if (after) li.after(draggingLi); else li.before(draggingLi);
+      });
+      li.addEventListener('drop', (e) => { if (draggingLi) e.preventDefault(); });
 
       const pin = document.createElement('button');
       pin.className = 'scene-pin' + (isPinned ? ' is-pinned' : '');
