@@ -497,11 +497,11 @@ body.view-gm {
    (away from the variant chips), and a red alert tint while the screen is out. */
 .view-gm .quick-row .vis-toggle {
   flex: 0 0 auto; margin-left: auto;          /* rides the right of the Background title */
-  display: inline-flex; align-items: center; gap: 0.3rem; line-height: 1;
-  font-size: var(--fs-100); padding: 0.15rem 0.5rem;   /* compact -- no taller than the title text */
+  display: inline-flex; align-items: center; gap: 0.25rem; line-height: 1;
+  font-size: 0.66rem; letter-spacing: 0.02em; padding: 0.15rem 0.5rem;   /* small + compact -- no taller than the title text */
   background: var(--stage); color: var(--paper); border-color: var(--ink);
 }
-.view-gm .quick-row .vis-toggle svg { width: 0.95em; height: 0.95em; flex: 0 0 auto; }
+.view-gm .quick-row .vis-toggle svg { width: 0.85em; height: 0.85em; flex: 0 0 auto; }
 .view-gm .quick-row .vis-toggle:hover { background: var(--stage); filter: brightness(1.35); }
 .view-gm .quick-row .vis-toggle.is-on { background: var(--offense); color: var(--paper); border-color: var(--offense); }
 .view-gm .quick-row .vis-toggle.is-on:hover { background: var(--offense); filter: brightness(1.08); }
