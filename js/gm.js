@@ -676,7 +676,9 @@ export function mountGm(root) {
       // the music library still play (tracks are 'mus:<i>' now).
       const set = new Set((snap.audio.playing || []).map((k) => (k === 'music' ? 'mus:0' : k)));
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
-      if (snap.audio.master != null) state.audio.master = snap.audio.master;
+      // A cue sets WHICH beds play, not the master OUTPUT level -- master is the
+      // GM's live mix fader, so applying a cue must never reset it (it was snapping
+      // back to the 0.8 default every cue press).
     }
     // SFX one-shots -- independent of the bed set, so a cue can fire a sound
     // without touching the music. Gated by 'sfx' so its lane can be keyframed.
@@ -813,8 +815,7 @@ export function mountGm(root) {
     } else if (name === 'audioIn') {
       const set = new Set(((snap.audio && snap.audio.playing) || []).map((k) => (k === 'music' ? 'mus:0' : k)));
       for (const k of Object.keys(tracks)) tracks[k].playing = set.has(k);
-      if (snap.audio && snap.audio.master != null) state.audio.master = snap.audio.master;
-      state.audio.ramp = Math.max(0, +lane.ramp || 0);
+      state.audio.ramp = Math.max(0, +lane.ramp || 0);   // master is the GM's live mix; cues don't set it
     } else if (name === 'reveal') {
       state.stage.visible = !(snap.visible === false);
       setStageFx('curtain', lane.ramp);
