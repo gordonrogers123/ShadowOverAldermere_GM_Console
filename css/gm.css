@@ -823,15 +823,16 @@ body.view-gm {
    the Map-variant reveal + Save/Reset), then the roster + initiative tracker row.
    The whole performance surface (preview + live controls + the old controls strip)
    is hidden in map mode, so only those two blocks remain -- ordered explicitly. */
-.view-gm .gm-stage.is-map { display: flex; flex-direction: column; gap: var(--space-3); }
-.view-gm .gm-stage.is-map .gm-mapmode { order: 1; }
-.view-gm .gm-stage.is-map .mapmode-combat { order: 2; }
-/* Roster (left, wider -- it's itself two columns) + initiative tracker (right)
-   side by side, so the tracker sits beside the roster instead of buried far
-   below it. Hidden entirely in live mode (the roster has no [hidden] toggle). */
-.view-gm .mapmode-combat { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
-.view-gm .gm-stage:not(.is-map) .mapmode-combat { display: none; }
-@media (max-width: 1100px) { .view-gm .mapmode-combat { grid-template-columns: 1fr; } }
+.view-gm .gm-stage.is-map { display: block; }
+/* Map mode hides the scenes rail entirely -- combat takes the full width. */
+.view-gm .gm-main:has(.gm-stage.is-map) { grid-template-columns: 1fr; }
+.view-gm .gm-main:has(.gm-stage.is-map) .gm-scenes { display: none; }
+/* Combat surface: a head row, then a BODY grid [ initiative + stat-block column |
+   board ], then the rosters full-width below. The column carries the tracker and
+   the active combatant's card beside the board. Collapses to one column narrow. */
+.view-gm .mapmode-body { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-4); align-items: start; margin-bottom: var(--space-4); }
+.view-gm .mm-combat-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+@media (max-width: 1100px) { .view-gm .mapmode-body { grid-template-columns: 1fr; } }
 /* In map mode the whole performance surface (preview + live controls + the old
    map-controls strip) is gone -- the map-variant reveal and Save/Reset layout now
    ride the board header, so there is no separate strip below the board. */

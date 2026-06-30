@@ -397,30 +397,29 @@ export function mountGm(root) {
   surface.append(els.preview, els.controls);   // preview centre; controls flow via display:contents
   els.surface = surface;
   els.scenes = root.querySelector('.gm-scenes');
-  els.scenes.appendChild(els.notes);  // notes fill the rail bottom
-  // Map mode lays the BOARD on top, a controls strip, then the roster + the
-  // initiative tracker SIDE BY SIDE. Lift the roster out of .gm-mapmode and pair
-  // it with the initiative panel in one .mapmode-combat row, so the tracker sits
-  // beside the roster (not far below it); the .is-map layout orders the blocks.
-  const combat = document.createElement('div');
-  combat.className = 'mapmode-combat';
-  els.mapmode.after(combat);
+  els.scenes.appendChild(els.notes);  // notes fill the rail bottom (rail is hidden in map mode)
+  // Map mode is a combat surface: the head row, then a BODY grid
+  // [ initiative + stat-block column | board ], then the rosters full-width below.
+  // The combat column lifts the initiative tracker and the active combatant's stat
+  // card out of the (now-hidden) scenes rail to sit beside the board.
   const initPanel = document.createElement('div');
   initPanel.className = 'gm-initiative'; initPanel.hidden = true;
   els.initiative = initPanel;
-  combat.append(els.mapRoster, initPanel);
-  // The map-mode controls (the map-variant reveal + Save/Reset layout) ride ON the
-  // board header row, next to the title and the Edit/Exit nav -- so the separate
-  // controls strip is gone entirely. They're map-only (inside .gm-mapmode, hidden
-  // in live mode), so this one-time move needs no per-render toggle; the now-empty
-  // .gm-surface is hidden in map mode (CSS).
-  els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
-  // The active enemy's stat sheet sits in the left rail (where GM notes are),
-  // shown only in map mode.
   const statSheet = document.createElement('div');
   statSheet.className = 'gm-statsheet'; statSheet.hidden = true;
   els.statsheet = statSheet;
-  root.querySelector('.gm-scenes').appendChild(statSheet);
+  const combatCol = document.createElement('div');
+  combatCol.className = 'mm-combat-col';
+  combatCol.append(initPanel, statSheet);
+  // Wrap the board in a body grid and seat the combat column to its left. The
+  // roster stays in markup order (after the board) -> full-width row below.
+  const mapBody = document.createElement('div');
+  mapBody.className = 'mapmode-body';
+  els.mapboard.replaceWith(mapBody);
+  mapBody.append(combatCol, els.mapboard);
+  // The map-variant reveal + Save/Reset layout ride ON the board header row, next
+  // to the title and the Edit/Exit nav -- no separate controls strip.
+  els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
 
   const boardView = createStageView(els.mapboard);
   boardView.el.classList.add('board-interactive');   // tokens are draggable here
