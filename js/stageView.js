@@ -337,9 +337,22 @@ export function createStageView(root) {
         img.style.transition = t;
         requestAnimationFrame(() => img.classList.add('is-shown'));
       } else if (!prev.shown) {
-        // First reveal: animate the entrance from the offstage baseline once decoded.
+        // First reveal: SETTLE the entrance baseline with NO transition before
+        // showing -- a fade char's in-place blur, a slide char's offstage edge --
+        // then animate. setPlacement (above) toggles enter-fade, which CHANGES the
+        // transform; with the transition live that change itself animates, so a
+        // fade character slid in from the side wherever the cutout last rested (and
+        // only behaved on the 2nd reveal, once it already rested in place). The
+        // swap/replay branches already settle this way; the first reveal did not.
         if (srcChanged) setSrc(side, r.src);
-        const go = () => requestAnimationFrame(() => img.classList.add('is-shown'));
+        const go = () => {
+          const t = img.style.transition;
+          img.style.transition = 'none';
+          img.classList.remove('is-shown');
+          void img.offsetWidth;                   // commit the baseline, no animation
+          img.style.transition = t;
+          requestAnimationFrame(() => img.classList.add('is-shown'));
+        };
         if (img.decode) img.decode().then(go).catch(go); else go();
       } else {
         img.classList.add('is-shown');            // already shown, same cutout
