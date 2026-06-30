@@ -1682,15 +1682,8 @@ export function mountGm(root) {
     if (enemies.length) {
       // Add all drops one copy of each enemy type.
       const { col, list } = rosterColumn('Enemies', () => { for (const id of enemies) addToken(id, 'enemy'); }, placed.filter((t) => t.kind === 'enemy'));
-      // "Roll enemies" lives over the enemies roster: it fills each enemy's own
-      // initiative field (d20 + the type modifier). The GM then presses Apply to
-      // sort -- rolling does not build the order on its own.
-      const rollBtn = document.createElement('button');
-      rollBtn.className = 'gm-button btn--quiet mmr-rollenemies'; rollBtn.type = 'button';
-      rollBtn.textContent = 'Roll enemies';
-      rollBtn.title = "Roll a d20 + the type modifier into every enemy's initiative field";
-      rollBtn.addEventListener('click', () => rollEnemies());
-      col.querySelector('.mmr-head').append(rollBtn);
+      // (Roll enemies now lives in the initiative panel footer -- it fills each
+      // enemy's own initiative field with d20 + the type modifier; Apply sorts.)
       for (const id of enemies) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const typeRow = rosterRow('mmr-type');
@@ -1709,56 +1702,83 @@ export function mountGm(root) {
   // The initiative panel (map mode): per-enemy-type modifiers, Roll enemies /
   // Roll all, then the sorted tracker with prev/next. Active row + active token
   // ride state.stage.activeTokenId (the gold ring on both screens).
+  let initShowAll = false;   // expand the sliding window to the full order
+  const INIT_WINDOW = 5;     // how many combatants the "who's next" window shows
   function renderInitiative(scene) {
     if (!els.initiative) return;
     const host = els.initiative; host.innerHTML = '';
     const i = ensureInit();
     const placed = (state.stage && state.stage.tokens) || [];
+    const tokenFor = (instId) => placed.find((x) => x.instId === instId);
 
+    // ---- Header: title + Turn x/y + Prev/Next (the per-turn nav lives up here) ----
     const head = document.createElement('div'); head.className = 'init-head';
     const title = document.createElement('span'); title.className = 'init-title'; title.textContent = 'Initiative';
-    const apply = document.createElement('button'); apply.className = 'gm-button init-apply'; apply.type = 'button';
-    apply.textContent = 'Apply'; apply.title = 'Sort the order from the entered initiative values (highest first)';
-    apply.addEventListener('click', applyInitiative);
-    const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
-    clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
-    clr.addEventListener('click', clearInitiative);
-    head.append(title, apply, clr);
+    head.append(title);
+    if (i.order.length) {
+      const prev = document.createElement('button'); prev.className = 'gm-button btn--quiet init-prev'; prev.type = 'button';
+      prev.textContent = '◀ Prev'; prev.title = 'Previous turn'; prev.addEventListener('click', () => initStep(-1));
+      const next = document.createElement('button'); next.className = 'gm-button init-next'; next.type = 'button';
+      next.textContent = 'Next ▶'; next.title = 'Next turn'; next.addEventListener('click', () => initStep(1));
+      head.append(prev, next);
+    }
     host.append(head);
-    // Heroes type their value, "Roll enemies" (over the enemies roster) fills the
-    // enemy fields, then Apply sorts -- so the panel is just the head + the tracker.
 
-    // The tracker.
+    // ---- Tracker: a sliding window that starts at the ACTIVE turn and shows who's
+    //      up next (wrapping past end-of-round), so a big fight stays on screen. ----
     const track = document.createElement('div'); track.className = 'init-track';
     if (!i.order.length) {
       const hint = document.createElement('p'); hint.className = 'init-empty';
       hint.textContent = 'Type the heroes’ rolls, Roll enemies, then Apply to build the order.';
       track.append(hint);
     } else {
-      const nav = document.createElement('div'); nav.className = 'init-nav';
-      const prev = document.createElement('button'); prev.className = 'gm-button btn--quiet init-prev'; prev.type = 'button';
-      prev.textContent = '◀'; prev.title = 'Previous turn'; prev.addEventListener('click', () => initStep(-1));
-      const turn = document.createElement('span'); turn.className = 'init-turn';
-      turn.textContent = 'Turn ' + (i.idx + 1) + ' / ' + i.order.length;
-      const next = document.createElement('button'); next.className = 'gm-button init-next'; next.type = 'button';
-      next.textContent = 'Next ▶'; next.title = 'Next turn'; next.addEventListener('click', () => initStep(1));
-      nav.append(prev, turn, next); track.append(nav);
-
+      const total = i.order.length;
+      const windowed = !initShowAll && total > INIT_WINDOW;
+      const slots = [];
+      if (windowed) { for (let k = 0; k < INIT_WINDOW; k++) slots.push((i.idx + k) % total); }
+      else { for (let n = 0; n < total; n++) slots.push(n); }
+      const cap = document.createElement('div'); cap.className = 'init-win-label';
+      cap.textContent = 'Turn ' + (i.idx + 1) + ' / ' + total + (windowed ? ' · up next' : '');
+      track.append(cap);
       const list = document.createElement('ol'); list.className = 'init-list';
-      i.order.forEach((instId, n) => {
-        const t = placed.find((x) => x.instId === instId); if (!t) return;
+      slots.forEach((n) => {
+        const instId = i.order[n];
+        const t = tokenFor(instId); if (!t) return;
         const c = castEntry(t.castId, t.kind);
         const li = document.createElement('li'); li.className = 'init-row' + (n === i.idx ? ' is-active' : '');
+        if (windowed && n < i.idx) li.classList.add('is-wrap');   // wrapped = next round, faded
+        const ord = document.createElement('span'); ord.className = 'init-ord'; ord.textContent = (n + 1);
         const nm = document.createElement('span'); nm.className = 'init-name'; nm.textContent = t.label;
         const val = document.createElement('span'); val.className = 'init-val'; val.textContent = i.rolls[instId];
-        li.append(rosterSwatch(c ? c.ringColor : '#888'), nm, val);
+        li.append(ord, rosterSwatch(c ? c.ringColor : '#888'), nm, val);
         li.title = 'Jump to this turn';
         li.addEventListener('click', () => setInitIdx(n));
         list.append(li);
       });
       track.append(list);
+      if (total > INIT_WINDOW) {
+        const more = document.createElement('button'); more.className = 'init-more'; more.type = 'button';
+        more.textContent = initShowAll ? 'Show fewer' : ('Show all (' + total + ')');
+        more.addEventListener('click', () => { initShowAll = !initShowAll; renderInitiative(scene); });
+        track.append(more);
+      }
     }
     host.append(track);
+
+    // ---- Footer: the once-per-combat setup cluster, divided off below the list so
+    //      it sits far from the Prev/Next up top (no mid-fight mis-clicks). ----
+    const foot = document.createElement('div'); foot.className = 'init-foot';
+    const roll = document.createElement('button'); roll.className = 'gm-button btn--quiet init-roll'; roll.type = 'button';
+    roll.textContent = 'Roll enemies'; roll.title = "Roll a d20 + each type's modifier into every enemy's initiative field";
+    roll.addEventListener('click', rollEnemies);
+    const apply = document.createElement('button'); apply.className = 'gm-button init-apply'; apply.type = 'button';
+    apply.textContent = 'Apply'; apply.title = 'Sort the order from the entered initiative values (highest first)';
+    apply.addEventListener('click', applyInitiative);
+    const clr = document.createElement('button'); clr.className = 'gm-button btn--quiet init-clear'; clr.type = 'button';
+    clr.textContent = 'Clear'; clr.title = 'Clear the rolls + order (keeps the type modifiers)';
+    clr.addEventListener('click', clearInitiative);
+    foot.append(roll, apply, clr);
+    host.append(foot);
   }
 
   // The stat block to show: the active token's type when it is an enemy with a

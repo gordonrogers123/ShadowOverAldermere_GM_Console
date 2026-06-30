@@ -913,32 +913,41 @@ body.view-gm {
 @media (max-width: 900px) { .view-gm .mapmode-roster { grid-template-columns: 1fr; } }
 
 /* ---- Initiative tracker (map mode) ---- */
+/* Initiative panel: a sectioned card -- header (title + Turn + Prev/Next), the
+   sliding "who's next" window, and a footer with the once-per-combat setup. */
 .view-gm .gm-initiative {
   background: var(--gm-panel); border: 1px solid var(--rule);
-  border-left: 6px solid #b07d2b; border-radius: 8px; padding: 0.8rem 1rem;
+  border-left: 6px solid #b07d2b; border-radius: 8px; padding: 0;
 }
-.view-gm .init-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
-.view-gm .init-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-right: auto; }
-.view-gm .init-apply, .view-gm .init-clear { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }
-.view-gm .init-nav { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-.view-gm .init-turn { font-size: var(--fs-200); color: var(--neutral); margin-left: auto; }
-.view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; }
+.view-gm .init-head { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+.view-gm .init-title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 1rem; margin-right: auto; }
+.view-gm .init-turn { font-family: var(--font-display); font-size: var(--fs-100); color: var(--neutral); margin-right: var(--space-1); }
+.view-gm .init-prev, .view-gm .init-next { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
+.view-gm .init-track { padding: 0.35rem 0.45rem 0.15rem; }
+.view-gm .init-win-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.62rem; letter-spacing: 0.06em; color: var(--neutral); padding: 0.1rem 0.2rem 0.3rem; }
+.view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; padding: 0.3rem 0.2rem; }
 .view-gm .init-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .view-gm .init-row {
   display: flex; align-items: center; gap: var(--space-2);
-  padding: 0.35rem 0.6rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  padding: 0.32rem 0.5rem; border: 1px solid var(--rule); border-radius: var(--radius-sm);
   background: var(--fill); cursor: pointer;
 }
+.view-gm .init-row .init-ord { flex: 0 0 1.1rem; text-align: center; font-family: var(--font-display); font-size: 0.78rem; color: var(--neutral); }
 .view-gm .init-row .init-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .view-gm .init-row .init-val {
   flex: 0 0 auto; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
   min-width: 1.6rem; text-align: right;
 }
 /* The active turn: a warm gold band that matches the token's golden ring. */
-.view-gm .init-row.is-active {
-  background: #fbf1da; border-color: #b07d2b; box-shadow: inset 3px 0 0 #b07d2b;
-}
+.view-gm .init-row.is-active { background: #fbf1da; border-color: #b07d2b; box-shadow: inset 3px 0 0 #b07d2b; }
+.view-gm .init-row.is-active .init-name { font-weight: 700; }
 .view-gm .init-row.is-active .init-val { color: #8a5a16; }
+.view-gm .init-row.is-wrap { opacity: 0.55; }   /* a wrapped (next-round) entry reads quieter */
+.view-gm .init-more { width: 100%; text-align: center; border: none; background: transparent; color: var(--control); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; padding: 0.4rem; margin-top: 0.2rem; cursor: pointer; }
+.view-gm .init-more:hover { text-decoration: underline; }
+.view-gm .init-foot { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding: 0.5rem 0.6rem; border-top: 1px solid var(--rule); }
+.view-gm .init-roll, .view-gm .init-clear { font-size: var(--fs-100); padding: 0.35rem 0.6rem; }
+.view-gm .init-apply { font-size: var(--fs-100); padding: 0.35rem 0.7rem; background: var(--fill); color: var(--support); border-color: var(--support); }
 
 /* ---- Enemy stat sheet (map mode, left rail) ---- */
 /* In map mode the stat sheet REPLACES GM notes in the rail, sized to its own
