@@ -31,6 +31,7 @@ export function mountGm(root) {
   // side's first roster entry.
   let builderPick = { left: null, right: null };
   let mapMode = false;              // map mode replaces the live panel for token play
+  let armedBg = null;               // Stage row: a background variant PICKED but not yet applied (GM-local)
   let activeCueId = null;           // the cue last applied -- lights its rail button
   let cueTimers = [];               // pending setTimeouts for a sequenced cue's beats
   let testTimers = [];              // pending setTimeouts for a builder "Test in preview" run
@@ -95,8 +96,9 @@ export function mountGm(root) {
               <button class="gm-button btn--toggle vis-toggle" type="button" title="Black out the screen (hide everything)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M5.6 7.6a9 9 0 1 0 12.8 0"/></svg><span class="btn-label">Black out</span></button>
             </div>
             <div class="quick-row quick-bg-row">
-              <span class="control-label">BG</span>
+              <span class="control-label">Stage</span>
               <select class="quick-bg-select" aria-label="Background variant (hot-swap)"></select>
+              <button class="gm-button btn--toggle quick-hide quick-bg-vis" type="button" title="Show the backdrop / hide it (characters on black)">Hide</button>
             </div>
             <div class="quick-row quick-char-row" data-side="left">
               <span class="control-label">Left</span>
@@ -299,6 +301,7 @@ export function mountGm(root) {
     cueButtons:   root.querySelector('.cue-buttons'),
     quick:        root.querySelector('.gm-quick'),
     quickBgSelect: root.querySelector('.quick-bg-select'),
+    quickBgVis:   root.querySelector('.quick-bg-vis'),
     mixer:        root.querySelector('.gm-mixer'),
     mixerFaders:  root.querySelector('.mixer-faders'),
     mixerExtra:   root.querySelector('.mixer-extra'),
@@ -535,9 +538,25 @@ export function mountGm(root) {
     state.stage[side].shown = false;
     commit();
   }
+  // Stage row Show/Hide. "Show" (a variant is armed, or the backdrop is hidden):
+  // apply the armed variant + reveal the backdrop. "Hide": black the backdrop only,
+  // leaving the characters composited on black -- separate from the global Black-out.
+  function toggleBackdrop() {
+    if (bgPending() || (state.stage && state.stage.bgHidden)) {
+      if (bgPending()) state.mapState = armedBg;
+      if (state.stage) state.stage.bgHidden = false;
+      armedBg = null;
+    } else if (state.stage) {
+      state.stage.bgHidden = true;
+    }
+    commit();
+  }
 
   els.visToggle.addEventListener('click', toggleVisible);
-  els.quickBgSelect.addEventListener('change', () => setVariant(els.quickBgSelect.value));
+  // Picking a Stage variant ARMS it (does not change the backdrop live) -- the Stage
+  // Show button applies it. Re-render the quick panel so the button flips to "Show".
+  els.quickBgSelect.addEventListener('change', () => { armedBg = els.quickBgSelect.value; const sc = sceneById(state.sceneId); if (sc) renderQuick(sc); });
+  els.quickBgVis.addEventListener('click', toggleBackdrop);
   els.cueNew.addEventListener('click', () => addCue());
   els.editScene.addEventListener('click', () => openBuilder(sceneById(state.sceneId)));
   els.previewSize.addEventListener('click', () => {
@@ -598,7 +617,8 @@ export function mountGm(root) {
       o.textContent = (scene.maps && scene.maps[key] === '') ? 'Title screen' : humanize(key);
       sel.appendChild(o);
     }
-    sel.value = state.mapState;
+    // Show the ARMED (pending) variant if one is picked, else the live backdrop.
+    sel.value = (armedBg != null && keys.includes(armedBg)) ? armedBg : state.mapState;
     return keys.length;
   }
 
@@ -948,12 +968,20 @@ export function mountGm(root) {
     // editor now, not captured live, so there is no always-on Save button here).
     els.cueRow.hidden = cues.length === 0;
   }
+  // Is a different background variant armed (picked) but not yet applied?
+  function bgPending() { return armedBg != null && armedBg !== state.mapState; }
   // ---- Quick actions (live manual surface): background + characters ----
-  // The always-on row of common live tweaks, below the cue bar. Three consistent
-  // rows: Background is a variant dropdown + the Black-out toggle; each character
-  // side is a hot-swap dropdown + a Hide/Show toggle.
+  // The always-on "Visual" section: three rows, each a dropdown + a Show/Hide. The
+  // Stage row's Show/Hide applies the armed variant + reveals the backdrop, or hides
+  // it (characters on black); the global Black-out sits on the section header.
   function renderQuick(scene) {
-    fillVariantSelect(els.quickBgSelect, scene);   // background variant dropdown
+    fillVariantSelect(els.quickBgSelect, scene);   // background variant dropdown (shows the armed pick)
+    // Stage backdrop Show/Hide: "Show" when a new variant is armed OR the backdrop
+    // is hidden (press to apply / reveal); "Hide" when it is live (press for
+    // characters-on-black). Lit while the backdrop is hidden.
+    const bgHidden = !!(state.stage && state.stage.bgHidden);
+    els.quickBgVis.textContent = (bgPending() || bgHidden) ? 'Show' : 'Hide';
+    els.quickBgVis.classList.toggle('is-on', bgHidden);
     for (const side of ['left', 'right']) {
       const hasChar = charRoster(scene.characters && scene.characters[side]).length > 0 || !!state.stage[side].srcOverride;
       fillCharSelect(els.quickSwap[side], state.stage[side].srcOverride || '', true);   // first option = Scene default

@@ -267,7 +267,6 @@ body.view-gm {
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--neutral);
 }
 .view-gm .perf-side .quick-row { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); margin: 0; }
-.view-gm .perf-side .quick-bg-row { grid-template-columns: 2.6rem minmax(0, 1fr); }   /* no trailing toggle */
 .view-gm .perf-side .quick-row .control-label { white-space: nowrap; margin: 0; font-size: var(--fs-100); letter-spacing: 0.03em; }
 .view-gm .perf-side .quick-swap, .view-gm .perf-side .quick-bg-select { min-width: 0; width: 100%; }
 .view-gm .perf-side .quick-swap { flex: 1 1 7rem; }

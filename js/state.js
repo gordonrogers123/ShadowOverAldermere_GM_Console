@@ -97,6 +97,10 @@ function normalizeStage(s) {
     .filter(Boolean);
   return {
     visible: s.visible !== false,   // default true
+    // Backdrop hidden = the background layer goes black but characters still
+    // composite ("characters on black"). Separate from `visible` (the global
+    // curtain). Optional/default false, so old saves + the Player need no migration.
+    bgHidden: !!s.bgHidden,
     left: side(s.left),
     right: side(s.right),
     tokens,
