@@ -3683,7 +3683,7 @@ export function mountGm(root) {
       sampleTok.style.setProperty('--token-name-scale', gd.nameSize);
       sampleTok.style.setProperty('--token-name-spacing', (gd.nameSpacing / 100 * 0.4).toFixed(3) + 'em');
       sampleTok.style.setProperty('--token-cond-scale', gd.condSize);
-      sampleTok.style.setProperty('--token-cond-spacing', (gd.condSpacing / 100 * 6).toFixed(2));
+      sampleTok.style.setProperty('--token-cond-spacing', (gd.condSpacing / 100 * 10).toFixed(2) + 'px');
       sampleTok.classList.toggle('cond-below', gd.condPos === 'below');
       sampleTok.style.setProperty('--token-hp-y', (84 - gd.hpPos * 0.82).toFixed(1) + '%');
       sampleTok.querySelector('.token-cond path').setAttribute('d', condArcPath(gd.condCurve, gd.condPos === 'below'));
