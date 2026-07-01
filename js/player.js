@@ -17,7 +17,7 @@ import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { createAudioEngine } from './audioEngine.js';
 import { dieSvg } from './diceRoller.js';
-import { applyLiveOverride, applyGlobalDisplay } from './tokenOverrides.js';
+import { applyLiveOverride, applyGlobalDisplay, applyRosterLive } from './tokenOverrides.js';
 
 const CURSOR_HIDE_MS = 3000;
 const ROOM_DICE_MS = 7000;   // how long a pushed roll lingers on the TV
@@ -124,6 +124,7 @@ export function mountPlayer(root) {
     else if (msg.type === 'tokens') {
       if (msg.castId !== undefined) applyLiveOverride(msg.castId, msg.override);
       if (msg.global !== undefined) applyGlobalDisplay(msg.global);
+      if (msg.roster !== undefined) applyRosterLive(msg.roster);
       if (lastPainted) paint(lastPainted);
     }
   });

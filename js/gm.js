@@ -23,7 +23,7 @@ import { CAST } from '../data/cast.js';
 import { CONDITIONS, CONDITION_INFO } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
-import { overrideFor, saveTokenOverride, resetTokenOverride, globalDisplay, saveGlobalDisplay, applyGlobalDisplay } from './tokenOverrides.js';
+import { overrideFor, saveTokenOverride, resetTokenOverride, globalDisplay, saveGlobalDisplay, applyGlobalDisplay, condArcPath, addCharacter, removeAddedCharacter, setHidden, isAdded, isHidden, rosterPayload } from './tokenOverrides.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -2617,9 +2617,11 @@ export function mountGm(root) {
       };
       syncAllBtn();
     };
-    build(els.rosterHeroes, els.rosterAllHeroes, CAST.heroes || [], draft.roster.heroes);
-    build(els.rosterNpcs, els.rosterAllNpcs, CAST.npcs || [], (draft.roster.npcs || (draft.roster.npcs = [])));
-    build(els.rosterEnemies, els.rosterAllEnemies, CAST.enemies || [], draft.roster.enemies);
+    // Hidden tokens (token builder) are dropped from the scene-eligible pickers.
+    const shown = (arr) => (arr || []).filter((c) => !c.hidden);
+    build(els.rosterHeroes, els.rosterAllHeroes, shown(CAST.heroes), draft.roster.heroes);
+    build(els.rosterNpcs, els.rosterAllNpcs, shown(CAST.npcs), (draft.roster.npcs || (draft.roster.npcs = [])));
+    build(els.rosterEnemies, els.rosterAllEnemies, shown(CAST.enemies), draft.roster.enemies);
   }
 
   // ---- Explicit cue builder -------------------------------------------------
@@ -3495,8 +3497,6 @@ export function mountGm(root) {
     const fmtFace = (p) => `${Math.round(clampN(p.x, 0, 100))}% ${Math.round(clampN(p.y, 0, 100))}%`;
     const defRing = (kind) => (kind === 'enemy' ? '#8a2e2e' : kind === 'npc' ? '#6f9bd1' : '#2f6b43');
     const iniOf = (name) => String(name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-    const ARC_ABOVE = 'M -10,40 A 60,60 0 0 1 110,40';
-    const ARC_BELOW = 'M -10,66 A 60,60 0 0 0 110,66';
     const findCast = (castId) => {
       for (const [kind, arr] of [['hero', CAST.heroes], ['npc', CAST.npcs], ['enemy', CAST.enemies]]) {
         const c = (arr || []).find((x) => x.id === castId);
@@ -3513,9 +3513,21 @@ export function mountGm(root) {
       <div class="tb-dialog" role="dialog" aria-modal="true" aria-label="Token builder">
         <div class="tb-head"><h2 class="tb-title">Token builder</h2><button class="tb-close" type="button" aria-label="Close token builder">&times;</button></div>
         <div class="tb-body">
-          <div class="tb-picker"></div>
+          <div class="tb-picker">
+            <div class="tb-picker-head">
+              <button class="gm-button btn--quiet tb-new-token" type="button">+ New token</button>
+              <label class="tb-show-hidden"><input type="checkbox" class="tb-show-hidden-cb"> Show hidden</label>
+            </div>
+            <div class="tb-picker-list"></div>
+          </div>
           <div class="tb-editor">
-            <p class="tb-empty">Pick a character on the left to shape their token.</p>
+            <p class="tb-empty">Pick a character on the left to shape their token, or add a new one.</p>
+            <div class="tb-add" hidden>
+              <h3 class="tb-section-h">New token</h3>
+              <label class="tb-set"><span class="tb-set-label">Name</span><input type="text" class="tb-add-name" placeholder="e.g. Bandit Captain"></label>
+              <div class="tb-set"><span class="tb-set-label">Category</span><div class="tb-seg tb-add-kind"><button type="button" data-v="hero">Hero</button><button type="button" data-v="npc">NPC</button><button type="button" data-v="enemy">Enemy</button></div></div>
+              <div class="tb-actions"><button class="gm-button btn--primary tb-add-create" type="button">Create</button><button class="gm-button btn--quiet tb-add-cancel" type="button">Cancel</button></div>
+            </div>
             <div class="tb-edit" hidden>
               <div class="tb-edit-cols">
                 <section class="tb-col tb-token-col">
@@ -3540,8 +3552,8 @@ export function mountGm(root) {
                   <label class="tb-set"><span class="tb-set-label">Name text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
                   <label class="tb-set"><span class="tb-set-label">Condition text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
                   <div class="tb-set"><span class="tb-set-label">Condition position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
-                  <label class="tb-set"><span class="tb-set-label">Condition word angle</span><input type="range" class="tb-cond-angle" min="-180" max="180" step="5"></label>
-                  <div class="tb-set"><span class="tb-set-label">HP bar position</span><div class="tb-seg tb-hp-pos"><button type="button" data-v="above">Up</button><button type="button" data-v="below">Down</button></div></div>
+                  <label class="tb-set"><span class="tb-set-label">Condition curve <span class="tb-set-hint">flat &harr; wrapped</span></span><input type="range" class="tb-cond-curve" min="0" max="100" step="5"></label>
+                  <label class="tb-set"><span class="tb-set-label">HP bar position <span class="tb-set-hint">down &harr; up</span></span><input type="range" class="tb-hp-pos" min="0" max="100" step="5"></label>
                   <div class="tb-sample-wrap"><span class="tb-set-label">On-map preview</span><div class="tb-sample"><div class="stage tb-stage"></div></div></div>
                 </section>
               </div>
@@ -3551,18 +3563,25 @@ export function mountGm(root) {
     root.appendChild(overlay);
 
     const q = (s) => overlay.querySelector(s);
-    const editBox = q('.tb-edit'), emptyMsg = q('.tb-empty');
+    const editBox = q('.tb-edit'), emptyMsg = q('.tb-empty'), addBox = q('.tb-add');
     const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
     const swatches = q('.tb-swatches'), imageGrid = q('.tb-image-grid');
     const uploadBtn = q('.tb-upload-btn'), uploadInput = q('.tb-upload-input'), uploadStatus = q('.tb-upload-status');
-    const nameSize = q('.tb-name-size'), condSize = q('.tb-cond-size'), condAngle = q('.tb-cond-angle');
+    const nameSize = q('.tb-name-size'), condSize = q('.tb-cond-size'), condCurve = q('.tb-cond-curve'), hpPos = q('.tb-hp-pos');
     const savedTag = q('.tb-saved');
     const stage = q('.tb-stage');
 
     let sel = null;     // { cast, kind }  -- the character being edited
     let draft = null;   // per-token identity: { face, ringColor, tokenImage }
-    let gd = null;      // GLOBAL display settings (all tokens): {nameSize,condSize,condPos,condAngle,hpPos}
+    let gd = null;      // GLOBAL display settings (all tokens): {nameSize,condSize,condPos,condCurve,hpPos}
+    let showHidden = false;   // reveal hidden tokens in the picker
+    let addKind = 'hero';     // category for a new token being created
     const extraImages = [];   // images uploaded this session, shown in the grid before a rescan
+
+    const showEmpty = () => { emptyMsg.hidden = false; editBox.hidden = true; addBox.hidden = true; };
+    const showAdd = () => { emptyMsg.hidden = true; editBox.hidden = true; addBox.hidden = false; };
+    const showEdit = () => { emptyMsg.hidden = true; editBox.hidden = false; addBox.hidden = true; };
+    const broadcastRoster = () => { sync.post({ type: 'tokens', roster: rosterPayload() }); repaintBoards(); };
 
     // Ring swatches (built once).
     for (const color of RING_SWATCHES) {
@@ -3582,7 +3601,7 @@ export function mountGm(root) {
       '<img class="token-portrait" alt="">' +
       '<div class="token-label"></div>' +
       '<div class="token-hpbar"><i></i></div>' +
-      '<svg class="token-cond" viewBox="0 0 100 100"><defs><path id="tb-cond-arc" d="' + ARC_ABOVE + '" fill="none"></path></defs>' +
+      '<svg class="token-cond" viewBox="0 0 100 100"><defs><path id="tb-cond-arc" d="' + condArcPath(55, false) + '" fill="none"></path></defs>' +
       '<text class="token-cond-text"><textPath startOffset="50%" text-anchor="middle" href="#tb-cond-arc" xlink:href="#tb-cond-arc">Prone</textPath></text></svg>';
     stage.append(sampleTok);
     const sampleImg = sampleTok.querySelector('.token-portrait');
@@ -3652,20 +3671,17 @@ export function mountGm(root) {
     function styleSampleGlobal() {
       sampleTok.style.setProperty('--token-name-scale', gd.nameSize);
       sampleTok.style.setProperty('--token-cond-scale', gd.condSize);
-      sampleTok.classList.toggle('hp-above', gd.hpPos === 'above');
       sampleTok.classList.toggle('cond-below', gd.condPos === 'below');
-      const cond = sampleTok.querySelector('.token-cond');
-      cond.querySelector('path').setAttribute('d', gd.condPos === 'below' ? ARC_BELOW : ARC_ABOVE);
-      cond.style.transformOrigin = '50% 50%';
-      cond.style.transform = gd.condAngle ? `rotate(${gd.condAngle}deg)` : '';
+      sampleTok.style.setProperty('--token-hp-y', (84 - gd.hpPos * 0.82).toFixed(1) + '%');
+      sampleTok.querySelector('.token-cond path').setAttribute('d', condArcPath(gd.condCurve, gd.condPos === 'below'));
     }
     function seedGlobal() {
       const g = globalDisplay();
-      gd = { nameSize: g.nameSize || 1, condSize: g.condSize || 1, condPos: g.condPos || 'above', condAngle: g.condAngle || 0, hpPos: g.hpPos || 'below' };
+      gd = { nameSize: g.nameSize || 1, condSize: g.condSize || 1, condPos: g.condPos || 'above', condCurve: g.condCurve == null ? 55 : g.condCurve, hpPos: g.hpPos || 0 };
     }
     function renderGlobalControls() {
-      nameSize.value = gd.nameSize; condSize.value = gd.condSize; condAngle.value = gd.condAngle;
-      renderSeg('.tb-cond-pos', gd.condPos); renderSeg('.tb-hp-pos', gd.hpPos);
+      nameSize.value = gd.nameSize; condSize.value = gd.condSize; condCurve.value = gd.condCurve; hpPos.value = gd.hpPos;
+      renderSeg('.tb-cond-pos', gd.condPos);
     }
     // Live: update this window's cache + repaint (no disk). Persist: POST + broadcast.
     function applyGlobalLive() { applyGlobalDisplay(gd); if (sel) styleSampleGlobal(); repaintBoards(); }
@@ -3685,32 +3701,40 @@ export function mountGm(root) {
         tokenImage: c.tokenImage || c.portrait || ''
       };
       overlay.querySelectorAll('.tb-chip').forEach((ch) => ch.classList.toggle('is-active', ch.dataset.id === castId));
-      emptyMsg.hidden = true; editBox.hidden = false; savedTag.hidden = true;
+      savedTag.hidden = true; showEdit();
       renderCrop(); renderRing(); renderImageGrid(); renderSample();
     }
 
     function renderPicker() {
-      const picker = q('.tb-picker');
-      picker.innerHTML = '';
+      const list = q('.tb-picker-list');
+      list.innerHTML = '';
       for (const [kind, label, arr] of [['hero', 'Heroes', CAST.heroes], ['npc', 'NPCs', CAST.npcs], ['enemy', 'Enemies', CAST.enemies]]) {
-        if (!(arr || []).length) continue;
+        const items = (arr || []).filter((c) => showHidden || !c.hidden);
+        if (!items.length) continue;
         const group = document.createElement('div'); group.className = 'tb-group';
         const h = document.createElement('h3'); h.className = 'tb-group-h'; h.textContent = label; group.append(h);
-        const list = document.createElement('div'); list.className = 'tb-list';
-        for (const c of arr) {
-          const chip = document.createElement('button');
-          chip.type = 'button'; chip.className = 'tb-chip'; chip.dataset.id = c.id;
+        const glist = document.createElement('div'); glist.className = 'tb-list';
+        for (const c of items) {
+          const chip = document.createElement('div'); chip.className = 'tb-chip'; chip.dataset.id = c.id;
+          if (c.hidden) chip.classList.add('is-token-hidden');
           if (sel && sel.cast.id === c.id) chip.classList.add('is-active');
+          const selBtn = document.createElement('button'); selBtn.type = 'button'; selBtn.className = 'tb-chip-sel';
           const art = c.tokenImage || c.portrait;
           const tok = document.createElement('span'); tok.className = 'tb-chip-tok'; tok.style.borderColor = c.ringColor || defRing(kind);
           if (art) { const im = document.createElement('img'); im.alt = ''; im.src = art; im.style.objectPosition = c.face || '50% 50%'; tok.append(im); }
           else { const ini = document.createElement('span'); ini.className = 'tb-chip-ini'; ini.textContent = iniOf(c.name); tok.append(ini); }
           const nm = document.createElement('span'); nm.className = 'tb-chip-name'; nm.textContent = c.name;
-          chip.append(tok, nm);
-          chip.addEventListener('click', () => selectChar(c.id));
-          list.append(chip);
+          selBtn.append(tok, nm);
+          selBtn.addEventListener('click', () => selectChar(c.id));
+          // Trailing control: remove (a token you added) / hide / unhide (built-ins).
+          const xBtn = document.createElement('button'); xBtn.type = 'button'; xBtn.className = 'tb-chip-x';
+          if (isAdded(c.id)) { xBtn.textContent = '×'; xBtn.title = 'Remove this token'; xBtn.addEventListener('click', async () => { await removeAddedCharacter(c.id); if (sel && sel.cast.id === c.id) { sel = null; showEmpty(); } broadcastRoster(); renderPicker(); }); }
+          else if (c.hidden) { xBtn.textContent = '↺'; xBtn.title = 'Unhide'; xBtn.addEventListener('click', async () => { await setHidden(c.id, false); broadcastRoster(); renderPicker(); }); }
+          else { xBtn.textContent = '⦸'; xBtn.title = 'Hide from the roster'; xBtn.addEventListener('click', async () => { await setHidden(c.id, true); broadcastRoster(); renderPicker(); }); }
+          chip.append(selBtn, xBtn);
+          glist.append(chip);
         }
-        group.append(list); picker.append(group);
+        group.append(glist); list.append(group);
       }
     }
 
@@ -3760,10 +3784,11 @@ export function mountGm(root) {
     nameSize.addEventListener('change', persistGlobal);
     condSize.addEventListener('input', () => { gd.condSize = +condSize.value; applyGlobalLive(); });
     condSize.addEventListener('change', persistGlobal);
-    condAngle.addEventListener('input', () => { gd.condAngle = +condAngle.value; applyGlobalLive(); });
-    condAngle.addEventListener('change', persistGlobal);
+    condCurve.addEventListener('input', () => { gd.condCurve = +condCurve.value; applyGlobalLive(); });
+    condCurve.addEventListener('change', persistGlobal);
+    hpPos.addEventListener('input', () => { gd.hpPos = +hpPos.value; applyGlobalLive(); });
+    hpPos.addEventListener('change', persistGlobal);
     q('.tb-cond-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; gd.condPos = b.dataset.v; renderSeg('.tb-cond-pos', b.dataset.v); applyGlobalLive(); persistGlobal(); });
-    q('.tb-hp-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; gd.hpPos = b.dataset.v; renderSeg('.tb-hp-pos', b.dataset.v); applyGlobalLive(); persistGlobal(); });
 
     // ---- Save / Reset (per-token identity: image, crop, ring) ----
     function repaintBoards() {
@@ -3788,8 +3813,22 @@ export function mountGm(root) {
       repaintBoards(); renderPicker();
     });
 
+    // ---- Add / remove / hide tokens ----
+    q('.tb-new-token').addEventListener('click', () => { q('.tb-add-name').value = ''; addKind = 'hero'; renderSeg('.tb-add-kind', addKind); showAdd(); q('.tb-add-name').focus(); });
+    q('.tb-add-kind').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; addKind = b.dataset.v; renderSeg('.tb-add-kind', addKind); });
+    q('.tb-add-cancel').addEventListener('click', () => { if (sel) showEdit(); else showEmpty(); });
+    q('.tb-add-create').addEventListener('click', async () => {
+      const name = q('.tb-add-name').value.trim();
+      if (!name) { q('.tb-add-name').focus(); return; }
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'token';
+      const id = 'usr_' + slug + '_' + Date.now().toString(36).slice(-4);
+      await addCharacter({ id, name, kind: addKind, ringColor: defRing(addKind) });
+      broadcastRoster(); renderPicker(); selectChar(id);   // now assign its art + crop
+    });
+    q('.tb-show-hidden-cb').addEventListener('change', (e) => { showHidden = e.target.checked; renderPicker(); });
+
     // ---- Open / close ----
-    function open() { seedGlobal(); renderGlobalControls(); renderPicker(); overlay.hidden = false; }
+    function open() { seedGlobal(); renderGlobalControls(); showHidden = false; q('.tb-show-hidden-cb').checked = false; renderPicker(); if (!sel) showEmpty(); overlay.hidden = false; }
     function close() { overlay.hidden = true; }
     els.tokensBtn.addEventListener('click', open);
     q('.tb-close').addEventListener('click', close);

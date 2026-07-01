@@ -21,17 +21,21 @@
 
 import { DEFAULT_ENTER } from './transitions.js';
 import { CAST } from '../data/cast.js';
-import { globalDisplay } from './tokenOverrides.js';
+import { globalDisplay, condArcPath } from './tokenOverrides.js';
 
 // Resolve a token's castId to its cast entry (ring color, portrait, name).
 // ids are unique across heroes and enemies, so a flat map is enough; the
 // token's `kind` only drives styling and numbering, not lookup.
-const CAST_BY_ID = (() => {
-  const m = {};
-  for (const h of (CAST.heroes || [])) m[h.id] = h;
-  for (const e of (CAST.enemies || [])) m[e.id] = e;
-  return m;
-})();
+// Live lookup across ALL cast kinds (heroes, NPCs, enemies) -- scanned each call
+// rather than snapshotted, so tokens added in the token builder mid-session (and
+// NPC token art) resolve without a reload.
+const CAST_BY_ID = (id) => {
+  for (const arr of [CAST.heroes, CAST.npcs, CAST.enemies]) {
+    const c = (arr || []).find((x) => x.id === id);
+    if (c) return c;
+  }
+  return null;
+};
 
 // A token's diameter as a fraction of the shorter side of the displayed map.
 const TOKEN_FRAC = 0.07;
@@ -487,17 +491,12 @@ export function createStageView(root) {
     return svg;
   }
 
-  // Top vs bottom condition arc (the word curves over the token, or under it when
-  // the token builder sets condPos:"below"). Both read left -> right, upright.
-  const COND_ARC_ABOVE = 'M -10,40 A 60,60 0 0 1 110,40';
-  const COND_ARC_BELOW = 'M -10,66 A 60,60 0 0 0 110,66';
-
   // Apply the per-character token-builder tweaks (face crop, ring color, and the
   // on-map display settings) to a token element. Called on build AND on every
   // update, so a change saved in the token builder shows on the next render
   // without recreating the token -- on the GM board and the Player TV alike.
   function applyTokenStyling(el, inst) {
-    const cast = CAST_BY_ID[inst.castId] ||
+    const cast = CAST_BY_ID(inst.castId) ||
       { ringColor: inst.kind === 'enemy' ? '#8a2e2e' : inst.kind === 'npc' ? '#6f9bd1' : '#2f6b43' };
     el.style.borderColor = cast.ringColor || '#888';
     const fb = el.querySelector('.token-fallback');
@@ -512,24 +511,22 @@ export function createStageView(root) {
       if (cast.tokenImage && img.getAttribute('src') !== cast.tokenImage) img.src = cast.tokenImage;
     }
     // On-map display settings are GLOBAL (one set for every token): name/condition
-    // size, condition side + word-wrap angle, HP-bar side.
+    // size, condition side + word-wrap depth, HP-bar height.
     const d = globalDisplay();
     el.style.setProperty('--token-name-scale', d.nameSize || 1);
     el.style.setProperty('--token-cond-scale', d.condSize || 1);
-    el.classList.toggle('hp-above', d.hpPos === 'above');
     el.classList.toggle('cond-below', d.condPos === 'below');
+    // HP-bar vertical position: hpPos 0 (bottom) .. 100 (top) -> a top offset in %.
+    el.style.setProperty('--token-hp-y', (84 - (Number(d.hpPos) || 0) * 0.82).toFixed(1) + '%');
     const cond = el.querySelector('.token-cond');
     if (cond) {
       const arc = cond.querySelector('path');
-      if (arc) arc.setAttribute('d', d.condPos === 'below' ? COND_ARC_BELOW : COND_ARC_ABOVE);
-      // Word-wrap angle: rotate the curved word around the token center.
-      cond.style.transformOrigin = '50% 50%';
-      cond.style.transform = d.condAngle ? `rotate(${d.condAngle}deg)` : '';
+      if (arc) arc.setAttribute('d', condArcPath(d.condCurve, d.condPos === 'below'));
     }
   }
 
   function buildTokenEl(inst) {
-    const cast = CAST_BY_ID[inst.castId] || { name: inst.label };
+    const cast = CAST_BY_ID(inst.castId) || { name: inst.label };
     const el = document.createElement('div');
     el.className = 'token token-' + inst.kind;
     el.dataset.instId = inst.instId;

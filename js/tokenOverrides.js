@@ -31,8 +31,11 @@ const SAVE_URL = '/save-token-overrides';
 
 let cache = {};   // { [castId]: override } -- populated once at startup
 let pristine = null;   // snapshot of the built-in CAST fields, taken before any merge
+let addedIds = new Set();   // ids the builder appended to CAST this session (for idempotent re-apply)
 
 const KINDS = ['heroes', 'enemies', 'npcs'];
+const ADDED_KEY = '_added';    // reserved: { [id]: character } for GM-created tokens
+const HIDDEN_KEY = '_hidden';  // reserved: { [castId]: true } to hide built-ins/added from pickers
 
 // Snapshot the overridable fields of every CAST entry ONCE, before the first
 // merge. applyToCast() rebuilds from this snapshot each time, so it is idempotent
@@ -66,9 +69,24 @@ function cleanDisplay(d) {
   if (d.nameSize != null) out.nameSize = clampNum(d.nameSize, 0.6, 1.6, 1);
   if (d.condSize != null) out.condSize = clampNum(d.condSize, 0.6, 1.8, 1);
   if (d.condPos === 'above' || d.condPos === 'below') out.condPos = d.condPos;
-  if (d.condAngle != null) out.condAngle = clampNum(d.condAngle, -180, 180, 0);   // word-wrap rotation
-  if (d.hpPos === 'above' || d.hpPos === 'below') out.hpPos = d.hpPos;
+  if (d.condCurve != null) out.condCurve = clampNum(d.condCurve, 0, 100, 55);   // how tightly the word wraps (0 flat .. 100 deep)
+  if (d.hpPos != null) out.hpPos = clampNum(d.hpPos, 0, 100, 0);                 // HP-bar height: 0 bottom .. 100 top
   return Object.keys(out).length ? out : null;
+}
+
+// The SVG path the condition word curves along, as a function of how tightly it
+// should wrap (0 = nearly flat, 100 = a deep arc hugging the token) and which
+// side. The word CENTER stays a constant distance from the token; only the ends
+// curl further as the wrap deepens. Shared by stageView and the builder preview.
+export function condArcPath(curve, below) {
+  const t = clampNum(curve == null ? 55 : curve, 0, 100, 55) / 100;
+  const half = 60, topY = -18;
+  const s = 4 + t * 60;                                   // sagitta (bulge): 4 flat .. 64 deep
+  const yE = topY + s;                                    // endpoints drop as it wraps more
+  const R = (half * half + s * s) / (2 * s);              // radius through the endpoints + peak
+  return below
+    ? `M ${50 - half},${100 - yE} A ${R.toFixed(1)},${R.toFixed(1)} 0 0 0 ${50 + half},${100 - yE}`
+    : `M ${50 - half},${yE} A ${R.toFixed(1)},${R.toFixed(1)} 0 0 1 ${50 + half},${yE}`;
 }
 // A per-character override is now ONLY the token identity: face crop, ring color,
 // token art. (Display settings moved to the global entry above.)
@@ -81,12 +99,34 @@ function cleanOverride(o) {
   return Object.keys(out).length ? out : null;
 }
 
+// A GM-created character (token builder "Add token"): identity + art, no stats.
+const KIND_ARR = { hero: 'heroes', npc: 'npcs', enemy: 'enemies' };
+function cleanChar(c) {
+  if (!c || typeof c !== 'object') return null;
+  const id = typeof c.id === 'string' ? c.id.trim() : '';
+  const name = typeof c.name === 'string' ? c.name.trim() : '';
+  if (!id || !name) return null;
+  const kind = c.kind === 'npc' ? 'npc' : c.kind === 'enemy' ? 'enemy' : 'hero';
+  const out = { id, name, kind, added: true };
+  if (typeof c.tokenImage === 'string' && c.tokenImage.trim()) out.tokenImage = c.tokenImage.trim();
+  if (typeof c.ringColor === 'string' && c.ringColor.trim()) out.ringColor = c.ringColor.trim();
+  if (typeof c.face === 'string' && c.face.trim()) out.face = c.face.trim();
+  if (kind === 'enemy') out.singular = (typeof c.singular === 'string' && c.singular.trim()) ? c.singular.trim() : name.replace(/s$/, '');
+  return out;
+}
+
 // Rebuild every CAST entry from its pristine snapshot, then overlay the override
 // (if any). Doing a full rebuild -- rather than layering onto whatever CAST holds
 // now -- keeps it idempotent and lets a removed override restore the built-in
 // default. A partial override leaves the un-set fields at the built-in value.
 function applyToCast() {
   snapshot();
+  // 1) Drop any previously-appended tokens so this stays idempotent.
+  for (const kind of KINDS) {
+    if (CAST[kind]) for (let i = CAST[kind].length - 1; i >= 0; i--) if (addedIds.has(CAST[kind][i].id)) CAST[kind].splice(i, 1);
+  }
+  addedIds = new Set();
+  // 2) Rebuild built-in identity from the pristine snapshot + any per-id override.
   for (const kind of KINDS) {
     for (const c of (CAST[kind] || [])) {
       const base = pristine[c.id] || {};
@@ -96,6 +136,21 @@ function applyToCast() {
       c.tokenImage = o.tokenImage || base.tokenImage;
     }
   }
+  // 3) Append GM-created tokens (identity from _added, overlaid with any edits).
+  const added = (cache[ADDED_KEY] && typeof cache[ADDED_KEY] === 'object') ? cache[ADDED_KEY] : {};
+  for (const raw of Object.values(added)) {
+    const c = cleanChar(raw);
+    if (!c) continue;
+    const arr = KIND_ARR[c.kind];
+    if (!CAST[arr]) CAST[arr] = [];
+    if (CAST[arr].some((x) => x.id === c.id)) continue;
+    const o = cleanOverride(cache[c.id]) || {};   // later crop/ring/image edits via "Save token"
+    CAST[arr].push({ ...c, ...o });
+    addedIds.add(c.id);
+  }
+  // 4) Mark hidden entries so the pickers can filter them (built-in + added).
+  const hidden = (cache[HIDDEN_KEY] && typeof cache[HIDDEN_KEY] === 'object') ? cache[HIDDEN_KEY] : {};
+  for (const kind of KINDS) for (const c of (CAST[kind] || [])) c.hidden = hidden[c.id] === true;
 }
 
 // The GLOBAL on-map display settings (name/condition size, condition position +
@@ -115,6 +170,40 @@ export async function saveGlobalDisplay(patch) {
 export function applyGlobalDisplay(display) {
   const clean = cleanDisplay(display);
   if (clean) cache[GLOBAL_KEY] = clean; else delete cache[GLOBAL_KEY];
+}
+
+// ---- Roster editing: add / remove / hide tokens (all persist + re-merge CAST) ----
+export function isAdded(id) { return addedIds.has(id); }
+export function isHidden(id) { return !!(cache[HIDDEN_KEY] && cache[HIDDEN_KEY][id]); }
+// The roster payload the GM broadcasts so the Player rebuilds the same CAST live.
+export function rosterPayload() {
+  return { added: cache[ADDED_KEY] || {}, hidden: cache[HIDDEN_KEY] || {} };
+}
+export function applyRosterLive(payload) {
+  cache[ADDED_KEY] = (payload && payload.added && typeof payload.added === 'object') ? payload.added : {};
+  cache[HIDDEN_KEY] = (payload && payload.hidden && typeof payload.hidden === 'object') ? payload.hidden : {};
+  applyToCast();
+}
+export async function addCharacter(char) {
+  const c = cleanChar(char);
+  if (!c) return false;
+  if (!cache[ADDED_KEY]) cache[ADDED_KEY] = {};
+  cache[ADDED_KEY][c.id] = c;
+  applyToCast();
+  return post();
+}
+export async function removeAddedCharacter(id) {
+  if (cache[ADDED_KEY]) delete cache[ADDED_KEY][id];
+  if (cache[id]) delete cache[id];                 // drop any per-id override too
+  if (cache[HIDDEN_KEY]) delete cache[HIDDEN_KEY][id];
+  applyToCast();
+  return post();
+}
+export async function setHidden(id, hide) {
+  if (!cache[HIDDEN_KEY]) cache[HIDDEN_KEY] = {};
+  if (hide) cache[HIDDEN_KEY][id] = true; else delete cache[HIDDEN_KEY][id];
+  applyToCast();
+  return post();
 }
 
 // Read the disk tier once at startup and merge it over CAST. Swallows every

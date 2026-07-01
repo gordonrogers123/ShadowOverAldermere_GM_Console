@@ -265,12 +265,12 @@
 /* On-map HP bar (heroes/NPCs only -- enemy HP is kind-gated out in JS). Overlaid
    across the bottom of the token; the fill animates on damage/heal. */
 .stage .token-hpbar {
-  position: absolute; left: 0.12em; right: 0.12em; bottom: 0.12em; height: 0.14em;
+  /* Vertical position is a token-builder slider: --token-hp-y is the top offset
+     (0% top .. ~84% bottom); defaults near the bottom. */
+  position: absolute; left: 0.12em; right: 0.12em; top: var(--token-hp-y, 84%); height: 0.14em;
   border-radius: 0.08em; background: rgba(0, 0, 0, 0.6); overflow: hidden; z-index: 2;
   box-shadow: 0 0 0 0.015em rgba(0, 0, 0, 0.55);
 }
-/* The token builder can move the HP bar to the top edge instead of the bottom. */
-.stage .token.hp-above .token-hpbar { top: 0.12em; bottom: auto; }
 /* Fill colour is set inline per token by HP ratio (green -> orange -> red), so
    both the width and the colour animate as HP changes. */
 .stage .token-hpbar > i { display: block; height: 100%; width: 100%; background: #5bbd6a; transition: width 0.45s ease, background 0.45s ease; }
