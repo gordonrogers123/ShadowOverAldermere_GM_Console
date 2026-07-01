@@ -2002,6 +2002,7 @@ export function mountGm(root) {
   // first placed enemy with a stat block (a foe card during setup). Tracking by
   // instId keeps it scene-local -- a previous scene's token is never resurrected.
   let lastStatToken = null;
+  let lastAtkName = null;   // PR 6C.1 fix: keep the picked attack selected across re-renders
   function activeStatContext() {
     const placed = (state.stage && state.stage.tokens) || [];
     const byId = (id) => placed.find((t) => t.instId === id);
@@ -2379,9 +2380,13 @@ export function mountGm(root) {
         } else {
           const sel = document.createElement('select'); sel.className = 'stat-atk-select';
           attacks.forEach((atk, i) => { const o = document.createElement('option'); o.value = i; o.textContent = atk.name; sel.append(o); });
+          // Keep the GM's chosen attack selected across the many re-renders combat triggers
+          // (arm target, pick target, roll) instead of snapping back to the first one.
+          const keepIdx = lastAtkName ? attacks.findIndex((a) => a.name === lastAtkName) : -1;
+          if (keepIdx >= 0) sel.value = String(keepIdx);
           const detail = document.createElement('div'); detail.className = 'stat-atk-detail';
           const draw = () => { detail.innerHTML = ''; detail.append(attackRow(token, attacks[+sel.value] || attacks[0], true, dist)); };
-          sel.addEventListener('change', draw);
+          sel.addEventListener('change', () => { lastAtkName = (attacks[+sel.value] || {}).name || null; draw(); });
           wrap.append(sel, detail); draw();
         }
         host.append(wrap);
@@ -4141,8 +4146,9 @@ export function mountGm(root) {
       nameSize.value = gd.nameSize; nameSpacing.value = gd.nameSpacing; condSize.value = gd.condSize; condSpacing.value = gd.condSpacing;
       condPosSlider.value = gd.condPosY; condCurve.value = gd.condCurve; condColor.value = gd.condColor; condOutline.value = gd.condOutline; hpPos.value = gd.hpPos;
     }
-    // Live: update this window's cache + repaint (no disk). Persist: POST + broadcast.
-    function applyGlobalLive() { applyGlobalDisplay(gd); if (sel) styleSampleGlobal(); repaintBoards(); }
+    // Live: update this window's cache + repaint + broadcast so the Player TV mirrors the
+    // change immediately (small message, no disk). Persist: write to disk on release.
+    function applyGlobalLive() { applyGlobalDisplay(gd); if (sel) styleSampleGlobal(); repaintBoards(); sync.post({ type: 'tokens', global: globalDisplay() }); }
     async function persistGlobal() { await saveGlobalDisplay(gd); sync.post({ type: 'tokens', global: globalDisplay() }); }
 
     function markDirty() { savedTag.hidden = true; }

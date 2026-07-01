@@ -735,8 +735,19 @@ export function createStageView(root) {
       const list = (condOn && Array.isArray(inst.conditions)) ? inst.conditions.slice(0, 3) : [];
       cond.style.display = list.length ? '' : 'none';
       const tp = cond.querySelector('textPath');
-      const txt = list.join(' · ');
-      if (tp && tp.textContent !== txt) tp.textContent = txt;
+      if (tp) {
+        const txt = list.join(' · ');
+        if (tp.textContent !== txt) tp.textContent = txt;
+        // Fit the word(s) to the arc so SVG doesn't clip the overflow -- a long condition
+        // like "unconscious" would otherwise lose both ends ("nconsciou"), worse the larger
+        // the text. Re-measured each render so a condition-size change re-fits too. The arc
+        // chord is 120 user units wide; keep the text a touch inside that (COND_ARC_MAX).
+        tp.removeAttribute('textLength'); tp.removeAttribute('lengthAdjust');
+        if (list.length) {
+          let natural = 0; try { natural = tp.getComputedTextLength ? tp.getComputedTextLength() : 0; } catch (_) {}
+          if (natural > 108) { tp.setAttribute('textLength', 108); tp.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
+        }
+      }
     }
   }
 
@@ -785,7 +796,10 @@ export function createStageView(root) {
     // mode clears the table on the TV.
     const inMapMode = !!(state.stage && state.stage.mapMode);
     tokensShown = stage.classList.contains('board-interactive') || inMapMode;
-    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
+    // Leaving map mode (or showing a non-map scene) must clear the grid too, not just the
+    // tokens -- otherwise a grid drawn in map mode lingers over the next scene. layoutTokens
+    // (which calls layoutGrid) is skipped on this early return, so hide the overlay here.
+    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; gridOverlay.style.display = 'none'; return; }
     layoutTokens();
   }
 
