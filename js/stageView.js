@@ -66,6 +66,17 @@ function computeContainRect(stageW, stageH, imgAspect) {
   return { left: (stageW - w) / 2, top: (stageH - h) / 2, w, h };
 }
 
+// A map background can be a still <img> OR a looping <video>; both expose an
+// intrinsic size and a readiness, just under different property names. These
+// helpers let all the contain-rect math (tokens, grid, targeting, drag) treat
+// the two the same, so coordinates land identically over image and video maps.
+function mediaW(el) { return el ? (el.naturalWidth || el.videoWidth || 0) : 0; }
+function mediaH(el) { return el ? (el.naturalHeight || el.videoHeight || 0) : 0; }
+function mediaAspect(el) { const h = mediaH(el); return h ? mediaW(el) / h : 1; }
+// A map src is a looping video when its extension is one we scan under
+// maps/animated (kept in step with scan_assets.py VIDEO_EXTS).
+function isVideoSrc(src) { return /\.(mp4|webm)(\?.*)?$/i.test(String(src || '')); }
+
 // Short badge text for the no-art fallback: "Brigand 2" -> "B2",
 // "Granny Edna" -> "GE", "Lysander" -> "L".
 function initials(label) {
@@ -84,6 +95,7 @@ export function createStageView(root) {
       <div class="map-layer" data-layer="1"></div>
       <img class="char-layer char-left" alt="" data-side="left">
       <img class="char-layer char-right" alt="" data-side="right">
+      <svg class="grid-overlay" aria-hidden="true"></svg>
       <svg class="target-fx" aria-hidden="true"><line class="target-line" x1="0" y1="0" x2="0" y2="0"></line><polygon class="target-arrowhead" points=""></polygon></svg>
       <div class="token-layer"></div>
       <div class="curtain"></div>
@@ -101,7 +113,8 @@ export function createStageView(root) {
   const idle = root.querySelector('.idle');
   const tokenLayer = root.querySelector('.token-layer');
   const targetFx = root.querySelector('.target-fx');
-  let lastState = null;      // last painted state, so a resize can re-lay-out the target arrow
+  const gridOverlay = root.querySelector('.grid-overlay');
+  let lastState = null;      // last painted state, so a resize can re-lay-out the arrow + grid
 
   let activeIndex = 0;       // which background layer is currently visible
   let currentBgKey = null;   // what background is on screen, to skip redundant work
@@ -125,7 +138,7 @@ export function createStageView(root) {
     if (state.stage && state.stage.bgHidden) return { kind: 'blank' };
     const maps = scene.maps || null;
     const path = maps ? maps[state.mapState] : null;
-    if (path) return { kind: 'image', src: path, label: scene.name };
+    if (path) return { kind: 'image', src: path, label: scene.name, video: isVideoSrc(path) };
     // The title plate's top line is per-scene (scene.titleHeader), defaulting to
     // "Aldermere" so existing scenes are unchanged. e.g. "Act I · Scene II".
     const header = (scene.titleHeader != null && String(scene.titleHeader).trim()) || 'Aldermere';
@@ -167,7 +180,12 @@ export function createStageView(root) {
     const incoming = layers[1 - activeIndex];
     const reveal = () => {
       incoming.style.opacity = '1';
-      layers[activeIndex].style.opacity = '0';
+      const outgoing = layers[activeIndex];
+      outgoing.style.opacity = '0';
+      // A video map in the layer we're hiding keeps decoding otherwise; pause it
+      // (it's discarded when that layer is next reused as `incoming`).
+      const ov = outgoing.querySelector('video.map-img');
+      if (ov) { try { ov.pause(); } catch (_) {} }
       activeIndex = 1 - activeIndex;
     };
 
@@ -185,24 +203,43 @@ export function createStageView(root) {
       return;
     }
 
-    const img = document.createElement('img');
-    img.className = 'map-img';
-    img.alt = '';
     let settled = false;
-    // Re-pin tokens once the map's intrinsic size is known (naturalWidth was
-    // 0 while loading, so the first render could not lay them out yet).
+    // Re-pin tokens/grid once the map's intrinsic size is known (it was 0 while
+    // loading, so the first render could not lay them out yet).
     const settle = () => { if (!settled) { settled = true; reveal(); layoutTokens(); } };
-    img.onload = settle;
-    img.onerror = () => {
+    const failToPlate = () => {
       // A variant file not present yet: fall back to the neutral plate.
       incoming.innerHTML = '';
       incoming.appendChild(buildUnrevealed(d.label, d.header));
       settle();
     };
     incoming.innerHTML = '';
-    incoming.appendChild(img);
-    img.src = d.src;
-    if (img.complete && img.naturalWidth > 0) settle();
+    if (d.video) {
+      // Animated (looping video) map: muted + playsinline so it autoplays with no
+      // user gesture. Its intrinsic size lands at loadedmetadata; contain math then
+      // pins tokens over the displayed rect exactly as for an image.
+      const vid = document.createElement('video');
+      vid.className = 'map-img';
+      vid.loop = true; vid.muted = true; vid.autoplay = true; vid.playsInline = true;
+      vid.setAttribute('muted', ''); vid.setAttribute('playsinline', '');
+      vid.onloadedmetadata = settle;
+      vid.onloadeddata = settle;
+      vid.onerror = failToPlate;
+      incoming.appendChild(vid);
+      vid.src = d.src;
+      if (vid.readyState >= 1 && vid.videoWidth > 0) settle();
+      const p = vid.play && vid.play();
+      if (p && p.catch) p.catch(() => {});
+    } else {
+      const img = document.createElement('img');
+      img.className = 'map-img';
+      img.alt = '';
+      img.onload = settle;
+      img.onerror = failToPlate;
+      incoming.appendChild(img);
+      img.src = d.src;
+      if (img.complete && img.naturalWidth > 0) settle();
+    }
   }
 
   // ---- Characters: resolve the live src/visibility/transition per side, then
@@ -394,20 +431,84 @@ export function createStageView(root) {
   //      board adds .board-interactive to re-enable dragging. ----
   function activeMapImg() {
     const layer = layers[activeIndex];
-    const img = layer ? layer.querySelector('.map-img') : null;
-    return (img && img.naturalWidth > 0) ? img : null;
+    const el = layer ? layer.querySelector('.map-img') : null;   // <img> or <video>
+    return (el && mediaW(el) > 0) ? el : null;
+  }
+
+  // Draw the map grid (PR 6A) as evenly spaced SVG lines over the displayed map
+  // rect, in the SAME contain-space as the tokens, so it lands identically on the
+  // GM board and the Player TV. Cells are square in displayed px (cellSize is a
+  // fraction of the map WIDTH); the X/Y offsets are fractions of a CELL, so ±0.5
+  // spans exactly one cell of alignment at any density. Hidden unless the current
+  // map's grid exists + is enabled, a map is up, and tokens show (map mode). Lines
+  // are clipped to the map rect so none spill onto the letterbox bars.
+  // The live grid for the CURRENT map variant. Grids are keyed by map-variant key
+  // (state.mapState), so the overlay follows the active map on both screens without
+  // any re-seed plumbing -- state.mapState already rides the broadcast.
+  function currentGrid() {
+    const st = lastState && lastState.stage;
+    const grids = st && st.grids;
+    return (grids && lastState.mapState != null) ? grids[lastState.mapState] : null;
+  }
+  function layoutGrid() {
+    if (!gridOverlay) return;
+    const grid = currentGrid();
+    const img = activeMapImg();
+    if (!grid || !grid.enabled || !img || !tokensShown) { gridOverlay.style.display = 'none'; return; }
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) { gridOverlay.style.display = 'none'; return; }
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
+    const cell = (Number(grid.cellSize) || 0.08) * cr.w;   // square cell edge, in px
+    if (!(cell >= 3)) { gridOverlay.style.display = 'none'; return; }   // too fine to draw
+    const phase = (v) => (((v * cell) % cell) + cell) % cell;   // offset is a fraction of a CELL
+    const x0 = cr.left, y0 = cr.top, x1 = cr.left + cr.w, y1 = cr.top + cr.h;
+    let d = '';
+    for (let x = x0 + phase(Number(grid.offsetX) || 0); x <= x1 + 0.5; x += cell) d += 'M' + x.toFixed(1) + ' ' + y0.toFixed(1) + 'V' + y1.toFixed(1);
+    for (let y = y0 + phase(Number(grid.offsetY) || 0); y <= y1 + 0.5; y += cell) d += 'M' + x0.toFixed(1) + ' ' + y.toFixed(1) + 'H' + x1.toFixed(1);
+    gridOverlay.style.display = '';
+    gridOverlay.setAttribute('width', r.width);
+    gridOverlay.setAttribute('height', r.height);
+    gridOverlay.setAttribute('viewBox', '0 0 ' + r.width + ' ' + r.height);
+    gridOverlay.innerHTML = '<path d="' + d + '"></path>';
+    gridOverlay.style.setProperty('--grid-color', grid.color || 'rgba(255,255,255,0.4)');
+    gridOverlay.style.setProperty('--grid-width', (Number(grid.lineWidth) || 1).toFixed(2) + 'px');
+    gridOverlay.style.opacity = (grid.opacity != null && isFinite(+grid.opacity)) ? String(grid.opacity) : '1';
+  }
+
+  // Snap a map fraction to the nearest grid CELL CENTER (PR 6A), matching the
+  // lines layoutGrid draws. Reads the live broadcast grid; returns the input
+  // unchanged when there's no enabled grid (or no map). The CALLER still decides
+  // WHEN to snap (e.g. skip when the Alt key is held, for free placement).
+  function snapFractionToCell(frac) {
+    const grid = currentGrid();
+    const img = activeMapImg();
+    if (!grid || !grid.enabled || !frac || !img) return frac;
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return frac;
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
+    const cell = (Number(grid.cellSize) || 0.08) * cr.w;
+    if (!(cell > 0)) return frac;
+    const phase = (v) => (((v * cell) % cell) + cell) % cell;   // offset is a fraction of a CELL
+    const px = phase(Number(grid.offsetX) || 0), py = phase(Number(grid.offsetY) || 0);
+    // Cell centers sit at phase + (k + 0.5)*cell in map-relative px.
+    const nearest = (p, ph) => { const k = Math.round((p - ph - cell / 2) / cell); return ph + (k + 0.5) * cell; };
+    return {
+      x: clampUnit(nearest(frac.x * cr.w, px) / cr.w),
+      y: clampUnit(nearest(frac.y * cr.h, py) / cr.h)
+    };
   }
 
   // Position and size every token element from its stored x/y fraction and the
   // current displayed-image rect. Cheap; called on render, on resize, and
   // after a map image loads. No active map image -> hide the whole layer.
   function layoutTokens() {
+    layoutGrid();   // self-manages its own visibility; shares the resize/render triggers
     const img = activeMapImg();
     if (!img || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
-    const cr = computeContainRect(r.width, r.height, img.naturalWidth / img.naturalHeight);
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
     const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
     tokenLayer.querySelectorAll('.token').forEach((el) => {
       const x = parseFloat(el.dataset.x) || 0;
@@ -433,7 +534,7 @@ export function createStageView(root) {
     if (!link || !from || !to || !img || !tokensShown || from.visible === false || to.visible === false) { targetFx.style.display = 'none'; return; }
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) { targetFx.style.display = 'none'; return; }
-    const cr = computeContainRect(r.width, r.height, img.naturalWidth / img.naturalHeight);
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
     const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
     const ax = cr.left + from.x * cr.w, ay = cr.top + from.y * cr.h;
     const bx = cr.left + to.x * cr.w, by = cr.top + to.y * cr.h;
@@ -662,7 +763,7 @@ export function createStageView(root) {
     if (!img) return null;
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return null;
-    const cr = computeContainRect(r.width, r.height, img.naturalWidth / img.naturalHeight);
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
     return {
       x: clampUnit((clientX - r.left - cr.left) / cr.w),
       y: clampUnit((clientY - r.top - cr.top) / cr.h)
@@ -716,5 +817,5 @@ export function createStageView(root) {
     }
   }
 
-  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction };
+  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell };
 }

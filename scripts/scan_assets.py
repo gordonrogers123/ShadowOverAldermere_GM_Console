@@ -22,6 +22,9 @@ ASSETS = os.path.join(ROOT, "assets")
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 CHARACTER_EXTS = (".png", ".webp")
 AUDIO_EXTS = (".mp3", ".ogg", ".wav", ".m4a", ".webm")
+# Animated (looping video) maps live under maps/animated. `.webm` is shared with
+# audio, but each folder is scanned with its own ext list so there's no collision.
+VIDEO_EXTS = (".mp4", ".webm")
 
 
 def _humanize(stem: str) -> str:
@@ -51,6 +54,9 @@ def _list(folder: str, exts, *, skip_hidden: bool, category=None, kind=None):
             entry["category"] = category
         if kind is not None:
             entry["kind"] = kind
+            # Maps/backgrounds carry a media type so the compositor knows whether
+            # to draw an <img> or a looping <video>.
+            entry["type"] = "video" if ext.lower() in VIDEO_EXTS else "image"
         out.append(entry)
     return out
 
@@ -59,6 +65,7 @@ def scan():
     """Return the asset lists (backgrounds, characters, audio) sorted for stable diffs."""
     backgrounds = (
         _list("maps", IMAGE_EXTS, skip_hidden=True, kind="map")
+        + _list("maps/animated", VIDEO_EXTS, skip_hidden=True, kind="map")
         + _list("backgrounds", IMAGE_EXTS, skip_hidden=True, kind="background")
     )
     backgrounds.sort(key=lambda e: e["src"])
@@ -107,11 +114,13 @@ def _emit(entries) -> str:
         fields = "id: {0}, name: {1}, src: {2}".format(
             json.dumps(e["id"]), json.dumps(e["name"]), json.dumps(e["src"])
         )
-        # Characters carry a category; backgrounds carry a kind; audio neither.
+        # Characters carry a category; backgrounds carry a kind + media type; audio neither.
         if e.get("category"):
             fields += ", category: {0}".format(json.dumps(e["category"]))
         if e.get("kind"):
             fields += ", kind: {0}".format(json.dumps(e["kind"]))
+        if e.get("type"):
+            fields += ", type: {0}".format(json.dumps(e["type"]))
         rows.append("  {{ {0} }}".format(fields))
     return ",\n".join(rows)
 

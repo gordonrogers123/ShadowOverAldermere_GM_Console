@@ -457,10 +457,91 @@ export function mountGm(root) {
   boardView.el.addEventListener('pointerup', onBoardPointerUp);
   boardView.el.addEventListener('pointercancel', onBoardPointerUp);
 
+  // ---- Map grid (PR 6A): a board-toolbar Grid toggle (on/off for the CURRENT map)
+  //      plus an "Align" button that opens a collapsible calibration panel -- it's
+  //      only needed once per map, so it stays collapsed by default. The grid is PER
+  //      MAP VARIANT: geometry rides state.stage.grids[mapState] (broadcast to the
+  //      Player TV), mirrored to scene.grids[mapState]. Built after boardView so the
+  //      handlers can re-pin the board. ----
+  const gridControls = [];   // { inp, out?, fmt?, get, color?, select?, title? } -- synced per variant
+  let gridPanelOpen = false; // the calibration panel is collapsed until Align opens it
+  els.gridToggle = document.createElement('button');
+  els.gridToggle.type = 'button';
+  els.gridToggle.className = 'gm-button btn--toggle mm-toggle mm-grid-toggle';
+  els.gridToggle.textContent = 'Grid';
+  els.gridToggle.title = 'Show a square grid on THIS map (GM board + Player TV)';
+  els.gridToggle.addEventListener('click', toggleGrid);
+  els.gridAlign = document.createElement('button');
+  els.gridAlign.type = 'button';
+  els.gridAlign.className = 'gm-button btn--quiet mm-toggle mm-grid-align';
+  els.gridAlign.textContent = 'Align…';
+  els.gridAlign.title = 'Open the alignment controls for this map’s grid';
+  els.gridAlign.addEventListener('click', openGridAlign);
+  boardToolbar.append(els.gridToggle, els.gridAlign);
+
+  els.gridPanel = document.createElement('div');
+  els.gridPanel.className = 'mm-grid-panel';
+  els.gridPanel.hidden = true;
+  const gridPanelTitle = document.createElement('div');
+  gridPanelTitle.className = 'mm-grid-panel-title';
+  els.gridPanel.append(gridPanelTitle);
+  gridControls.push({ title: gridPanelTitle });   // shows which map variant is being aligned
+  // Controls are grouped into labeled sections (Size / Position / Style) so the
+  // growing panel reads clearly.
+  const gridGroup = (name) => {
+    const g = document.createElement('div'); g.className = 'mm-grid-group';
+    const h = document.createElement('div'); h.className = 'mm-grid-group-h'; h.textContent = name;
+    g.append(h); els.gridPanel.append(g); return g;
+  };
+  const gridSlider = (group, label, min, max, step, get, set, fmt) => {
+    const lab = document.createElement('label'); lab.className = 'mm-grid-set';
+    const key = document.createElement('span'); key.className = 'mm-grid-label';
+    const txt = document.createElement('span'); txt.textContent = label;
+    const out = document.createElement('em'); out.className = 'mm-grid-val';
+    key.append(txt, out);
+    const inp = document.createElement('input');
+    inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.className = 'mm-grid-range';
+    inp.addEventListener('input', () => { set(ensureLiveGrid(), +inp.value); out.textContent = fmt(+inp.value); gridLiveUpdate(); });
+    lab.append(key, inp);
+    gridControls.push({ inp, out, get, fmt });
+    group.append(lab);
+  };
+  // Size: cell count (cellSize = 1/N of the map width) + the real-world scale.
+  const gSize = gridGroup('Size');
+  gridSlider(gSize, 'Cells', 4, 50, 1, (g) => Math.round(1 / (g.cellSize || 1 / 16)), (g, v) => { g.cellSize = 1 / v; }, (v) => String(v));
+  const feetLab = document.createElement('label'); feetLab.className = 'mm-grid-set';
+  const feetKey = document.createElement('span'); feetKey.className = 'mm-grid-label';
+  const feetTxt = document.createElement('span'); feetTxt.textContent = 'Feet/cell'; feetKey.append(feetTxt);
+  const feetSel = document.createElement('select'); feetSel.className = 'mm-grid-select';
+  for (const ft of [5, 10, 15, 20, 30, 50]) { const o = document.createElement('option'); o.value = String(ft); o.textContent = ft + ' ft'; feetSel.append(o); }
+  feetSel.addEventListener('change', () => { ensureLiveGrid().feetPerCell = +feetSel.value; gridLiveUpdate(); });
+  feetLab.append(feetKey, feetSel);
+  gridControls.push({ inp: feetSel, select: true, get: (g) => String(g.feetPerCell || 5) });
+  gSize.append(feetLab);
+  // Position: nudge the grid to register against the map's own lines. Offset is a
+  // fraction of a CELL, so ±50% always spans one full cell of alignment.
+  const gPos = gridGroup('Position');
+  gridSlider(gPos, 'Offset X', -50, 50, 2, (g) => Math.round((g.offsetX || 0) * 100), (g, v) => { g.offsetX = v / 100; }, (v) => v + '%');
+  gridSlider(gPos, 'Offset Y', -50, 50, 2, (g) => Math.round((g.offsetY || 0) * 100), (g, v) => { g.offsetY = v / 100; }, (v) => v + '%');
+  // Style: how the lines read against the art.
+  const gStyle = gridGroup('Style');
+  gridSlider(gStyle, 'Opacity', 15, 100, 5, (g) => Math.round((g.opacity == null ? 0.5 : g.opacity) * 100), (g, v) => { g.opacity = v / 100; }, (v) => v + '%');
+  gridSlider(gStyle, 'Width', 0.5, 3, 0.25, (g) => g.lineWidth || 1, (g, v) => { g.lineWidth = v; }, (v) => v + 'px');
+  const colLab = document.createElement('label'); colLab.className = 'mm-grid-set mm-grid-colorset';
+  const colKey = document.createElement('span'); colKey.className = 'mm-grid-label'; colKey.textContent = 'Color';
+  const colInp = document.createElement('input'); colInp.type = 'color'; colInp.className = 'mm-grid-colorinp';
+  colInp.title = 'Grid line colour (opacity is separate)';
+  colInp.addEventListener('input', () => { ensureLiveGrid().color = colInp.value; gridLiveUpdate(); });
+  colLab.append(colKey, colInp);
+  gridControls.push({ inp: colInp, color: true, get: (g) => g.color || '#ffffff' });
+  gStyle.append(colLab);
+  boardWrap.insertBefore(els.gridPanel, els.mapboard);
+
   // The GM can monitor audio locally (role 'gm', off by default); the first
   // click anywhere unlocks its AudioContext (browser autoplay rule).
   const audioEngine = createAudioEngine({ role: 'gm', gestureTarget: root });
   window.__audio = audioEngine;   // debug / test hook
+  window.__board = boardView;     // debug / test hook (grid snapping, layout)
 
   // ---- Sync: broadcast state; reply to a Player hello with current state. ----
   const sync = createSync((msg) => {
@@ -540,7 +621,10 @@ export function mountGm(root) {
       left:  { shown: false, srcOverride: null },
       right: { shown: false, srcOverride: null },
       tokens: expandSavedLayout(scene),  // auto-place a saved layout, else empty
-      mapMode: false                     // selecting a scene starts on the cinematic controls
+      mapMode: false,                    // selecting a scene starts on the cinematic controls
+      // Per-variant map grids: seed the LIVE (broadcast) grids from the scene's saved
+      // defaults so selecting a scene restores each map's grid; null when it has none.
+      grids: seedGrids(scene)
     };
     state.audio = seedAudioFromScene(scene, state.audio);
     mapMode = false;                   // start on the cinematic controls
@@ -2127,6 +2211,7 @@ export function mountGm(root) {
     els.mapmodeTitle.textContent = scene.name;
     if (els.hpToggle) els.hpToggle.classList.toggle('is-on', !!(state.stage && state.stage.hpOnMap));
     if (els.condToggle) els.condToggle.classList.toggle('is-on', !!(state.stage && state.stage.conditionsOnMap));
+    updateGridUi();
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
@@ -2161,8 +2246,11 @@ export function mountGm(root) {
   }
   function onBoardPointerMove(e) {
     if (!drag) return;
-    const frac = boardView.pointToFraction(e.clientX, e.clientY);
+    let frac = boardView.pointToFraction(e.clientX, e.clientY);
     if (!frac) return;
+    // Snap the token's CENTER to the nearest grid cell; hold Alt to free-place.
+    // (snapFractionToCell no-ops when there's no enabled grid.)
+    if (!e.altKey) frac = boardView.snapFractionToCell(frac);
     const t = (state.stage.tokens || []).find((x) => x.instId === drag.instId);
     if (!t) return;
     t.x = frac.x; t.y = frac.y;
@@ -2180,6 +2268,93 @@ export function mountGm(root) {
     if (dragRAF) cancelAnimationFrame(dragRAF);
     dragPending = false;
     commit();                          // final save + broadcast + refreshed lists
+  }
+
+  // ---- Map grid helpers (PR 6A). The grid is PER MAP VARIANT: the live geometry
+  //      rides state.stage.grids[state.mapState] (broadcast); scene.grids[key] is the
+  //      persisted default it seeds from / mirrors to. ----
+  function gridDefaults() {
+    return { enabled: true, cellSize: 1 / 16, offsetX: 0, offsetY: 0, feetPerCell: 5, color: '#ffffff', opacity: 0.5, lineWidth: 1 };
+  }
+  function curGridKey() { return state.mapState; }
+  function curGrid() { return (state.stage && state.stage.grids) ? state.stage.grids[curGridKey()] : null; }
+  function ensureLiveGrid() {
+    if (!state.stage.grids) state.stage.grids = {};
+    const k = curGridKey();
+    if (!state.stage.grids[k]) state.stage.grids[k] = gridDefaults();
+    return state.stage.grids[k];
+  }
+  // Seed a scene's per-variant live grids (deep-cloned so edits don't mutate the
+  // scene, defaults filled). Back-compat: a pre-per-variant single scene.grid seeds
+  // the default variant. Called from selectScene.
+  function seedGrids(scene) {
+    let src = scene && scene.grids;
+    if (!src && scene && scene.grid) {
+      const k = scene.defaultMapState || Object.keys(scene.maps || {})[0] || 'revealed';
+      src = { [k]: scene.grid };
+    }
+    if (!src) return null;
+    const out = {};
+    for (const k of Object.keys(src)) out[k] = { ...gridDefaults(), ...src[k], enabled: !!src[k].enabled };
+    return Object.keys(out).length ? out : null;
+  }
+  let gridPersistTimer = 0;
+  function persistSceneGrid() {
+    const scene = sceneById(state.sceneId);
+    const g = curGrid();
+    if (!scene || !g) return;
+    const grids = { ...(scene.grids || {}), [curGridKey()]: { ...g } };
+    const updated = { ...scene, grids };
+    addUserScene(updated);        // localStorage upsert -> the scene's saved grid default
+    saveSceneToFile(updated);     // disk write-through (best-effort, async)
+  }
+  function schedulePersistSceneGrid() { clearTimeout(gridPersistTimer); gridPersistTimer = setTimeout(persistSceneGrid, 500); }
+  // A live grid edit (slider / select / color): local save + broadcast + re-pin the
+  // board, WITHOUT a full renderUI churn (which would rebuild the roster/stat panels
+  // every tick). The disk write of the scene default is debounced.
+  function gridLiveUpdate() {
+    saveState(state);
+    broadcast();
+    boardView.render(state, sceneById(state.sceneId), { instant: true });
+    boardView.layoutTokens();
+    schedulePersistSceneGrid();
+  }
+  function syncGridControls() {
+    const g = curGrid() || gridDefaults();
+    gridControls.forEach((c) => {
+      if (c.title) { c.title.textContent = 'Aligning grid · ' + humanize(curGridKey() || 'map'); return; }
+      const v = c.get(g);
+      c.inp.value = v;
+      if (c.out && c.fmt) c.out.textContent = c.fmt(+v);
+    });
+  }
+  // Reflect grid state in the toolbar + panel: Grid toggle lit = THIS map's grid is
+  // on; Align lit = the panel is open; the panel shows only while open.
+  function updateGridUi() {
+    const g = curGrid();
+    if (els.gridToggle) els.gridToggle.classList.toggle('is-on', !!(g && g.enabled));
+    if (els.gridAlign) els.gridAlign.classList.toggle('is-on', gridPanelOpen);
+    if (els.gridPanel) els.gridPanel.hidden = !gridPanelOpen;
+    syncGridControls();
+  }
+  function toggleGrid() {
+    ensureTokens();
+    if (!state.stage.grids) state.stage.grids = {};
+    const k = curGridKey();
+    if (!state.stage.grids[k]) state.stage.grids[k] = gridDefaults();                        // first enable -> seed a default
+    else state.stage.grids[k] = { ...state.stage.grids[k], enabled: !state.stage.grids[k].enabled };
+    updateGridUi();
+    persistSceneGrid();           // toggle is infrequent -> persist the scene default now
+    rebuildSceneList();           // an edited built-in becomes a saved scene (gets the badge)
+    commit();
+  }
+  // The "Align…" button: open/close the collapsible calibration panel. Opening it
+  // ensures THIS map's grid exists + is on, so there's something to align against.
+  function openGridAlign() {
+    gridPanelOpen = !gridPanelOpen;
+    if (gridPanelOpen) { ensureTokens(); ensureLiveGrid().enabled = true; persistSceneGrid(); rebuildSceneList(); }
+    updateGridUi();
+    commit();
   }
 
   // ============================================================
