@@ -1707,7 +1707,9 @@ export function mountGm(root) {
   }
   // A placed token's full row (hero, or an enemy instance via rowClass 'mmr-copy').
   function placedRow(t, c, rowClass) {
-    const tr = document.createElement('tr'); tr.className = 'mmr-row is-placed' + (rowClass ? ' ' + rowClass : '');
+    const tr = document.createElement('tr');
+    tr.className = 'mmr-row is-placed' + (rowClass ? ' ' + rowClass : '') + (state.stage && t.instId === state.stage.activeTokenId ? ' is-active' : '');
+    tr.dataset.instId = t.instId;
     const nameTd = document.createElement('td'); nameTd.className = 'mmr-namecell';
     nameTd.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(t.label, t.visible === false));
     const initTd = document.createElement('td'); initTd.className = 'c'; initTd.append(tokenRollInput(t));
@@ -1766,7 +1768,7 @@ export function mountGm(root) {
   // Roll all, then the sorted tracker with prev/next. Active row + active token
   // ride state.stage.activeTokenId (the gold ring on both screens).
   let initShowAll = false;   // expand the sliding window to the full order
-  const INIT_WINDOW = 5;     // how many combatants the "who's next" window shows
+  const INIT_WINDOW = 3;     // how many combatants the "who's next" window shows (active + next 2)
   function renderInitiative(scene) {
     if (!els.initiative) return;
     const host = els.initiative; host.innerHTML = '';
@@ -1800,9 +1802,18 @@ export function mountGm(root) {
       const slots = [];
       if (windowed) { for (let k = 0; k < INIT_WINDOW; k++) slots.push((i.idx + k) % total); }
       else { for (let n = 0; n < total; n++) slots.push(n); }
+      // Header row: "Turn x/y · up next" on the left, the Show-all toggle on the right.
+      const winrow = document.createElement('div'); winrow.className = 'init-winrow';
       const cap = document.createElement('div'); cap.className = 'init-win-label';
       cap.textContent = 'Turn ' + (i.idx + 1) + ' / ' + total + (windowed ? ' · up next' : '');
-      track.append(cap);
+      winrow.append(cap);
+      if (total > INIT_WINDOW) {
+        const more = document.createElement('button'); more.className = 'init-more'; more.type = 'button';
+        more.textContent = initShowAll ? 'Show fewer' : ('Show all (' + total + ')');
+        more.addEventListener('click', () => { initShowAll = !initShowAll; renderInitiative(scene); });
+        winrow.append(more);
+      }
+      track.append(winrow);
       const list = document.createElement('ol'); list.className = 'init-list';
       slots.forEach((n) => {
         const instId = i.order[n];
@@ -1819,12 +1830,6 @@ export function mountGm(root) {
         list.append(li);
       });
       track.append(list);
-      if (total > INIT_WINDOW) {
-        const more = document.createElement('button'); more.className = 'init-more'; more.type = 'button';
-        more.textContent = initShowAll ? 'Show fewer' : ('Show all (' + total + ')');
-        more.addEventListener('click', () => { initShowAll = !initShowAll; renderInitiative(scene); });
-        track.append(more);
-      }
     }
     host.append(track);
 
@@ -1882,11 +1887,16 @@ export function mountGm(root) {
     }
     const idBox = document.createElement('div'); idBox.className = 'stat-id';
     const nameRow = document.createElement('div'); nameRow.className = 'stat-name-row';
-    const nm = document.createElement('h3'); nm.className = 'stat-name'; nm.textContent = (stats && stats.name) || token.label;
+    // Heading is the token's own label so the numbered iteration shows ("Pale Husk 3").
+    const nm = document.createElement('h3'); nm.className = 'stat-name'; nm.textContent = token.label;
     const tag = document.createElement('span'); tag.className = 'stat-tag ' + (token.kind === 'hero' ? 'is-hero' : 'is-enemy');
     tag.textContent = 'Active · ' + (token.kind === 'hero' ? 'Hero' : 'Enemy');
     nameRow.append(nm, tag); idBox.append(nameRow);
-    if (stats && stats.subtitle) { const sub = document.createElement('div'); sub.className = 'stat-sub'; sub.textContent = stats.subtitle; idBox.append(sub); }
+    // Subtitle: the class line if present, else the stat block's flavour name when the
+    // label doesn't already carry it (so "Brigand 1" shows "Roadside Raider", but
+    // "Pale Husk 1" doesn't repeat "Pale Husk").
+    const subText = (stats && stats.subtitle) || (stats && stats.name && !token.label.includes(stats.name) ? stats.name : '');
+    if (subText) { const sub = document.createElement('div'); sub.className = 'stat-sub'; sub.textContent = subText; idBox.append(sub); }
     head.append(idBox); host.append(head);
 
     // ---- Conditions on the active combatant (read-only here; edited in the roster) ----
