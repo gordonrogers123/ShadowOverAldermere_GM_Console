@@ -434,7 +434,7 @@ export function createStageView(root) {
     const arc = document.createElementNS(SVG_NS, 'path');
     const id = 'tcarc-' + instId;
     arc.setAttribute('id', id);
-    arc.setAttribute('d', 'M -3,33 A 56,56 0 0 1 103,33');   // top arc OUTSIDE the ring, left -> right (upright)
+    arc.setAttribute('d', 'M -10,40 A 60,60 0 0 1 110,40');   // top arc well ABOVE the ring/glow, left -> right (upright)
     arc.setAttribute('fill', 'none');
     defs.append(arc);
     const text = document.createElementNS(SVG_NS, 'text');
