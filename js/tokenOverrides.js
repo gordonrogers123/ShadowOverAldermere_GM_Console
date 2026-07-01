@@ -49,7 +49,7 @@ function snapshot() {
   for (const kind of KINDS) {
     for (const c of (CAST[kind] || [])) {
       pristine[c.id] = {
-        face: c.face, ringColor: c.ringColor, tokenImage: c.tokenImage,
+        face: c.face, faceZoom: c.faceZoom, ringColor: c.ringColor, tokenImage: c.tokenImage,
         display: c.display ? { ...c.display } : undefined
       };
     }
@@ -105,6 +105,7 @@ function cleanOverride(o) {
   if (!o || typeof o !== 'object') return null;
   const out = {};
   if (typeof o.face === 'string' && o.face.trim()) out.face = o.face.trim();
+  if (o.faceZoom != null && isFinite(+o.faceZoom)) out.faceZoom = Math.max(1, Math.min(3, +o.faceZoom));   // token-image zoom (1..3)
   if (typeof o.ringColor === 'string' && o.ringColor.trim()) out.ringColor = o.ringColor.trim();
   if (typeof o.tokenImage === 'string' && o.tokenImage.trim()) out.tokenImage = o.tokenImage.trim();
   return Object.keys(out).length ? out : null;
@@ -122,6 +123,7 @@ function cleanChar(c) {
   if (typeof c.tokenImage === 'string' && c.tokenImage.trim()) out.tokenImage = c.tokenImage.trim();
   if (typeof c.ringColor === 'string' && c.ringColor.trim()) out.ringColor = c.ringColor.trim();
   if (typeof c.face === 'string' && c.face.trim()) out.face = c.face.trim();
+  if (c.faceZoom != null && isFinite(+c.faceZoom)) out.faceZoom = Math.max(1, Math.min(3, +c.faceZoom));
   if (kind === 'enemy') out.singular = (typeof c.singular === 'string' && c.singular.trim()) ? c.singular.trim() : name.replace(/s$/, '');
   return out;
 }
@@ -143,6 +145,7 @@ function applyToCast() {
       const base = pristine[c.id] || {};
       const o = cleanOverride(cache[c.id]) || {};
       c.face = o.face != null ? o.face : base.face;
+      c.faceZoom = o.faceZoom != null ? o.faceZoom : base.faceZoom;
       c.ringColor = o.ringColor || base.ringColor;
       c.tokenImage = o.tokenImage || base.tokenImage;
     }

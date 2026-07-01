@@ -36,8 +36,11 @@ export function mountPlayer(root) {
   document.body.appendChild(roomDice);
   let roomDiceN = -1;
   let roomDiceTimer = null;
+  const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderRoomDice(rd) {
-    if (!rd || !Array.isArray(rd.flat) || !rd.flat.length) {
+    // Hide when there's nothing to show. A tray roll has dice; a card roll (PR 6C.1) may
+    // carry only a label + verdict (a manual total has no die faces), so keep either.
+    if (!rd || (!(rd.flat && rd.flat.length) && !rd.label)) {
       roomDice.hidden = true;
       roomDice.classList.remove('is-in');
       roomDiceN = rd ? rd.n : -1;
@@ -46,15 +49,19 @@ export function mountPlayer(root) {
     }
     if (rd.n === roomDiceN) return;   // already processed this roll (shown, adopted, or dismissed)
     roomDiceN = rd.n;
-    const dice = rd.flat.map((x) => {
+    const dice = (rd.flat || []).map((x) => {
       const cls = (x.d === 20 && x.r === 20) ? ' is-crit' : (x.d === 20 && x.r === 1) ? ' is-fumble' : '';
       return `<span class="room-die${cls}">${dieSvg(x.d)}<span class="room-die-num">${x.r}</span></span>`;
     }).join('');
-    roomDice.innerHTML =
-      `<div class="room-dice-row">${dice}</div>` +
-      `<div class="room-dice-sum"><span class="room-dice-eq">Total</span><span class="room-dice-total">${rd.total}</span></div>`;
+    // A card roll (PR 6C.1) leads with who/what and closes with the verdict, tone-coloured.
+    const label = rd.label ? `<div class="room-dice-label">${escHtml(rd.label)}</div>` : '';
+    const outcome = rd.outcome ? `<div class="room-dice-outcome">${escHtml(rd.outcome)}</div>` : '';
+    const diceRow = dice ? `<div class="room-dice-row">${dice}</div>` : '';
+    // A tray roll shows the Total sum; a card roll's total already rides its verdict line.
+    const sum = (!rd.label && (dice || rd.total)) ? `<div class="room-dice-sum"><span class="room-dice-eq">Total</span><span class="room-dice-total">${rd.total || ''}</span></div>` : '';
+    roomDice.innerHTML = label + diceRow + sum + outcome;
+    roomDice.className = 'room-dice' + (/^(good|bad|crit|heal)$/.test(rd.tone) ? ' tone-' + rd.tone : '');
     roomDice.hidden = false;
-    roomDice.classList.remove('is-in');
     void roomDice.offsetWidth;   // restart the entrance animation on a repeat roll
     roomDice.classList.add('is-in');
     clearTimeout(roomDiceTimer);

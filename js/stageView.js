@@ -640,6 +640,11 @@ export function createStageView(root) {
       // The face crop centers the round token on the character's face (same
       // object-position the stat card uses); default to centered.
       img.style.objectPosition = cast.face || '50% 50%';
+      // Zoom the token art (token-builder faceZoom, 1..3), pivoting on the face so it
+      // stays put as it magnifies. The .token-crop wrapper clips the overflow to the ring.
+      const z = (cast.faceZoom != null && isFinite(+cast.faceZoom)) ? +cast.faceZoom : 1;
+      img.style.transformOrigin = cast.face || '50% 50%';
+      img.style.transform = z !== 1 ? 'scale(' + z + ')' : '';
       // Token art can be assigned/changed by the builder (e.g. an NPC borrowing
       // its portrait); swap the src only when it actually differs.
       if (cast.tokenImage && img.getAttribute('src') !== cast.tokenImage) img.src = cast.tokenImage;
@@ -693,7 +698,12 @@ export function createStageView(root) {
     hpbar.append(document.createElement('i'));
     const cond = buildCondOverlay(inst.instId);
 
-    el.append(fallback, img, label, hpbar, cond);
+    // The portrait + initials live in a round clip so a zoomed image (faceZoom) stays
+    // inside the ring; the condition arc stays a direct child of the token (which is
+    // overflow:visible) so its text can ride above the ring.
+    const crop = document.createElement('div'); crop.className = 'token-crop';
+    crop.append(fallback, img);
+    el.append(crop, label, hpbar, cond);
     applyTokenStyling(el, inst);   // ring, face crop, name/cond scale, hp/cond position
     if (cast.tokenImage && img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
     return el;
@@ -735,8 +745,18 @@ export function createStageView(root) {
       const list = (condOn && Array.isArray(inst.conditions)) ? inst.conditions.slice(0, 3) : [];
       cond.style.display = list.length ? '' : 'none';
       const tp = cond.querySelector('textPath');
-      const txt = list.join(' · ');
-      if (tp && tp.textContent !== txt) tp.textContent = txt;
+      if (tp) {
+        const txt = list.join(' · ');
+        if (tp.textContent !== txt) tp.textContent = txt;
+        // Fit long conditions to the arc so SVG doesn't drop the end characters: a word
+        // whose advance exceeds the arc PATH length rides off it and loses the ends
+        // ("unconscious" -> "nconsciou"), worse the larger the text. Scale the font by
+        // CHARACTER COUNT (deterministic -- getComputedTextLength is unreliable mid-render)
+        // so anything past what the arc comfortably holds (~MAX_CHARS) shrinks to fit.
+        // Drives --token-cond-fit in CSS.
+        const MAX_CHARS = 8;
+        el.style.setProperty('--token-cond-fit', (txt.length > MAX_CHARS ? MAX_CHARS / txt.length : 1).toFixed(3));
+      }
     }
   }
 
@@ -785,7 +805,10 @@ export function createStageView(root) {
     // mode clears the table on the TV.
     const inMapMode = !!(state.stage && state.stage.mapMode);
     tokensShown = stage.classList.contains('board-interactive') || inMapMode;
-    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
+    // Leaving map mode (or showing a non-map scene) must clear the grid too, not just the
+    // tokens -- otherwise a grid drawn in map mode lingers over the next scene. layoutTokens
+    // (which calls layoutGrid) is skipped on this early return, so hide the overlay here.
+    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; gridOverlay.style.display = 'none'; return; }
     layoutTokens();
   }
 
