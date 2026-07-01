@@ -492,6 +492,18 @@ export function createStageView(root) {
   // On-map combat overlays, driven by state.stage.hpOnMap / conditionsOnMap. Runs
   // on the GM board AND the Player TV (shared compositor). Enemy HP is never shown.
   function updateTokenOverlays(el, inst, state) {
+    // Damage flash: when a token's current HP drops, blink it (on both screens; the
+    // HP-bar width also animates via its CSS transition). Kind-agnostic so enemies
+    // flash when hit too, without revealing their HP. First sighting never blinks.
+    const curHp = (inst.hp && inst.hp.current != null) ? inst.hp.current : null;
+    if (el._hpPrev != null && curHp != null && curHp < el._hpPrev) {
+      el.classList.remove('is-hit'); void el.offsetWidth;   // restart the animation if mid-flash
+      el.classList.add('is-hit');
+      clearTimeout(el._hitTimer);
+      el._hitTimer = setTimeout(() => el.classList.remove('is-hit'), 650);
+    }
+    el._hpPrev = curHp;
+
     const hpOn = !!(state.stage && state.stage.hpOnMap);
     const condOn = !!(state.stage && state.stage.conditionsOnMap);
     const hpbar = el.querySelector('.token-hpbar');

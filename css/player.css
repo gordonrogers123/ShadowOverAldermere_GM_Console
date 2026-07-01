@@ -186,6 +186,17 @@
   50%      { box-shadow: 0 0 0 0.055em #f4c95d, 0 0 0.3em 0.06em rgba(244, 201, 93, 0.95), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
 }
 @media (prefers-reduced-motion: reduce) { .stage .token.is-active { animation: none !important; } }
+/* Damage flash: a red pulse over the token when its HP drops (both screens). An
+   overlay, so it never disturbs the token's position or its active ring. */
+.stage .token.is-hit::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: 6; pointer-events: none;
+  background: radial-gradient(circle, rgba(235, 55, 55, 0.75), rgba(180, 20, 20, 0.35));
+  animation: token-hit 0.6s ease-out forwards;
+}
+@keyframes token-hit {
+  0% { opacity: 0; } 12% { opacity: 0.95; } 38% { opacity: 0.1; } 58% { opacity: 0.8; } 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .stage .token.is-hit::after { animation: none !important; opacity: 0 !important; } }
 .stage .token-portrait,
 .stage .token-fallback {
   position: absolute;
