@@ -89,7 +89,7 @@ export function condArcPath(curve, positionY) {
   const t = clampNum(curve == null ? 55 : curve, 0, 100, 55) / 100;
   const p = clampNum(positionY == null ? 100 : positionY, 0, 100, 100) / 100;
   const half = 60;
-  const peakY = 120 - p * 150;                            // word center: p=1 -> -30 (above), p=0 -> 120 (below)
+  const peakY = 150 - p * 180;                            // word center: p=1 -> -30 (wraps the top), p=0 -> 150 (clearly below the token)
   const s = 4 + t * 60;                                   // sagitta (bulge): 4 flat .. 64 deep
   const R = (half * half + s * s) / (2 * s);
   if (peakY <= 50) {                                      // upper half: concave down (over the top)
