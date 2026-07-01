@@ -1,481 +1,5 @@
 [
   {
-    "id": "the-city-gate",
-    "name": "The City Gate",
-    "maps": {
-      "title": "",
-      "city-gates": "assets/backgrounds/A1 S2 City Gates -- Day.png",
-      "guard-post": "assets/backgrounds/A1 S2 Gate Guard Post.png",
-      "city-gate-map": "assets/maps/A1 S2 City Gate -- Day.png"
-    },
-    "variantModes": {
-      "title": {
-        "scene": true,
-        "map": false
-      },
-      "city-gates": {
-        "scene": true,
-        "map": false
-      },
-      "guard-post": {
-        "scene": true,
-        "map": false
-      },
-      "city-gate-map": {
-        "scene": false,
-        "map": true
-      }
-    },
-    "defaultMapState": "title",
-    "tokens": null,
-    "music": null,
-    "ambience": [],
-    "audio": {
-      "music": [
-        {
-          "src": "assets/audio/music/Beneath_the_Battlements.mp3",
-          "volume": 0.8,
-          "pan": 0,
-          "loop": true,
-          "fadeIn": 4,
-          "fadeOut": 4
-        },
-        {
-          "src": "assets/audio/music/Hollow Market.wav",
-          "volume": 0.8,
-          "pan": 0,
-          "loop": true,
-          "fadeIn": 2,
-          "fadeOut": 2
-        }
-      ],
-      "ambience": [],
-      "sfx": []
-    },
-    "gmNotes": "",
-    "cues": [
-      {
-        "id": "cue-1",
-        "label": "Title Screen",
-        "opening": true,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": true,
-          "characters": false,
-          "tokens": false,
-          "audio": true
-        },
-        "snapshot": {
-          "mapState": "title",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "right": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [
-              "mus:0"
-            ],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "After many miles of travel and story from the refugees, you see in the distance a great castle. The journey for these travelers seems it is nearly at it's end.",
-        "timeline": {
-          "blackout": {
-            "at": 0,
-            "ramp": 700
-          },
-          "audioOut": {
-            "at": 0,
-            "ramp": 600
-          },
-          "background": {
-            "at": 800,
-            "ramp": 400
-          },
-          "audioIn": {
-            "at": 1000,
-            "ramp": 1000
-          },
-          "reveal": {
-            "at": 1000,
-            "ramp": 700
-          }
-        }
-      },
-      {
-        "id": "cue-6",
-        "label": "City Gates",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": true,
-          "characters": true,
-          "tokens": false,
-          "audio": false
-        },
-        "snapshot": {
-          "mapState": "city-gates",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "right": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "When you finally arrive at Aldermere, you see high grey wall and a great barred gate, torch-lit with a few guards moving about. There is a long line of travelers waiting to be let in or turned away.",
-        "timeline": {
-          "blackout": {
-            "at": 0,
-            "ramp": 700
-          },
-          "background": {
-            "at": 800,
-            "ramp": 400
-          },
-          "reveal": {
-            "at": 1000,
-            "ramp": 700
-          }
-        }
-      },
-      {
-        "id": "cue-2",
-        "label": "Wick",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": false,
-          "characters": true,
-          "tokens": false,
-          "audio": true
-        },
-        "snapshot": {
-          "mapState": "city-gates",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Wick.png"
-          },
-          "right": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "You see A kind, nervous looking young recruit whose outfit is just a but too big for him. \n\n\"Oh, hello, the Sergeant will be here in just a moment... he's in the loo.\"\n\nCan help with\nA kind word and quiet help; directions to the Guild or the apothecary; the small truths Dorran will not say.\n\nReveals if asked\nThe Guild is desperate for hands; contracts have gone badly and heroes keep not coming back; the city is more frightened than it admits.",
-        "timeline": {
-          "characters": {
-            "at": 2000,
-            "ramp": 500
-          }
-        }
-      },
-      {
-        "id": "cue-3",
-        "label": "Sgt Dorran",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": false,
-          "characters": true,
-          "tokens": false,
-          "audio": true
-        },
-        "snapshot": {
-          "mapState": "city-gates",
-          "mapMode": false,
-          "visible": true,
-          "left": null,
-          "right": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Sgt Dorran.png"
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "This is The senior guard on the gate, he looks a tired man holding a hard line.\n\n\"Name, race, trade, and your business at Aldermere. Be quick.\"\n\n\"Heroes may enter, provided you register with the Guild and take a contract. Those are the terms.\"\n\n\"By order of Lord Halden and Lady Rosamund, no entry for persons of Highmoor until the harboring fee is paid.\"\n\n\"Papers clear at dawn. Camp's outside.\"\n\nCan help with\nAccepts the party as heroes once the refugees vouch, but their writ must clear the registrar; takes their sworn vouchers and sends them back at dawn; points them to the Heroes' Guild for the next day.\n\nReveals if asked\nThe harboring-fee policy and the order behind it; that even accepted heroes wait on the registrar's signature, and the office has closed for the day; dislikes the policy but follows it.",
-        "timeline": {
-          "characters": {
-            "at": 2000,
-            "ramp": 500
-          }
-        }
-      },
-      {
-        "id": "cue-4",
-        "label": "Pip Enters",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": false,
-          "characters": true,
-          "tokens": false,
-          "audio": true
-        },
-        "snapshot": {
-          "mapState": "city-gates",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Pip -- Speaking.png"
-          },
-          "right": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "Pushing through the crowd, you see a small, eager herald with a lute slung across his back, dressed as purple as a plumb.\n\n\"Make way, make way, MAKE WAY! I have a very important announcement.\"\n\n\"Presenting the one, the only, the absolutely unrivaled... Sir Cassian Goldmark! The Lion of the West! Breaker of Sieges, Bane of Bandits, Beloved of no fewer than four duchesses (and he has the letters to prove it)! Knight of seven realms, champion of the meek, the bold, and the suspiciously handsome! When the histories of this age are sung, and they will be sung, friends, for I am writing them as we speak, they shall open upon this very man! So take heart, good people: you are not merely meeting a legend. You are stepping, humbly and gratefully, into his story! I give you... SIR CASSIAN GOLDMARK!\"",
-        "timeline": {
-          "characters": {
-            "at": 2000,
-            "ramp": 500
-          }
-        }
-      },
-      {
-        "id": "cue-5",
-        "label": "Cassian",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": false,
-          "characters": true,
-          "tokens": false,
-          "audio": true
-        },
-        "snapshot": {
-          "mapState": "city-gates",
-          "mapMode": false,
-          "visible": true,
-          "left": null,
-          "right": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Cassian -- Hero Pose.png"
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "A dashing, handsome hero in gleaming ornate armor with a flowing cloak and perfect golden hair, striking a confident heroic pose at a city gate, chin high and smile dazzling, utterly pleased with himself\n\n\"Stand easy, friends. The Lion of the West has arrived. I assume my reputation precedes me?\"\n\nHe looks the party over, \"Excuse us, I believe this is the heroes entrance, you might want to stand over there with the rest of the riff raff.\"\n\nCassian on Cassian:\n\"Modesty is a virtue I simply cannot afford. It would be dishonest, given the circumstances.\"\nPip: \"He once charmed a blizzard into an early spring, simply by smiling at it.\"\n\n\"I don't chase glory. Glory chases me, and I am gracious enough to slow down and let it catch up.\"\nPip: \"He once caught an arrow midflight, signed it, and handed it back to the archer as a keepsake.\"\n\n\"They say a hero is only as good as his last deed. By that measure I am, regrettably, insufferable.\"\nPip: \"He has never once been lost. The roads simply rearrange themselves to lead wherever he is already going.\"\n\n\"You'll want to stand a touch to my left. The light has always favored my left.\"\nPip: \"He out-sang a siren, out-drank a dwarf, and out-shone the moon, and that was all on a Tuesday.\"\n\n\nCassian sizing up the party:\nKenku: \"A talking bird! Marvelous. Repeat after me, friend: 'Cassian Goldmark, finest blade in seven realms.' ... You'll get there. Pip took weeks.\"\nLoxodon: \"Magnificent specimen. Tell me, big fellow, do you fight, or are you here to carry the trophies? Either way, invaluable.\"\nGnome wizard: \"And a little one, a wizard no less. Precious. Do keep your spells handy, in case I require a light to read my fan mail by.\"\nTiefling rogue: \"Horns, a tail, and fingers already drifting toward my purse. I like you. A good rogue makes the hero look honest by comparison. Keep up, and out of my pockets.\"\nOrc barbarian: \"Now you have the look of a proper brawler. Splendid. You'll make excellent cover when the arrows start flying. Stand just there, in front of me.\"\nDragonborn fighter: \"A dragonborn! How dramatic. Give us a little puff of flame, would you? A crowd loves a warm-up act before the main event arrives. The main event being me.\"\nHalfling cleric: \"A little cleric, wonderful. Stay close and keep me healthy; a hero of my caliber must be preserved for posterity. The rest of you are surely also worth saving. Probably.\"",
-        "timeline": {
-          "characters": {
-            "at": 2000,
-            "ramp": 500
-          }
-        }
-      },
-      {
-        "id": "cue-7",
-        "label": "Guard Post",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": true,
-          "characters": true,
-          "tokens": false,
-          "audio": true
-        },
-        "snapshot": {
-          "mapState": "guard-post",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "right": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "A squat stone hut built into the gatehouse. This is where the gate officer records who passes and who is turned back, and where unusual travelers are taken aside to be questioned.\n\nInvestigation: On the desk lies the watch's refugee roster, a ledger of every name turned away at the gate. The Marsh family is the single entry held back rather than refused, marked for an audience. Beside it, in a different and hurried hand, a note set apart from the rest records that their matter was \"passed to the chancellery.\"",
-        "timeline": {
-          "blackout": {
-            "at": 0,
-            "ramp": 700
-          },
-          "background": {
-            "at": 800,
-            "ramp": 400
-          },
-          "reveal": {
-            "at": 1000,
-            "ramp": 700
-          }
-        }
-      },
-      {
-        "id": "cue-8",
-        "label": "Marsh Request Entrance",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": false,
-          "characters": true,
-          "tokens": false,
-          "audio": false
-        },
-        "snapshot": {
-          "mapState": "guard-post",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Marsh Family -- Talking.png"
-          },
-          "right": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Captain Hob.png"
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "Investigation: You are able to just make out their voices from the noise of the crowd. The Marsh Family seem to have information about the cause of the Pale Night and are requesting an audience with the King and Queen. Hob hears their plea and agrees to request audience, but will need approval.",
-        "timeline": {
-          "characters": {
-            "at": 2000,
-            "ramp": 500
-          }
-        }
-      },
-      {
-        "id": "cue-9",
-        "label": "Hob",
-        "opening": false,
-        "affects": {
-          "background": true,
-          "mapMode": false,
-          "curtain": false,
-          "characters": true,
-          "tokens": false,
-          "audio": false
-        },
-        "snapshot": {
-          "mapState": "guard-post",
-          "mapMode": false,
-          "visible": true,
-          "left": {
-            "shown": false,
-            "srcOverride": null
-          },
-          "right": {
-            "shown": true,
-            "srcOverride": "assets/characters/npcs/Captain Hob.png"
-          },
-          "tokens": [],
-          "audio": {
-            "playing": [],
-            "master": 0.8,
-            "sfx": []
-          }
-        },
-        "notes": "The officer in charge of the gate watch, who decides who passes and who is turned back\n\n\"This area is for Guard business only, please remain in the gated area.\""
-      }
-    ],
-    "characters": {
-      "left": [
-        {
-          "id": "Wick",
-          "src": "assets/characters/npcs/Wick.png",
-          "enter": "fade",
-          "flip": true
-        },
-        {
-          "id": "Pip -- Speaking",
-          "src": "assets/characters/npcs/Pip -- Speaking.png",
-          "enter": "fade",
-          "scale": 0.9,
-          "flip": true,
-          "x": -10,
-          "y": -10
-        },
-        {
-          "id": "Marsh Family -- Talking",
-          "src": "assets/characters/npcs/Marsh Family -- Talking.png",
-          "enter": "fade"
-        }
-      ],
-      "right": [
-        {
-          "id": "Sgt Dorran",
-          "src": "assets/characters/npcs/Sgt Dorran.png",
-          "enter": "fade"
-        },
-        {
-          "id": "Cassian -- Hero Pose",
-          "src": "assets/characters/npcs/Cassian -- Hero Pose.png",
-          "enter": "fade",
-          "x": 16
-        },
-        {
-          "id": "Captain Hob",
-          "src": "assets/characters/npcs/Captain Hob.png",
-          "enter": "fade"
-        }
-      ]
-    },
-    "defaults": {
-      "visible": true
-    },
-    "titleHeader": "The Shadow Over Aldermere"
-  },
-  {
     "id": "introduction",
     "name": "Introduction",
     "maps": {
@@ -1191,6 +715,504 @@
           "enter": "fade",
           "flip": true,
           "x": -4
+        }
+      ]
+    },
+    "defaults": {
+      "visible": true
+    },
+    "titleHeader": "The Shadow Over Aldermere",
+    "grids": {
+      "map-night": {
+        "enabled": true,
+        "cellSize": 0.03333333333333333,
+        "offsetX": 0,
+        "offsetY": 0,
+        "feetPerCell": 5,
+        "color": "#000000",
+        "opacity": 0.5,
+        "lineWidth": 1
+      },
+      "map-day": {
+        "enabled": true,
+        "cellSize": 0.0625,
+        "offsetX": 0,
+        "offsetY": 0,
+        "feetPerCell": 5,
+        "color": "#ffffff",
+        "opacity": 0.5,
+        "lineWidth": 1
+      }
+    }
+  },
+  {
+    "id": "the-city-gate",
+    "name": "The City Gate",
+    "maps": {
+      "title": "",
+      "city-gates": "assets/backgrounds/A1 S2 City Gates -- Day.png",
+      "guard-post": "assets/backgrounds/A1 S2 Gate Guard Post.png",
+      "city-gate-map": "assets/maps/A1 S2 City Gate -- Day.png"
+    },
+    "variantModes": {
+      "title": {
+        "scene": true,
+        "map": false
+      },
+      "city-gates": {
+        "scene": true,
+        "map": false
+      },
+      "guard-post": {
+        "scene": true,
+        "map": false
+      },
+      "city-gate-map": {
+        "scene": false,
+        "map": true
+      }
+    },
+    "defaultMapState": "title",
+    "tokens": null,
+    "music": null,
+    "ambience": [],
+    "audio": {
+      "music": [
+        {
+          "src": "assets/audio/music/Beneath_the_Battlements.mp3",
+          "volume": 0.8,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 4,
+          "fadeOut": 4
+        },
+        {
+          "src": "assets/audio/music/Hollow Market.wav",
+          "volume": 0.8,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 2,
+          "fadeOut": 2
+        }
+      ],
+      "ambience": [],
+      "sfx": []
+    },
+    "gmNotes": "",
+    "cues": [
+      {
+        "id": "cue-1",
+        "label": "Title Screen",
+        "opening": true,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": false,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "title",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [
+              "mus:0"
+            ],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "After many miles of travel and story from the refugees, you see in the distance a great castle. The journey for these travelers seems it is nearly at it's end.",
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 700
+          },
+          "audioOut": {
+            "at": 0,
+            "ramp": 600
+          },
+          "background": {
+            "at": 800,
+            "ramp": 400
+          },
+          "audioIn": {
+            "at": 1000,
+            "ramp": 1000
+          },
+          "reveal": {
+            "at": 1000,
+            "ramp": 700
+          }
+        }
+      },
+      {
+        "id": "cue-6",
+        "label": "City Gates",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "When you finally arrive at Aldermere, you see high grey wall and a great barred gate, torch-lit with a few guards moving about. There is a long line of travelers waiting to be let in or turned away.",
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 700
+          },
+          "background": {
+            "at": 800,
+            "ramp": 400
+          },
+          "reveal": {
+            "at": 1000,
+            "ramp": 700
+          }
+        }
+      },
+      {
+        "id": "cue-2",
+        "label": "Wick",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Wick.png"
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "You see A kind, nervous looking young recruit whose outfit is just a but too big for him. \n\n\"Oh, hello, the Sergeant will be here in just a moment... he's in the loo.\"\n\nCan help with\nA kind word and quiet help; directions to the Guild or the apothecary; the small truths Dorran will not say.\n\nReveals if asked\nThe Guild is desperate for hands; contracts have gone badly and heroes keep not coming back; the city is more frightened than it admits.",
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-3",
+        "label": "Sgt Dorran",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": null,
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Sgt Dorran.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "This is The senior guard on the gate, he looks a tired man holding a hard line.\n\n\"Name, race, trade, and your business at Aldermere. Be quick.\"\n\n\"Heroes may enter, provided you register with the Guild and take a contract. Those are the terms.\"\n\n\"By order of Lord Halden and Lady Rosamund, no entry for persons of Highmoor until the harboring fee is paid.\"\n\n\"Papers clear at dawn. Camp's outside.\"\n\nCan help with\nAccepts the party as heroes once the refugees vouch, but their writ must clear the registrar; takes their sworn vouchers and sends them back at dawn; points them to the Heroes' Guild for the next day.\n\nReveals if asked\nThe harboring-fee policy and the order behind it; that even accepted heroes wait on the registrar's signature, and the office has closed for the day; dislikes the policy but follows it.",
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-4",
+        "label": "Pip Enters",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Pip -- Speaking.png"
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "Pushing through the crowd, you see a small, eager herald with a lute slung across his back, dressed as purple as a plumb.\n\n\"Make way, make way, MAKE WAY! I have a very important announcement.\"\n\n\"Presenting none other than the Breaker of Sieges, Bane of Bandits, Beloved of no fewer than four duchesses (and he has the letters to prove it)! Knight of seven realms, champion of the meek, the bold, and the suspiciously handsome, the one, the only, the absolutely unrivaled... Sir Cassian Goldmark! The Lion of the West! \n\nWhen the histories of this age are sung, and they will be sung, friends, for I am writing them as we speak, they shall open upon this very man! So take heart, good people: you are not merely meeting a legend. You are stepping, humbly and gratefully, into his story! I give you... SIR CASSIAN GOLDMARK!\"",
+        "timeline": {
+          "characters": {
+            "at": 4000,
+            "ramp": 800
+          }
+        }
+      },
+      {
+        "id": "cue-5",
+        "label": "Cassian",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "city-gates",
+          "mapMode": false,
+          "visible": true,
+          "left": null,
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Cassian -- Hero Pose.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "Before you stands a dashing, handsome hero in gleaming ornate armor with a flowing cloak and perfect golden hair, striking a confident heroic pose at a city gate, chin high and smile dazzling, utterly pleased with himself\n\n\"Stand easy, friends. The Lion of the West has arrived. I assume my reputation precedes me?\"\n\nHe looks the party over, \"Excuse us, I believe this is the heroes entrance, you might want to stand over there with the rest of the riff raff.\"\n\nCassian on Cassian:\n\"Modesty is a virtue I simply cannot afford. It would be dishonest, given the circumstances.\"\nPip: \"He once charmed a blizzard into an early spring, simply by smiling at it.\"\n\n\"I don't chase glory. Glory chases me, and I am gracious enough to slow down and let it catch up.\"\nPip: \"He once caught an arrow midflight, signed it, and handed it back to the archer as a keepsake.\"\n\n\"They say a hero is only as good as his last deed. By that measure I am, regrettably, insufferable.\"\nPip: \"He has never once been lost. The roads simply rearrange themselves to lead wherever he is already going.\"\n\n\"You'll want to stand a touch to my left. The light has always favored my left.\"\nPip: \"He out-sang a siren, out-drank a dwarf, and out-shone the moon, and that was all on a Tuesday.\"\n\n\nCassian sizing up the party:\nKenku: \"A talking bird! Marvelous. Repeat after me, friend: 'Cassian Goldmark, finest blade in seven realms.' ... You'll get there. Pip took weeks.\"\n\nLoxodon: \"Magnificent specimen. Tell me, big fellow, do you fight, or are you here to carry the trophies? Either way, invaluable.\"\n\nGnome wizard: \"And a little one, a wizard no less. Precious. Do keep your spells handy, in case I require a light to read my fan mail by.\"\n\nTiefling rogue: \"Horns, a tail, and fingers already drifting toward my purse. I like you. A good rogue makes the hero look honest by comparison. Keep up, and out of my pockets.\"\n\nOrc barbarian: \"Now you have the look of a proper brawler. Splendid. You'll make excellent cover when the arrows start flying. Stand just there, in front of me.\"\n\nDragonborn fighter: \"A dragonborn! How dramatic. Give us a little puff of flame, would you? A crowd loves a warm-up act before the main event arrives. The main event being me.\"\n\nHalfling cleric: \"A little cleric, wonderful. Stay close and keep me healthy; a hero of my caliber must be preserved for posterity. The rest of you are surely also worth saving. Probably.\"",
+        "timeline": {
+          "characters": {
+            "at": 3000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-7",
+        "label": "Guard Post",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "guard-post",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "A squat stone hut built into the gatehouse. This is where the gate officer records who passes and who is turned back, and where unusual travelers are taken aside to be questioned.\n\nInvestigation: On the desk lies the watch's refugee roster, a ledger of every name turned away at the gate. The Marsh family is the single entry held back rather than refused, marked for an audience. Beside it, in a different and hurried hand, a note set apart from the rest records that their matter was \"passed to the chancellery.\"",
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 700
+          },
+          "background": {
+            "at": 800,
+            "ramp": 400
+          },
+          "reveal": {
+            "at": 1000,
+            "ramp": 700
+          }
+        }
+      },
+      {
+        "id": "cue-8",
+        "label": "Marsh Request Entrance",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "guard-post",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Marsh Family -- Talking.png"
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Captain Hob.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "Investigation: You are able to just make out their voices from the noise of the crowd. The Marsh Family seem to have information about the cause of the Pale Night and are requesting an audience with the King and Queen. Hob hears their plea and agrees to request audience, but will need approval.",
+        "timeline": {
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      },
+      {
+        "id": "cue-9",
+        "label": "Hob",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "guard-post",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/Captain Hob.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "notes": "The officer in charge of the gate watch, who decides who passes and who is turned back\n\n\"This area is for Guard business only, please remain in the gated area.\""
+      }
+    ],
+    "characters": {
+      "left": [
+        {
+          "id": "Wick",
+          "src": "assets/characters/npcs/Wick.png",
+          "enter": "fade",
+          "flip": true
+        },
+        {
+          "id": "Pip -- Speaking",
+          "src": "assets/characters/npcs/Pip -- Speaking.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "flip": true,
+          "x": -10,
+          "y": -10
+        },
+        {
+          "id": "Marsh Family -- Talking",
+          "src": "assets/characters/npcs/Marsh Family -- Talking.png",
+          "enter": "fade"
+        }
+      ],
+      "right": [
+        {
+          "id": "Sgt Dorran",
+          "src": "assets/characters/npcs/Sgt Dorran.png",
+          "enter": "fade"
+        },
+        {
+          "id": "Cassian -- Hero Pose",
+          "src": "assets/characters/npcs/Cassian -- Hero Pose.png",
+          "enter": "fade",
+          "x": 16
+        },
+        {
+          "id": "Captain Hob",
+          "src": "assets/characters/npcs/Captain Hob.png",
+          "enter": "fade"
         }
       ]
     },
