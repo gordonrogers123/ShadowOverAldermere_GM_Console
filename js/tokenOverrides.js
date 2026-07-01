@@ -17,11 +17,13 @@
 //    { face,        // CSS object-position, e.g. "50% 22%" -- the face crop
 //      ringColor,   // token ring color, e.g. "#6f9bd1"
 //      tokenImage,  // round token art path (lets an NPC borrow its portrait)
-//      display: {   // on-map overlay tuning, read by stageView
-//        nameSize,  //   name badge scale (multiplier, ~0.6..1.6)
-//        condSize,  //   condition word scale (multiplier, ~0.6..1.8)
-//        condPos,   //   "above" | "below" the token
-//        hpPos } }  //   "below" | "above" the token
+//      display: {   // GLOBAL on-map overlay tuning (the _global entry), read by stageView
+//        nameSize, nameSpacing,       //   name badge scale + letter-spacing
+//        condSize, condSpacing,       //   condition word scale + letter-spacing
+//        condPosY,                    //   condition vertical position (0 below .. 100 above)
+//        condCurve,                   //   condition word-wrap depth (0 flat .. 100 deep)
+//        condColor, condOutline,      //   condition text fill + outline (#rrggbb)
+//        hpPos } }                    //   HP-bar height (0 bottom .. 100 top)
 // ============================================================
 
 import { CAST } from '../data/cast.js';
@@ -70,25 +72,32 @@ function cleanDisplay(d) {
   if (d.nameSpacing != null) out.nameSpacing = clampNum(d.nameSpacing, 0, 100, 0);   // name letter-spacing (0 .. 0.4em)
   if (d.condSize != null) out.condSize = clampNum(d.condSize, 0.6, 1.8, 1);
   if (d.condSpacing != null) out.condSpacing = clampNum(d.condSpacing, 0, 100, 8);   // condition letter-spacing (spreads the curved word)
-  if (d.condPos === 'above' || d.condPos === 'below') out.condPos = d.condPos;
+  if (d.condPosY != null) out.condPosY = clampNum(d.condPosY, 0, 100, 100);   // condition vertical position (0 below .. 100 above)
   if (d.condCurve != null) out.condCurve = clampNum(d.condCurve, 0, 100, 55);   // how tightly the word wraps (0 flat .. 100 deep)
+  if (/^#[0-9a-fA-F]{6}$/.test(d.condColor || '')) out.condColor = d.condColor;       // condition text fill
+  if (/^#[0-9a-fA-F]{6}$/.test(d.condOutline || '')) out.condOutline = d.condOutline; // condition text outline
   if (d.hpPos != null) out.hpPos = clampNum(d.hpPos, 0, 100, 0);                 // HP-bar height: 0 bottom .. 100 top
   return Object.keys(out).length ? out : null;
 }
 
-// The SVG path the condition word curves along, as a function of how tightly it
-// should wrap (0 = nearly flat, 100 = a deep arc hugging the token) and which
-// side. The word CENTER stays a constant distance from the token; only the ends
-// curl further as the wrap deepens. Shared by stageView and the builder preview.
-export function condArcPath(curve, below) {
+// The SVG path the condition word curves along. `curve` is the wrap depth (0 =
+// nearly flat, 100 = a deep arc). `positionY` is the manual vertical placement
+// (100 = above the token, 0 = below it, ~50 = across the middle): the word center
+// sits at that height and the arc stays concave TOWARD the token center (over the
+// top when high, under the bottom when low). Shared by stageView + the preview.
+export function condArcPath(curve, positionY) {
   const t = clampNum(curve == null ? 55 : curve, 0, 100, 55) / 100;
-  const half = 60, topY = -18;
+  const p = clampNum(positionY == null ? 100 : positionY, 0, 100, 100) / 100;
+  const half = 60;
+  const peakY = 120 - p * 150;                            // word center: p=1 -> -30 (above), p=0 -> 120 (below)
   const s = 4 + t * 60;                                   // sagitta (bulge): 4 flat .. 64 deep
-  const yE = topY + s;                                    // endpoints drop as it wraps more
-  const R = (half * half + s * s) / (2 * s);              // radius through the endpoints + peak
-  return below
-    ? `M ${50 - half},${100 - yE} A ${R.toFixed(1)},${R.toFixed(1)} 0 0 0 ${50 + half},${100 - yE}`
-    : `M ${50 - half},${yE} A ${R.toFixed(1)},${R.toFixed(1)} 0 0 1 ${50 + half},${yE}`;
+  const R = (half * half + s * s) / (2 * s);
+  if (peakY <= 50) {                                      // upper half: concave down (over the top)
+    const yE = peakY + s;
+    return `M ${50 - half},${yE.toFixed(1)} A ${R.toFixed(1)},${R.toFixed(1)} 0 0 1 ${50 + half},${yE.toFixed(1)}`;
+  }
+  const yE = peakY - s;                                   // lower half: concave up (under the bottom)
+  return `M ${50 - half},${yE.toFixed(1)} A ${R.toFixed(1)},${R.toFixed(1)} 0 0 0 ${50 + half},${yE.toFixed(1)}`;
 }
 // A per-character override is now ONLY the token identity: face crop, ring color,
 // token art. (Display settings moved to the global entry above.)

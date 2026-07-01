@@ -3558,8 +3558,12 @@ export function mountGm(root) {
                     <span class="tb-subgroup-h">Conditions</span>
                     <label class="tb-set"><span class="tb-set-label">Text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
                     <label class="tb-set"><span class="tb-set-label">Letter spacing</span><input type="range" class="tb-cond-spacing" min="0" max="100" step="5"></label>
-                    <div class="tb-set"><span class="tb-set-label">Position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
+                    <label class="tb-set"><span class="tb-set-label">Position <span class="tb-set-hint">below &harr; above</span></span><input type="range" class="tb-cond-pos" min="0" max="100" step="2"></label>
                     <label class="tb-set"><span class="tb-set-label">Curve <span class="tb-set-hint">flat &harr; wrapped</span></span><input type="range" class="tb-cond-curve" min="0" max="100" step="5"></label>
+                    <div class="tb-colors">
+                      <label class="tb-color"><span class="tb-set-label">Text color</span><input type="color" class="tb-cond-color"></label>
+                      <label class="tb-color"><span class="tb-set-label">Outline</span><input type="color" class="tb-cond-outline"></label>
+                    </div>
                   </div>
                   <div class="tb-subgroup">
                     <span class="tb-subgroup-h">HP bar</span>
@@ -3578,13 +3582,13 @@ export function mountGm(root) {
     const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
     const swatches = q('.tb-swatches'), imageGrid = q('.tb-image-grid');
     const uploadBtn = q('.tb-upload-btn'), uploadInput = q('.tb-upload-input'), uploadStatus = q('.tb-upload-status');
-    const nameSize = q('.tb-name-size'), nameSpacing = q('.tb-name-spacing'), condSize = q('.tb-cond-size'), condSpacing = q('.tb-cond-spacing'), condCurve = q('.tb-cond-curve'), hpPos = q('.tb-hp-pos');
+    const nameSize = q('.tb-name-size'), nameSpacing = q('.tb-name-spacing'), condSize = q('.tb-cond-size'), condSpacing = q('.tb-cond-spacing'), condPosSlider = q('.tb-cond-pos'), condCurve = q('.tb-cond-curve'), condColor = q('.tb-cond-color'), condOutline = q('.tb-cond-outline'), hpPos = q('.tb-hp-pos');
     const savedTag = q('.tb-saved');
     const stage = q('.tb-stage');
 
     let sel = null;     // { cast, kind }  -- the character being edited
     let draft = null;   // per-token identity: { face, ringColor, tokenImage }
-    let gd = null;      // GLOBAL display settings (all tokens): {nameSize,condSize,condPos,condCurve,hpPos}
+    let gd = null;      // GLOBAL display (all tokens): {nameSize,nameSpacing,condSize,condSpacing,condPosY,condCurve,condColor,condOutline,hpPos}
     let showHidden = false;   // reveal hidden tokens in the picker
     let addKind = 'hero';     // category for a new token being created
     const extraImages = [];   // images uploaded this session, shown in the grid before a rescan
@@ -3684,17 +3688,19 @@ export function mountGm(root) {
       sampleTok.style.setProperty('--token-name-spacing', (gd.nameSpacing / 100 * 0.4).toFixed(3) + 'em');
       sampleTok.style.setProperty('--token-cond-scale', gd.condSize);
       sampleTok.style.setProperty('--token-cond-spacing', (gd.condSpacing / 100 * 10).toFixed(2) + 'px');
-      sampleTok.classList.toggle('cond-below', gd.condPos === 'below');
+      sampleTok.style.setProperty('--token-cond-color', gd.condColor);
+      sampleTok.style.setProperty('--token-cond-outline', gd.condOutline);
+      sampleTok.classList.toggle('cond-below', gd.condPosY < 50);
       sampleTok.style.setProperty('--token-hp-y', (84 - gd.hpPos * 0.82).toFixed(1) + '%');
-      sampleTok.querySelector('.token-cond path').setAttribute('d', condArcPath(gd.condCurve, gd.condPos === 'below'));
+      sampleTok.querySelector('.token-cond path').setAttribute('d', condArcPath(gd.condCurve, gd.condPosY));
     }
     function seedGlobal() {
       const g = globalDisplay();
-      gd = { nameSize: g.nameSize || 1, nameSpacing: g.nameSpacing || 0, condSize: g.condSize || 1, condSpacing: g.condSpacing == null ? 8 : g.condSpacing, condPos: g.condPos || 'above', condCurve: g.condCurve == null ? 55 : g.condCurve, hpPos: g.hpPos || 0 };
+      gd = { nameSize: g.nameSize || 1, nameSpacing: g.nameSpacing || 0, condSize: g.condSize || 1, condSpacing: g.condSpacing == null ? 8 : g.condSpacing, condPosY: g.condPosY == null ? 100 : g.condPosY, condCurve: g.condCurve == null ? 55 : g.condCurve, condColor: g.condColor || '#ffffff', condOutline: g.condOutline || '#000000', hpPos: g.hpPos || 0 };
     }
     function renderGlobalControls() {
-      nameSize.value = gd.nameSize; nameSpacing.value = gd.nameSpacing; condSize.value = gd.condSize; condSpacing.value = gd.condSpacing; condCurve.value = gd.condCurve; hpPos.value = gd.hpPos;
-      renderSeg('.tb-cond-pos', gd.condPos);
+      nameSize.value = gd.nameSize; nameSpacing.value = gd.nameSpacing; condSize.value = gd.condSize; condSpacing.value = gd.condSpacing;
+      condPosSlider.value = gd.condPosY; condCurve.value = gd.condCurve; condColor.value = gd.condColor; condOutline.value = gd.condOutline; hpPos.value = gd.hpPos;
     }
     // Live: update this window's cache + repaint (no disk). Persist: POST + broadcast.
     function applyGlobalLive() { applyGlobalDisplay(gd); if (sel) styleSampleGlobal(); repaintBoards(); }
@@ -3801,11 +3807,16 @@ export function mountGm(root) {
     condSize.addEventListener('change', persistGlobal);
     condSpacing.addEventListener('input', () => { gd.condSpacing = +condSpacing.value; applyGlobalLive(); });
     condSpacing.addEventListener('change', persistGlobal);
+    condPosSlider.addEventListener('input', () => { gd.condPosY = +condPosSlider.value; applyGlobalLive(); });
+    condPosSlider.addEventListener('change', persistGlobal);
     condCurve.addEventListener('input', () => { gd.condCurve = +condCurve.value; applyGlobalLive(); });
     condCurve.addEventListener('change', persistGlobal);
+    condColor.addEventListener('input', () => { gd.condColor = condColor.value; applyGlobalLive(); });
+    condColor.addEventListener('change', persistGlobal);
+    condOutline.addEventListener('input', () => { gd.condOutline = condOutline.value; applyGlobalLive(); });
+    condOutline.addEventListener('change', persistGlobal);
     hpPos.addEventListener('input', () => { gd.hpPos = +hpPos.value; applyGlobalLive(); });
     hpPos.addEventListener('change', persistGlobal);
-    q('.tb-cond-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; gd.condPos = b.dataset.v; renderSeg('.tb-cond-pos', b.dataset.v); applyGlobalLive(); persistGlobal(); });
 
     // ---- Save / Reset (per-token identity: image, crop, ring) ----
     function repaintBoards() {

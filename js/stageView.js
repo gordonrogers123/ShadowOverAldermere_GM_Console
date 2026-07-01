@@ -517,13 +517,16 @@ export function createStageView(root) {
     el.style.setProperty('--token-name-spacing', ((Number(d.nameSpacing) || 0) / 100 * 0.4).toFixed(3) + 'em');
     el.style.setProperty('--token-cond-scale', d.condSize || 1);
     el.style.setProperty('--token-cond-spacing', ((d.condSpacing == null ? 8 : Number(d.condSpacing)) / 100 * 10).toFixed(2) + 'px');   // SVG user units (needs a unit)
-    el.classList.toggle('cond-below', d.condPos === 'below');
+    el.style.setProperty('--token-cond-color', d.condColor || '#ffffff');
+    el.style.setProperty('--token-cond-outline', d.condOutline || 'rgba(0,0,0,0.85)');
+    const condPosY = d.condPosY == null ? 100 : Number(d.condPosY);
+    el.classList.toggle('cond-below', condPosY < 50);   // low condition -> name flips above it
     // HP-bar vertical position: hpPos 0 (bottom) .. 100 (top) -> a top offset in %.
     el.style.setProperty('--token-hp-y', (84 - (Number(d.hpPos) || 0) * 0.82).toFixed(1) + '%');
     const cond = el.querySelector('.token-cond');
     if (cond) {
       const arc = cond.querySelector('path');
-      if (arc) arc.setAttribute('d', condArcPath(d.condCurve, d.condPos === 'below'));
+      if (arc) arc.setAttribute('d', condArcPath(d.condCurve, condPosY));
     }
   }
 
