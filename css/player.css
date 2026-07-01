@@ -216,6 +216,14 @@
 .stage .target-line { fill: none; stroke: #e5342f; stroke-linecap: round; stroke-dasharray: 11 7; animation: target-march 0.5s linear infinite; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
 .stage .target-arrowhead { fill: #e5342f; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
 @keyframes target-march { to { stroke-dashoffset: -18; } }
+/* Grid range (PR 6B): the targeting arrow tints by the attacker's best range at the
+   target — green in range, amber at long/disadvantage, red (default) out of range —
+   with a distance label beside it (white, dark-outlined so it reads over any map). */
+.stage .target-fx[data-range="in"] .target-line { stroke: #4fae5f; }
+.stage .target-fx[data-range="in"] .target-arrowhead { fill: #4fae5f; }
+.stage .target-fx[data-range="disadv"] .target-line { stroke: #e2a52e; }
+.stage .target-fx[data-range="disadv"] .target-arrowhead { fill: #e2a52e; }
+.stage .target-dist { fill: #fff; font-family: system-ui, sans-serif; font-weight: 700; paint-order: stroke; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3.5px; stroke-linejoin: round; }
 @media (prefers-reduced-motion: reduce) {
   .stage .token.is-targeted { animation: none !important; }
   .stage .target-line { animation: none !important; }

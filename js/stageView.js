@@ -96,7 +96,7 @@ export function createStageView(root) {
       <img class="char-layer char-left" alt="" data-side="left">
       <img class="char-layer char-right" alt="" data-side="right">
       <svg class="grid-overlay" aria-hidden="true"></svg>
-      <svg class="target-fx" aria-hidden="true"><line class="target-line" x1="0" y1="0" x2="0" y2="0"></line><polygon class="target-arrowhead" points=""></polygon></svg>
+      <svg class="target-fx" aria-hidden="true"><line class="target-line" x1="0" y1="0" x2="0" y2="0"></line><polygon class="target-arrowhead" points=""></polygon><text class="target-dist" text-anchor="middle" dominant-baseline="middle"></text></svg>
       <div class="token-layer"></div>
       <div class="curtain"></div>
       <div class="idle"><div class="idle-title">The Shadow Over Aldermere</div></div>
@@ -498,6 +498,22 @@ export function createStageView(root) {
     };
   }
 
+  // Chebyshev (5-5-5) grid distance between two map fractions, in cells + feet,
+  // using the current variant's grid. Cells are square in px, so the row delta is
+  // scaled by the map aspect. Returns null when there's no enabled grid / map (the
+  // caller then skips the range check -- graceful degrade). PR 6B.
+  function gridDistance(a, b) {
+    const grid = currentGrid();
+    const img = activeMapImg();
+    if (!grid || !grid.enabled || !a || !b || !img) return null;
+    const cs = Number(grid.cellSize) || (1 / 16);
+    const aspect = mediaAspect(img);
+    const dCol = (a.x - b.x) / cs;
+    const dRow = (a.y - b.y) / (cs * aspect);
+    const cells = Math.round(Math.max(Math.abs(dCol), Math.abs(dRow)));
+    return { cells, feet: cells * (Number(grid.feetPerCell) || 5) };
+  }
+
   // Position and size every token element from its stored x/y fraction and the
   // current displayed-image rect. Cheap; called on render, on resize, and
   // after a map image loads. No active map image -> hide the whole layer.
@@ -553,6 +569,23 @@ export function createStageView(root) {
     const b1x = ex - ux * ah + px * ah * 0.55, b1y = ey - uy * ah + py * ah * 0.55;
     const b2x = ex - ux * ah - px * ah * 0.55, b2y = ey - uy * ah - py * ah * 0.55;
     head.setAttribute('points', ex + ',' + ey + ' ' + b1x + ',' + b1y + ' ' + b2x + ',' + b2y);
+    // PR 6B: a grid distance label beside the arrow midpoint, and a range tint
+    // (green in-range / amber disadvantage / red out) from the link's status. The
+    // label is computed live here; the status is set by the GM (best across the
+    // attacker's attacks). Both ride the broadcast, so the Player TV shows them too.
+    const dist = gridDistance({ x: from.x, y: from.y }, { x: to.x, y: to.y });
+    const distEl = targetFx.querySelector('.target-dist');
+    if (distEl) {
+      if (dist) {
+        distEl.setAttribute('x', (sx + ex) / 2 + px * size * 0.55);
+        distEl.setAttribute('y', (sy + ey) / 2 + py * size * 0.55);
+        distEl.setAttribute('font-size', Math.max(11, size * 0.4).toFixed(1));
+        distEl.textContent = dist.feet + ' ft';
+        distEl.style.display = '';
+      } else { distEl.style.display = 'none'; }
+    }
+    const st = link.status;
+    targetFx.dataset.range = (st === 'in' || st === 'disadv' || st === 'out') ? st : '';
   }
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -817,5 +850,5 @@ export function createStageView(root) {
     }
   }
 
-  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell };
+  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell, gridDistance };
 }

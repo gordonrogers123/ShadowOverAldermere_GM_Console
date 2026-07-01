@@ -1054,6 +1054,12 @@ body.view-gm {
 .view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
 .view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
 .view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
+/* Per-attack range verdict at the measured grid distance (PR 6B): green in range,
+   amber at long/disadvantage, red out of range. Only shown while a target is set. */
+.view-gm .atk-range { display: inline-block; margin-top: 0.2rem; padding: 0.05rem 0.4rem; border-radius: 999px; font-size: var(--fs-100); font-weight: 700; border: 1px solid transparent; }
+.view-gm .atk-range-in { background: rgba(91, 189, 106, 0.18); color: #3f8f4f; border-color: rgba(91, 189, 106, 0.5); }
+.view-gm .atk-range-disadv { background: rgba(220, 150, 30, 0.18); color: #99671a; border-color: rgba(220, 150, 30, 0.5); }
+.view-gm .atk-range-out { background: rgba(229, 52, 47, 0.15); color: #b3352f; border-color: rgba(229, 52, 47, 0.45); }
 /* Attack Hit/Dmg roll controls + the roll result / targeting banner. */
 .view-gm .stat-atk-btns { display: flex; gap: 0.3rem; margin-top: 0.25rem; }
 .view-gm .stat-atk-btns .gm-button { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
