@@ -1214,10 +1214,18 @@ body.view-gm {
   border: 1px solid var(--dice-edge); border-radius: var(--radius-md);
   box-shadow: var(--shadow-2); padding: var(--space-3);
 }
-.view-gm .dice-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
-.view-gm .dice-title { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em; color: var(--dice-line); }
+.view-gm .dice-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.view-gm .dice-title { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em; color: var(--dice-line); margin-right: auto; }
 .view-gm .dice-close { border: none; background: transparent; color: var(--dice-dim); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 0.2rem; }
 .view-gm .dice-close:hover { color: var(--dice-ink); }
+/* "To room": push the roll to the Player TV. Dim outline off, gold fill when armed. */
+.view-gm .dice-toroom {
+  font-family: var(--font-display); font-size: var(--fs-100); letter-spacing: 0.05em;
+  color: var(--dice-dim); background: transparent; border: 1px solid var(--dice-edge);
+  border-radius: var(--radius-sm); padding: 0.2rem 0.5rem; cursor: pointer;
+}
+.view-gm .dice-toroom:hover { color: var(--dice-ink); border-color: var(--dice-dim); }
+.view-gm .dice-toroom.is-on { color: var(--dice-bg); background: var(--dice-line); border-color: var(--dice-line); }
 
 .view-gm .dice-tray { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
 .view-gm .die { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: var(--space-1) 0; background: transparent; border: none; cursor: pointer; }
@@ -1262,3 +1270,42 @@ body.view-gm {
 .view-gm .dr-eq { color: var(--dice-dim); }
 .view-gm .dr-total { margin-left: auto; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-600); color: var(--dice-line); }
 .view-gm .dice-hint { margin: var(--space-2) 0 0; font-size: var(--fs-100); color: var(--dice-dim); opacity: 0.7; text-align: center; }
+
+/* ============================================================
+   Audio floater -- GM-only, pinned to the lower-RIGHT (opposite the dice).
+   A quick-reach mid-combat menu: Master / Music / SFX faders + the TV/Laptop
+   output toggles. Reuses the mixer fader classes; the same dark-felt palette
+   as the dice tray so the two floaters read as a matched pair.
+   ============================================================ */
+.view-gm .audio-floater {
+  position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 60;
+  --dice-bg: #241d15; --dice-edge: #4a3c2a; --dice-line: #caa64f;
+  --dice-ink: #efe4cb; --dice-dim: #b9a884;
+}
+.view-gm .audio-launcher {
+  width: 3.4rem; height: 3.4rem; padding: 0; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--dice-bg); border: 2px solid var(--dice-line); box-shadow: var(--shadow-2);
+}
+.view-gm .audio-launcher:hover { filter: brightness(1.12); }
+.view-gm .audio-launcher svg { width: 1.9rem; height: 1.9rem; }
+.view-gm .audio-launcher svg path { fill: none; stroke: var(--dice-line); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.view-gm .audio-launcher svg path:first-child { fill: rgba(202, 166, 79, 0.18); }
+
+.view-gm .audio-floater-panel {
+  position: absolute; right: 0; bottom: calc(100% + var(--space-2)); width: max-content; max-width: 20rem;
+  background: var(--dice-bg); color: var(--dice-ink);
+  border: 1px solid var(--dice-edge); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2); padding: var(--space-3);
+}
+.view-gm .af-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.view-gm .af-title { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em; color: var(--dice-line); margin-right: auto; }
+.view-gm .af-close { border: none; background: transparent; color: var(--dice-dim); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 0.2rem; }
+.view-gm .af-close:hover { color: var(--dice-ink); }
+.view-gm .af-faders { display: flex; align-items: flex-start; gap: var(--space-3); justify-content: center; }
+/* The faders sit on the dark felt: relabel their ink so they read on it. */
+.view-gm .audio-floater .mixer-fader-name { color: var(--dice-dim); }
+.view-gm .audio-floater .mixer-slider { accent-color: var(--dice-line); }
+.view-gm .af-out { display: flex; align-items: center; justify-content: center; gap: var(--space-1); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--dice-edge); }
+.view-gm .af-out-label { font-size: var(--fs-100); letter-spacing: 0.06em; color: var(--dice-dim); text-transform: uppercase; }
+.view-gm .af-output { font-size: var(--fs-200); padding: 0.4rem 0.7rem; }

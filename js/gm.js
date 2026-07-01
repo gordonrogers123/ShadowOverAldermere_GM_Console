@@ -1045,6 +1045,7 @@ export function mountGm(root) {
     sliderWrap.append(slider);
     const groupVal = () => {
       if (kind === 'master') return state.audio.master == null ? 0.8 : state.audio.master;
+      if (kind === 'sfx') return state.audio.sfxVolume == null ? 0.8 : state.audio.sfxVolume;
       const keys = mixerTrackKeys(kind);
       return keys.length ? state.audio.tracks[keys[0]].volume : 0.8;
     };
@@ -1053,17 +1054,19 @@ export function mountGm(root) {
       ensureAudio();
       const v = +slider.value;
       if (kind === 'master') state.audio.master = v;
+      else if (kind === 'sfx') state.audio.sfxVolume = v;
       else for (const k of mixerTrackKeys(kind)) state.audio.tracks[k].volume = v;
       commitAudio();
     });
     const mute = document.createElement('button');
     mute.className = 'gm-button btn--toggle mixer-mute'; mute.type = 'button'; mute.textContent = 'Mute';
     mute.dataset.kind = kind;
-    const isMuted = () => kind === 'master' ? !!state.audio.masterMuted : mixerGroupMuted(kind);
+    const isMuted = () => kind === 'master' ? !!state.audio.masterMuted : kind === 'sfx' ? !!state.audio.sfxMuted : mixerGroupMuted(kind);
     mute.classList.toggle('is-on', isMuted());
     mute.addEventListener('click', () => {
       ensureAudio();
       if (kind === 'master') state.audio.masterMuted = !state.audio.masterMuted;
+      else if (kind === 'sfx') state.audio.sfxMuted = !state.audio.sfxMuted;
       else { const want = !isMuted(); for (const k of mixerTrackKeys(kind)) state.audio.tracks[k].muted = want; }
       mute.classList.toggle('is-on', isMuted());
       commitAudio();
@@ -1191,7 +1194,7 @@ export function mountGm(root) {
   //  levels & fades are configured in the scene builder.
   // ============================================================
   function ensureAudio() {
-    if (!state.audio) state.audio = { master: 0.8, outputs: { player: true, gm: false }, tracks: {}, sfxTrigger: {} };
+    if (!state.audio) state.audio = { master: 0.8, sfxVolume: 0.8, sfxMuted: false, outputs: { player: true, gm: false }, tracks: {}, sfxTrigger: {} };
     if (!state.audio.outputs) state.audio.outputs = { player: true, gm: false };
     if (!state.audio.tracks) state.audio.tracks = {};
     if (!state.audio.sfxTrigger) state.audio.sfxTrigger = {};
@@ -3422,6 +3425,53 @@ export function mountGm(root) {
   renderUI();
   broadcast();
 
-  // GM-only dice tray, pinned to the lower-left of the console (local UI).
-  mountDiceRoller(root);
+  // GM-only dice tray (lower-left). With "To room" on, a roll is pushed to the
+  // Player TV via state.stage.roomDice (broadcast); the GM breakdown stays local.
+  mountDiceRoller(root, {
+    showToRoom(payload) {
+      if (!state.stage) return;
+      const n = ((state.stage.roomDice && state.stage.roomDice.n) || 0) + 1;
+      state.stage.roomDice = { flat: payload.flat, total: payload.total, notation: payload.notation, n };
+      commit();
+    },
+    clearRoom() { if (state.stage && state.stage.roomDice) { state.stage.roomDice = null; commit(); } }
+  });
+  mountAudioFloater();
+
+  // Floating audio menu (lower-right, opposite the dice): Master / Music / SFX
+  // volume + mute + the TV/Laptop output toggles -- quick reach mid-combat.
+  function mountAudioFloater() {
+    const host = document.createElement('div'); host.className = 'audio-floater';
+    host.innerHTML = `
+      <button class="audio-launcher" type="button" aria-label="Audio" aria-expanded="false" title="Audio">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 19h9l12-9v28l-12-9H7z"/><path class="wave" d="M33 18a9 9 0 0 1 0 12"/><path class="wave" d="M38 13a16 16 0 0 1 0 22"/></svg>
+      </button>
+      <div class="audio-floater-panel" hidden>
+        <div class="af-head"><span class="af-title">Audio</span><button class="af-close" type="button" aria-label="Close audio menu">&times;</button></div>
+        <div class="af-faders"></div>
+        <div class="af-out"></div>
+      </div>`;
+    root.appendChild(host);
+    const launcher = host.querySelector('.audio-launcher');
+    const panel = host.querySelector('.audio-floater-panel');
+    const faders = host.querySelector('.af-faders');
+    const out = host.querySelector('.af-out');
+    function rebuild() {
+      ensureAudio();
+      faders.innerHTML = '';
+      faders.append(buildFader('Master', 'master'), buildFader('Music', 'mus'), buildFader('SFX', 'sfx'));
+      out.innerHTML = '';
+      const lbl = document.createElement('span'); lbl.className = 'af-out-label'; lbl.textContent = 'Out';
+      out.append(lbl);
+      for (const [key, name] of [['player', 'TV'], ['gm', 'Laptop']]) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'gm-button btn--toggle af-output';
+        b.textContent = name; b.classList.toggle('is-on', !!state.audio.outputs[key]);
+        b.addEventListener('click', () => { ensureAudio(); state.audio.outputs[key] = !state.audio.outputs[key]; commitAudio(); b.classList.toggle('is-on', !!state.audio.outputs[key]); });
+        out.append(b);
+      }
+    }
+    function setOpen(open) { panel.hidden = !open; launcher.setAttribute('aria-expanded', open ? 'true' : 'false'); host.classList.toggle('is-open', open); if (open) rebuild(); }
+    launcher.addEventListener('click', () => setOpen(panel.hidden));
+    host.querySelector('.af-close').addEventListener('click', () => setOpen(false));
+  }
 }
