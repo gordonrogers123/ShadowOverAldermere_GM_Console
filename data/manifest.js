@@ -49,11 +49,11 @@ export const CHARACTERS = [
   { id: "Naia and Theron", name: "Naia And Theron", src: "assets/characters/npcs/Naia and Theron.png", category: "npc" },
   { id: "Pip -- Speaking", name: "Pip Speaking", src: "assets/characters/npcs/Pip -- Speaking.png", category: "npc" },
   { id: "Sgt Dorran", name: "Sgt Dorran", src: "assets/characters/npcs/Sgt Dorran.png", category: "npc" },
-  { id: "Wick", name: "Wick", src: "assets/characters/npcs/Wick.png", category: "npc" },
   { id: "Wren -- Excited", name: "Wren Excited", src: "assets/characters/npcs/Wren -- Excited.png", category: "npc" },
   { id: "Wren -- Upset", name: "Wren Upset", src: "assets/characters/npcs/Wren -- Upset.png", category: "npc" },
   { id: "grannyEdna -- Cooking", name: "GrannyEdna Cooking", src: "assets/characters/npcs/grannyEdna -- Cooking.png", category: "npc" },
   { id: "grannyEdna -- Standing", name: "GrannyEdna Standing", src: "assets/characters/npcs/grannyEdna -- Standing.png", category: "npc" },
+  { id: "wick", name: "Wick", src: "assets/characters/npcs/wick.png", category: "npc" },
   { id: "Brigands", name: "Brigands", src: "assets/characters/enemies/Brigands.png", category: "enemy" },
   { id: "Pale Husk", name: "Pale Husk", src: "assets/characters/enemies/Pale Husk.png", category: "enemy" }
 ];
@@ -71,4 +71,16 @@ export const AMBIENCE = [
 ];
 
 export const SFX = [
+];
+
+export const TOKENART = [
+  { id: "brigands", name: "Brigands", src: "assets/tokens/enemies/brigands.jpg", category: "enemy" },
+  { id: "palehusk", name: "Palehusk", src: "assets/tokens/enemies/palehusk.jpg", category: "enemy" },
+  { id: "khaleesi", name: "Khaleesi", src: "assets/tokens/heroes/khaleesi.jpg", category: "hero" },
+  { id: "lysander", name: "Lysander", src: "assets/tokens/heroes/lysander.jpg", category: "hero" },
+  { id: "sai", name: "Sai", src: "assets/tokens/heroes/sai.jpg", category: "hero" },
+  { id: "samsara", name: "Samsara", src: "assets/tokens/heroes/samsara.jpg", category: "hero" },
+  { id: "telstar", name: "Telstar", src: "assets/tokens/heroes/telstar.jpg", category: "hero" },
+  { id: "thraka", name: "Thraka", src: "assets/tokens/heroes/thraka.jpg", category: "hero" },
+  { id: "truf", name: "Truf", src: "assets/tokens/heroes/truf.jpg", category: "hero" }
 ];

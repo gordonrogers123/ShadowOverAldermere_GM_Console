@@ -21,16 +21,21 @@
 
 import { DEFAULT_ENTER } from './transitions.js';
 import { CAST } from '../data/cast.js';
+import { globalDisplay, condArcPath } from './tokenOverrides.js';
 
 // Resolve a token's castId to its cast entry (ring color, portrait, name).
 // ids are unique across heroes and enemies, so a flat map is enough; the
 // token's `kind` only drives styling and numbering, not lookup.
-const CAST_BY_ID = (() => {
-  const m = {};
-  for (const h of (CAST.heroes || [])) m[h.id] = h;
-  for (const e of (CAST.enemies || [])) m[e.id] = e;
-  return m;
-})();
+// Live lookup across ALL cast kinds (heroes, NPCs, enemies) -- scanned each call
+// rather than snapshotted, so tokens added in the token builder mid-session (and
+// NPC token art) resolve without a reload.
+const CAST_BY_ID = (id) => {
+  for (const arr of [CAST.heroes, CAST.npcs, CAST.enemies]) {
+    const c = (arr || []).find((x) => x.id === id);
+    if (c) return c;
+  }
+  return null;
+};
 
 // A token's diameter as a fraction of the shorter side of the displayed map.
 const TOKEN_FRAC = 0.07;
@@ -486,17 +491,53 @@ export function createStageView(root) {
     return svg;
   }
 
+  // Apply the per-character token-builder tweaks (face crop, ring color, and the
+  // on-map display settings) to a token element. Called on build AND on every
+  // update, so a change saved in the token builder shows on the next render
+  // without recreating the token -- on the GM board and the Player TV alike.
+  function applyTokenStyling(el, inst) {
+    const cast = CAST_BY_ID(inst.castId) ||
+      { ringColor: inst.kind === 'enemy' ? '#8a2e2e' : inst.kind === 'npc' ? '#6f9bd1' : '#2f6b43' };
+    el.style.borderColor = cast.ringColor || '#888';
+    const fb = el.querySelector('.token-fallback');
+    if (fb) fb.style.background = cast.ringColor || '#555';
+    const img = el.querySelector('.token-portrait');
+    if (img) {
+      // The face crop centers the round token on the character's face (same
+      // object-position the stat card uses); default to centered.
+      img.style.objectPosition = cast.face || '50% 50%';
+      // Token art can be assigned/changed by the builder (e.g. an NPC borrowing
+      // its portrait); swap the src only when it actually differs.
+      if (cast.tokenImage && img.getAttribute('src') !== cast.tokenImage) img.src = cast.tokenImage;
+    }
+    // On-map display settings are GLOBAL (one set for every token): name/condition
+    // size, condition side + word-wrap depth, HP-bar height.
+    const d = globalDisplay();
+    el.style.setProperty('--token-name-scale', d.nameSize || 1);
+    el.style.setProperty('--token-name-spacing', ((Number(d.nameSpacing) || 0) / 100 * 0.4).toFixed(3) + 'em');
+    el.style.setProperty('--token-cond-scale', d.condSize || 1);
+    el.style.setProperty('--token-cond-spacing', ((d.condSpacing == null ? 8 : Number(d.condSpacing)) / 100 * 10).toFixed(2) + 'px');   // SVG user units (needs a unit)
+    el.style.setProperty('--token-cond-color', d.condColor || '#ffffff');
+    el.style.setProperty('--token-cond-outline', d.condOutline || 'rgba(0,0,0,0.85)');
+    const condPosY = d.condPosY == null ? 100 : Number(d.condPosY);
+    el.classList.toggle('cond-below', condPosY < 50);   // low condition -> name flips above it
+    // HP-bar vertical position: hpPos 0 (bottom) .. 100 (top) -> a top offset in %.
+    el.style.setProperty('--token-hp-y', (84 - (Number(d.hpPos) || 0) * 0.82).toFixed(1) + '%');
+    const cond = el.querySelector('.token-cond');
+    if (cond) {
+      const arc = cond.querySelector('path');
+      if (arc) arc.setAttribute('d', condArcPath(d.condCurve, condPosY));
+    }
+  }
+
   function buildTokenEl(inst) {
-    const cast = CAST_BY_ID[inst.castId] ||
-      { name: inst.label, ringColor: inst.kind === 'enemy' ? '#8a2e2e' : inst.kind === 'npc' ? '#6f9bd1' : '#2f6b43' };
+    const cast = CAST_BY_ID(inst.castId) || { name: inst.label };
     const el = document.createElement('div');
     el.className = 'token token-' + inst.kind;
     el.dataset.instId = inst.instId;
-    el.style.borderColor = cast.ringColor || '#888';
 
     const fallback = document.createElement('div');
     fallback.className = 'token-fallback';
-    fallback.style.background = cast.ringColor || '#555';
     fallback.textContent = initials(inst.label);
 
     // The portrait sits over the initials; if the art is not vendored yet it
@@ -519,10 +560,8 @@ export function createStageView(root) {
     const cond = buildCondOverlay(inst.instId);
 
     el.append(fallback, img, label, hpbar, cond);
-    if (cast.tokenImage) {
-      img.src = cast.tokenImage;
-      if (img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
-    }
+    applyTokenStyling(el, inst);   // ring, face crop, name/cond scale, hp/cond position
+    if (cast.tokenImage && img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
     return el;
   }
 
@@ -574,6 +613,7 @@ export function createStageView(root) {
       const fb = el.querySelector('.token-fallback');
       if (fb) fb.textContent = initials(inst.label);
     }
+    applyTokenStyling(el, inst);   // pick up token-builder tweaks saved this session
   }
 
   // Diff the live token list against what is on stage: create new, drop gone,

@@ -247,7 +247,10 @@
   transform: translateX(-50%);
   margin-top: 0.12em;
   white-space: nowrap;
-  font-size: 0.24em;
+  /* Base 0.24em, scaled by the token builder's name-size setting; letter-spacing
+     is a separate builder slider (0 .. 0.4em). */
+  font-size: calc(0.24em * var(--token-name-scale, 1));
+  letter-spacing: var(--token-name-spacing, 0);
   font-weight: 600;
   line-height: 1.25;
   padding: 0 0.4em;
@@ -256,12 +259,17 @@
   color: var(--paper, #efe7d4);
   pointer-events: none;
 }
+/* When the token builder puts conditions BELOW the token, the name label flips
+   ABOVE it, so the curved condition word and the name never collide. */
+.stage .token.cond-below .token-label { top: auto; bottom: 100%; margin-top: 0; margin-bottom: 0.12em; }
 .stage .token.is-hidden { opacity: 0; }   /* hidden from the Player TV */
 
 /* On-map HP bar (heroes/NPCs only -- enemy HP is kind-gated out in JS). Overlaid
    across the bottom of the token; the fill animates on damage/heal. */
 .stage .token-hpbar {
-  position: absolute; left: 0.12em; right: 0.12em; bottom: 0.12em; height: 0.14em;
+  /* Vertical position is a token-builder slider: --token-hp-y is the top offset
+     (0% top .. ~84% bottom); defaults near the bottom. */
+  position: absolute; left: 0.12em; right: 0.12em; top: var(--token-hp-y, 84%); height: 0.14em;
   border-radius: 0.08em; background: rgba(0, 0, 0, 0.6); overflow: hidden; z-index: 2;
   box-shadow: 0 0 0 0.015em rgba(0, 0, 0, 0.55);
 }
@@ -275,8 +283,11 @@
   overflow: visible; pointer-events: none; z-index: 4;
 }
 .stage .token-cond-text {
-  fill: #fff; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3.4px; paint-order: stroke;
-  font-family: var(--font-display); font-weight: 700; font-size: 23px; letter-spacing: 0.4px;
+  /* fill + outline are token-builder color pickers (global). */
+  fill: var(--token-cond-color, #fff); stroke: var(--token-cond-outline, rgba(0, 0, 0, 0.85)); stroke-width: 3.4px; paint-order: stroke;
+  /* Base 23px (in the 100x100 token viewBox), scaled by the builder's cond-size;
+     letter-spacing (in viewBox units) is a slider that un-squishes the curved word. */
+  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1)); letter-spacing: var(--token-cond-spacing, 0.8px);
 }
 
 /* ---------- Player view: fullscreen letterbox ---------- */

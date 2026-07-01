@@ -18,11 +18,12 @@ import { loadState, saveState } from './state.js';
 import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
-import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
+import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX, TOKENART } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
 import { CONDITIONS, CONDITION_INFO } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
+import { overrideFor, saveTokenOverride, resetTokenOverride, globalDisplay, saveGlobalDisplay, applyGlobalDisplay, condArcPath, addCharacter, removeAddedCharacter, setHidden, isAdded, isHidden, rosterPayload } from './tokenOverrides.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -63,6 +64,7 @@ export function mountGm(root) {
       </div>
       <div class="gm-header-actions">
         <a class="gm-button btn--primary gm-open" href="?view=player" target="aldermere-player" rel="noopener">Open Player window</a>
+        <button class="gm-button btn--quiet tokens-btn" type="button">Tokens</button>
         <button class="gm-button btn--quiet rescan" type="button">Rescan assets</button>
       </div>
     </header>
@@ -297,6 +299,7 @@ export function mountGm(root) {
   const els = {
     sceneList:    root.querySelector('.scene-list'),
     rescanBtn:    root.querySelector('.rescan'),
+    tokensBtn:    root.querySelector('.tokens-btn'),
     rescanStatus: root.querySelector('.rescan-status'),
     newScene:     root.querySelector('.new-scene'),
     empty:        root.querySelector('.gm-empty'),
@@ -2614,9 +2617,11 @@ export function mountGm(root) {
       };
       syncAllBtn();
     };
-    build(els.rosterHeroes, els.rosterAllHeroes, CAST.heroes || [], draft.roster.heroes);
-    build(els.rosterNpcs, els.rosterAllNpcs, CAST.npcs || [], (draft.roster.npcs || (draft.roster.npcs = [])));
-    build(els.rosterEnemies, els.rosterAllEnemies, CAST.enemies || [], draft.roster.enemies);
+    // Hidden tokens (token builder) are dropped from the scene-eligible pickers.
+    const shown = (arr) => (arr || []).filter((c) => !c.hidden);
+    build(els.rosterHeroes, els.rosterAllHeroes, shown(CAST.heroes), draft.roster.heroes);
+    build(els.rosterNpcs, els.rosterAllNpcs, shown(CAST.npcs), (draft.roster.npcs || (draft.roster.npcs = [])));
+    build(els.rosterEnemies, els.rosterAllEnemies, shown(CAST.enemies), draft.roster.enemies);
   }
 
   // ---- Explicit cue builder -------------------------------------------------
@@ -3437,6 +3442,7 @@ export function mountGm(root) {
     clearRoom() { if (state.stage && state.stage.roomDice) { state.stage.roomDice = null; commit(); } }
   });
   mountAudioFloater();
+  mountTokenBuilder();
 
   // Floating audio menu (lower-right, opposite the dice): Master / Music / SFX
   // volume + mute + the TV/Laptop output toggles -- quick reach mid-combat.
@@ -3473,5 +3479,388 @@ export function mountGm(root) {
     function setOpen(open) { panel.hidden = !open; launcher.setAttribute('aria-expanded', open ? 'true' : 'false'); host.classList.toggle('is-open', open); if (open) rebuild(); }
     launcher.addEventListener('click', () => setOpen(panel.hidden));
     host.querySelector('.af-close').addEventListener('click', () => setOpen(false));
+  }
+
+  // ============================================================
+  //  Token builder (opened from the header "Tokens" button)
+  // ------------------------------------------------------------
+  //  A setup tool, per character not per scene: drag the portrait to center
+  //  the face in the round token, recolor the ring, and tune the on-map
+  //  overlays (name size, condition word size + position, HP-bar position).
+  //  Saves per castId to data/tokenOverrides.json (merged over CAST at load),
+  //  applies live to the GM board, and broadcasts so the Player TV re-crops.
+  // ============================================================
+  function mountTokenBuilder() {
+    const RING_SWATCHES = ['#2f6b43', '#2a4d7a', '#6f9bd1', '#8a2e2e', '#b8862f', '#6a4d8a'];
+    const clampN = (n, lo, hi) => (n < lo ? lo : n > hi ? hi : n);
+    const parseFace = (f) => { const m = /(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%/.exec(f || ''); return m ? { x: +m[1], y: +m[2] } : { x: 50, y: 50 }; };
+    const fmtFace = (p) => `${Math.round(clampN(p.x, 0, 100))}% ${Math.round(clampN(p.y, 0, 100))}%`;
+    const defRing = (kind) => (kind === 'enemy' ? '#8a2e2e' : kind === 'npc' ? '#6f9bd1' : '#2f6b43');
+    const iniOf = (name) => String(name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+    const findCast = (castId) => {
+      for (const [kind, arr] of [['hero', CAST.heroes], ['npc', CAST.npcs], ['enemy', CAST.enemies]]) {
+        const c = (arr || []).find((x) => x.id === castId);
+        if (c) return { cast: c, kind };
+      }
+      return null;
+    };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'token-builder';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <div class="tb-backdrop"></div>
+      <div class="tb-dialog" role="dialog" aria-modal="true" aria-label="Token builder">
+        <div class="tb-head"><h2 class="tb-title">Token builder</h2><button class="tb-close" type="button" aria-label="Close token builder">&times;</button></div>
+        <div class="tb-body">
+          <div class="tb-picker">
+            <div class="tb-picker-head">
+              <button class="gm-button btn--quiet tb-new-token" type="button">+ New token</button>
+              <label class="tb-show-hidden"><input type="checkbox" class="tb-show-hidden-cb"> Show hidden</label>
+            </div>
+            <div class="tb-picker-list"></div>
+          </div>
+          <div class="tb-editor">
+            <p class="tb-empty">Pick a character on the left to shape their token, or add a new one.</p>
+            <div class="tb-add" hidden>
+              <h3 class="tb-section-h">New token</h3>
+              <label class="tb-set"><span class="tb-set-label">Name</span><input type="text" class="tb-add-name" placeholder="e.g. Bandit Captain"></label>
+              <div class="tb-set"><span class="tb-set-label">Category</span><div class="tb-seg tb-add-kind"><button type="button" data-v="hero">Hero</button><button type="button" data-v="npc">NPC</button><button type="button" data-v="enemy">Enemy</button></div></div>
+              <div class="tb-actions"><button class="gm-button btn--primary tb-add-create" type="button">Create</button><button class="gm-button btn--quiet tb-add-cancel" type="button">Cancel</button></div>
+            </div>
+            <div class="tb-edit" hidden>
+              <div class="tb-edit-cols">
+                <section class="tb-col tb-token-col">
+                  <h3 class="tb-section-h">This token</h3>
+                  <div class="tb-crop" title="Drag to center the face">
+                    <div class="tb-crop-fallback"></div>
+                    <img class="tb-crop-img" alt="" draggable="false">
+                    <div class="tb-crop-ring"></div>
+                  </div>
+                  <p class="tb-hint">Drag the portrait to center the face</p>
+                  <div class="tb-ring"><span class="tb-set-label">Ring color</span><div class="tb-swatches"></div></div>
+                  <div class="tb-image">
+                    <div class="tb-image-head"><span class="tb-set-label">Token image</span><button class="gm-button btn--quiet tb-upload-btn" type="button">Upload&hellip;</button></div>
+                    <input type="file" class="tb-upload-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                    <div class="tb-image-grid"></div>
+                    <p class="tb-upload-status" role="status" aria-live="polite" hidden></p>
+                  </div>
+                  <div class="tb-actions"><button class="gm-button btn--primary tb-save" type="button">Save token</button><button class="gm-button btn--quiet tb-reset" type="button">Reset token</button><span class="tb-saved" role="status" aria-live="polite" hidden>Saved &#10003;</span></div>
+                </section>
+                <section class="tb-col tb-global-col">
+                  <h3 class="tb-section-h">All tokens<span class="tb-section-note"> &middot; applies to every token</span></h3>
+                  <div class="tb-subgroup">
+                    <span class="tb-subgroup-h">Name</span>
+                    <label class="tb-set"><span class="tb-set-label">Text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
+                    <label class="tb-set"><span class="tb-set-label">Letter spacing</span><input type="range" class="tb-name-spacing" min="0" max="100" step="5"></label>
+                  </div>
+                  <div class="tb-subgroup">
+                    <span class="tb-subgroup-h">Conditions</span>
+                    <label class="tb-set"><span class="tb-set-label">Text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
+                    <label class="tb-set"><span class="tb-set-label">Letter spacing</span><input type="range" class="tb-cond-spacing" min="0" max="100" step="5"></label>
+                    <label class="tb-set"><span class="tb-set-label">Position <span class="tb-set-hint">below &harr; above</span></span><input type="range" class="tb-cond-pos" min="0" max="100" step="2"></label>
+                    <label class="tb-set"><span class="tb-set-label">Curve <span class="tb-set-hint">flat &harr; wrapped</span></span><input type="range" class="tb-cond-curve" min="0" max="100" step="5"></label>
+                    <div class="tb-colors">
+                      <label class="tb-color"><span class="tb-set-label">Text color</span><input type="color" class="tb-cond-color"></label>
+                      <label class="tb-color"><span class="tb-set-label">Outline</span><input type="color" class="tb-cond-outline"></label>
+                    </div>
+                  </div>
+                  <div class="tb-subgroup">
+                    <span class="tb-subgroup-h">HP bar</span>
+                    <label class="tb-set"><span class="tb-set-label">Position <span class="tb-set-hint">down &harr; up</span></span><input type="range" class="tb-hp-pos" min="0" max="100" step="5"></label>
+                  </div>
+                  <div class="tb-sample-wrap"><span class="tb-set-label">On-map preview</span><div class="tb-sample"><div class="stage tb-stage"></div></div></div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    root.appendChild(overlay);
+
+    const q = (s) => overlay.querySelector(s);
+    const editBox = q('.tb-edit'), emptyMsg = q('.tb-empty'), addBox = q('.tb-add');
+    const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
+    const swatches = q('.tb-swatches'), imageGrid = q('.tb-image-grid');
+    const uploadBtn = q('.tb-upload-btn'), uploadInput = q('.tb-upload-input'), uploadStatus = q('.tb-upload-status');
+    const nameSize = q('.tb-name-size'), nameSpacing = q('.tb-name-spacing'), condSize = q('.tb-cond-size'), condSpacing = q('.tb-cond-spacing'), condPosSlider = q('.tb-cond-pos'), condCurve = q('.tb-cond-curve'), condColor = q('.tb-cond-color'), condOutline = q('.tb-cond-outline'), hpPos = q('.tb-hp-pos');
+    const savedTag = q('.tb-saved');
+    const stage = q('.tb-stage');
+
+    let sel = null;     // { cast, kind }  -- the character being edited
+    let draft = null;   // per-token identity: { face, ringColor, tokenImage }
+    let gd = null;      // GLOBAL display (all tokens): {nameSize,nameSpacing,condSize,condSpacing,condPosY,condCurve,condColor,condOutline,hpPos}
+    let showHidden = false;   // reveal hidden tokens in the picker
+    let addKind = 'hero';     // category for a new token being created
+    const extraImages = [];   // images uploaded this session, shown in the grid before a rescan
+
+    const showEmpty = () => { emptyMsg.hidden = false; editBox.hidden = true; addBox.hidden = true; };
+    const showAdd = () => { emptyMsg.hidden = true; editBox.hidden = true; addBox.hidden = false; };
+    const showEdit = () => { emptyMsg.hidden = true; editBox.hidden = false; addBox.hidden = true; };
+    const broadcastRoster = () => { sync.post({ type: 'tokens', roster: rosterPayload() }); repaintBoards(); };
+
+    // Ring swatches (built once).
+    for (const color of RING_SWATCHES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'tb-swatch'; b.dataset.color = color;
+      b.style.background = color; b.setAttribute('aria-label', 'Ring ' + color);
+      b.addEventListener('click', () => { if (!draft) return; draft.ringColor = color; markDirty(); renderRing(); renderSample(); });
+      swatches.append(b);
+    }
+
+    // The live sample token: the exact .stage .token markup + classes, so the
+    // display settings render precisely as they will on the board / TV.
+    const sampleTok = document.createElement('div');
+    sampleTok.className = 'token token-hero';
+    sampleTok.innerHTML =
+      '<div class="token-fallback"></div>' +
+      '<img class="token-portrait" alt="">' +
+      '<div class="token-label"></div>' +
+      '<div class="token-hpbar"><i></i></div>' +
+      '<svg class="token-cond" viewBox="0 0 100 100"><defs><path id="tb-cond-arc" d="' + condArcPath(55, false) + '" fill="none"></path></defs>' +
+      '<text class="token-cond-text"><textPath startOffset="50%" text-anchor="middle" href="#tb-cond-arc" xlink:href="#tb-cond-arc">Prone</textPath></text></svg>';
+    stage.append(sampleTok);
+    const sampleImg = sampleTok.querySelector('.token-portrait');
+    const sampleFb = sampleTok.querySelector('.token-fallback');
+
+    // Art may not be vendored yet (NPC portraits especially): fall back to the
+    // initials on the ring if the image fails, exactly like the board token.
+    cropImg.onload = () => { cropImg.style.display = ''; cropFb.style.display = 'none'; };
+    cropImg.onerror = () => { cropImg.style.display = 'none'; cropFb.style.display = ''; };
+    sampleImg.onload = () => { sampleImg.style.display = ''; sampleFb.style.display = 'none'; };
+    sampleImg.onerror = () => { sampleImg.style.display = 'none'; sampleFb.style.display = ''; };
+
+    // ---- per-token renders ----
+    function renderCrop() {
+      cropRing.style.borderColor = draft.ringColor;
+      cropFb.style.background = draft.ringColor;
+      cropFb.textContent = iniOf(sel.cast.name);
+      if (draft.tokenImage) {
+        cropImg.style.objectPosition = draft.face;
+        // Only toggle display on a real src change, so onload/onerror stays the
+        // authority (a setting tweak must not un-hide a broken image).
+        if (cropImg.getAttribute('src') !== draft.tokenImage) {
+          cropImg.src = draft.tokenImage; cropImg.style.display = ''; cropFb.style.display = 'none';
+        }
+      } else { cropImg.removeAttribute('src'); cropImg.style.display = 'none'; cropFb.style.display = ''; }
+    }
+    function renderRing() {
+      swatches.querySelectorAll('.tb-swatch').forEach((b) => b.classList.toggle('is-on', b.dataset.color === draft.ringColor));
+      cropRing.style.borderColor = draft.ringColor;
+    }
+    function renderImageGrid() {
+      imageGrid.innerHTML = '';
+      const seen = new Set();
+      for (const it of [...extraImages, ...(TOKENART || [])]) {
+        if (!it || !it.src || seen.has(it.src)) continue;
+        seen.add(it.src);
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'tb-img-opt'; b.dataset.src = it.src; b.title = it.name || it.src;
+        if (it.src === draft.tokenImage) b.classList.add('is-on');
+        const im = document.createElement('img'); im.alt = ''; im.src = it.src;
+        b.append(im);
+        b.addEventListener('click', () => {
+          draft.tokenImage = it.src; markDirty(); renderCrop(); renderSample();
+          imageGrid.querySelectorAll('.tb-img-opt').forEach((x) => x.classList.toggle('is-on', x.dataset.src === draft.tokenImage));
+        });
+        imageGrid.append(b);
+      }
+    }
+    function renderSample() {
+      sampleTok.style.borderColor = draft.ringColor;
+      sampleFb.style.background = draft.ringColor; sampleFb.textContent = iniOf(sel.cast.name);
+      if (draft.tokenImage) {
+        sampleImg.style.objectPosition = draft.face;
+        if (sampleImg.getAttribute('src') !== draft.tokenImage) {
+          sampleImg.src = draft.tokenImage; sampleImg.style.display = ''; sampleFb.style.display = 'none';
+        }
+      } else { sampleImg.removeAttribute('src'); sampleImg.style.display = 'none'; sampleFb.style.display = ''; }
+      sampleTok.querySelector('.token-label').textContent = sel.cast.name;
+      const fill = sampleTok.querySelector('.token-hpbar > i'); fill.style.width = '62%'; fill.style.background = '#e0a52e';
+      styleSampleGlobal();
+    }
+
+    // ---- global (all-tokens) display ----
+    function renderSeg(cls, val) {
+      q(cls).querySelectorAll('button').forEach((b) => b.classList.toggle('is-on', b.dataset.v === val));
+    }
+    function styleSampleGlobal() {
+      sampleTok.style.setProperty('--token-name-scale', gd.nameSize);
+      sampleTok.style.setProperty('--token-name-spacing', (gd.nameSpacing / 100 * 0.4).toFixed(3) + 'em');
+      sampleTok.style.setProperty('--token-cond-scale', gd.condSize);
+      sampleTok.style.setProperty('--token-cond-spacing', (gd.condSpacing / 100 * 10).toFixed(2) + 'px');
+      sampleTok.style.setProperty('--token-cond-color', gd.condColor);
+      sampleTok.style.setProperty('--token-cond-outline', gd.condOutline);
+      sampleTok.classList.toggle('cond-below', gd.condPosY < 50);
+      sampleTok.style.setProperty('--token-hp-y', (84 - gd.hpPos * 0.82).toFixed(1) + '%');
+      sampleTok.querySelector('.token-cond path').setAttribute('d', condArcPath(gd.condCurve, gd.condPosY));
+    }
+    function seedGlobal() {
+      const g = globalDisplay();
+      gd = { nameSize: g.nameSize || 1, nameSpacing: g.nameSpacing || 0, condSize: g.condSize || 1, condSpacing: g.condSpacing == null ? 8 : g.condSpacing, condPosY: g.condPosY == null ? 100 : g.condPosY, condCurve: g.condCurve == null ? 55 : g.condCurve, condColor: g.condColor || '#ffffff', condOutline: g.condOutline || '#000000', hpPos: g.hpPos || 0 };
+    }
+    function renderGlobalControls() {
+      nameSize.value = gd.nameSize; nameSpacing.value = gd.nameSpacing; condSize.value = gd.condSize; condSpacing.value = gd.condSpacing;
+      condPosSlider.value = gd.condPosY; condCurve.value = gd.condCurve; condColor.value = gd.condColor; condOutline.value = gd.condOutline; hpPos.value = gd.hpPos;
+    }
+    // Live: update this window's cache + repaint (no disk). Persist: POST + broadcast.
+    function applyGlobalLive() { applyGlobalDisplay(gd); if (sel) styleSampleGlobal(); repaintBoards(); }
+    async function persistGlobal() { await saveGlobalDisplay(gd); sync.post({ type: 'tokens', global: globalDisplay() }); }
+
+    function markDirty() { savedTag.hidden = true; }
+
+    function selectChar(castId) {
+      const found = findCast(castId);
+      if (!found) return;
+      sel = found;
+      const c = found.cast;
+      draft = {
+        face: c.face || '50% 50%',
+        ringColor: c.ringColor || defRing(found.kind),
+        // Heroes/enemies ship token art; an NPC borrows its portrait until given its own.
+        tokenImage: c.tokenImage || c.portrait || ''
+      };
+      overlay.querySelectorAll('.tb-chip').forEach((ch) => ch.classList.toggle('is-active', ch.dataset.id === castId));
+      savedTag.hidden = true; showEdit();
+      renderCrop(); renderRing(); renderImageGrid(); renderSample();
+    }
+
+    function renderPicker() {
+      const list = q('.tb-picker-list');
+      list.innerHTML = '';
+      for (const [kind, label, arr] of [['hero', 'Heroes', CAST.heroes], ['npc', 'NPCs', CAST.npcs], ['enemy', 'Enemies', CAST.enemies]]) {
+        const items = (arr || []).filter((c) => showHidden || !c.hidden);
+        if (!items.length) continue;
+        const group = document.createElement('div'); group.className = 'tb-group';
+        const h = document.createElement('h3'); h.className = 'tb-group-h'; h.textContent = label; group.append(h);
+        const glist = document.createElement('div'); glist.className = 'tb-list';
+        for (const c of items) {
+          const chip = document.createElement('div'); chip.className = 'tb-chip'; chip.dataset.id = c.id;
+          if (c.hidden) chip.classList.add('is-token-hidden');
+          if (sel && sel.cast.id === c.id) chip.classList.add('is-active');
+          const selBtn = document.createElement('button'); selBtn.type = 'button'; selBtn.className = 'tb-chip-sel';
+          const art = c.tokenImage || c.portrait;
+          const tok = document.createElement('span'); tok.className = 'tb-chip-tok'; tok.style.borderColor = c.ringColor || defRing(kind);
+          if (art) { const im = document.createElement('img'); im.alt = ''; im.src = art; im.style.objectPosition = c.face || '50% 50%'; tok.append(im); }
+          else { const ini = document.createElement('span'); ini.className = 'tb-chip-ini'; ini.textContent = iniOf(c.name); tok.append(ini); }
+          const nm = document.createElement('span'); nm.className = 'tb-chip-name'; nm.textContent = c.name;
+          selBtn.append(tok, nm);
+          selBtn.addEventListener('click', () => selectChar(c.id));
+          // Trailing control: remove (a token you added) / hide / unhide (built-ins).
+          const xBtn = document.createElement('button'); xBtn.type = 'button'; xBtn.className = 'tb-chip-x';
+          if (isAdded(c.id)) { xBtn.textContent = '×'; xBtn.title = 'Remove this token'; xBtn.addEventListener('click', async () => { await removeAddedCharacter(c.id); if (sel && sel.cast.id === c.id) { sel = null; showEmpty(); } broadcastRoster(); renderPicker(); }); }
+          else if (c.hidden) { xBtn.textContent = '↺'; xBtn.title = 'Unhide'; xBtn.addEventListener('click', async () => { await setHidden(c.id, false); broadcastRoster(); renderPicker(); }); }
+          else { xBtn.textContent = '⦸'; xBtn.title = 'Hide from the roster'; xBtn.addEventListener('click', async () => { await setHidden(c.id, true); broadcastRoster(); renderPicker(); }); }
+          chip.append(selBtn, xBtn);
+          glist.append(chip);
+        }
+        group.append(glist); list.append(group);
+      }
+    }
+
+    // ---- Crop drag: move the portrait within the ring to center the face ----
+    let dragging = false, startPt = null, startFace = null;
+    crop.addEventListener('pointerdown', (e) => {
+      if (!draft || !draft.tokenImage) return;
+      dragging = true; startPt = { x: e.clientX, y: e.clientY }; startFace = parseFace(draft.face);
+      try { crop.setPointerCapture(e.pointerId); } catch (_) {}
+      crop.classList.add('is-dragging'); e.preventDefault();
+    });
+    crop.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const r = crop.getBoundingClientRect();
+      const dx = (e.clientX - startPt.x) / (r.width || 1) * 100;
+      const dy = (e.clientY - startPt.y) / (r.height || 1) * 100;
+      draft.face = fmtFace({ x: startFace.x - dx, y: startFace.y - dy });
+      cropImg.style.objectPosition = draft.face;
+      renderSample(); markDirty();
+    });
+    const endDrag = (e) => { if (!dragging) return; dragging = false; crop.classList.remove('is-dragging'); try { crop.releasePointerCapture(e.pointerId); } catch (_) {} };
+    crop.addEventListener('pointerup', endDrag);
+    crop.addEventListener('pointercancel', endDrag);
+
+    // ---- Upload a new token image (needs the helper server) ----
+    uploadBtn.addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', async () => {
+      const file = uploadInput.files && uploadInput.files[0];
+      uploadInput.value = '';
+      if (!file || !sel) return;
+      uploadStatus.hidden = false; uploadStatus.textContent = 'Uploading…';
+      try {
+        const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+        const resp = await fetch('/upload-token-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: file.name, dataUrl }) });
+        const j = await resp.json().catch(() => ({}));
+        if (resp.ok && j.src) {
+          if (!extraImages.some((x) => x.src === j.src)) extraImages.unshift({ src: j.src, name: file.name });
+          draft.tokenImage = j.src; markDirty(); renderCrop(); renderSample(); renderImageGrid();
+          uploadStatus.textContent = 'Uploaded ✓';
+        } else { uploadStatus.textContent = 'Upload failed' + (j.error ? ': ' + j.error : ''); }
+      } catch (e) { uploadStatus.textContent = 'Upload needs the local server running'; }
+      setTimeout(() => { uploadStatus.hidden = true; }, 3000);
+    });
+
+    // ---- Global settings inputs (live on input, persist + broadcast on change) ----
+    nameSize.addEventListener('input', () => { gd.nameSize = +nameSize.value; applyGlobalLive(); });
+    nameSize.addEventListener('change', persistGlobal);
+    nameSpacing.addEventListener('input', () => { gd.nameSpacing = +nameSpacing.value; applyGlobalLive(); });
+    nameSpacing.addEventListener('change', persistGlobal);
+    condSize.addEventListener('input', () => { gd.condSize = +condSize.value; applyGlobalLive(); });
+    condSize.addEventListener('change', persistGlobal);
+    condSpacing.addEventListener('input', () => { gd.condSpacing = +condSpacing.value; applyGlobalLive(); });
+    condSpacing.addEventListener('change', persistGlobal);
+    condPosSlider.addEventListener('input', () => { gd.condPosY = +condPosSlider.value; applyGlobalLive(); });
+    condPosSlider.addEventListener('change', persistGlobal);
+    condCurve.addEventListener('input', () => { gd.condCurve = +condCurve.value; applyGlobalLive(); });
+    condCurve.addEventListener('change', persistGlobal);
+    condColor.addEventListener('input', () => { gd.condColor = condColor.value; applyGlobalLive(); });
+    condColor.addEventListener('change', persistGlobal);
+    condOutline.addEventListener('input', () => { gd.condOutline = condOutline.value; applyGlobalLive(); });
+    condOutline.addEventListener('change', persistGlobal);
+    hpPos.addEventListener('input', () => { gd.hpPos = +hpPos.value; applyGlobalLive(); });
+    hpPos.addEventListener('change', persistGlobal);
+
+    // ---- Save / Reset (per-token identity: image, crop, ring) ----
+    function repaintBoards() {
+      const scene = sceneById(state.sceneId);
+      try { previewView.render(state, scene, {}); } catch (_) {}
+      try { boardView.render(state, scene, {}); boardView.layoutTokens(); } catch (_) {}
+    }
+    q('.tb-save').addEventListener('click', async () => {
+      if (!sel) return;
+      const patch = { face: draft.face, ringColor: draft.ringColor };
+      if (draft.tokenImage) patch.tokenImage = draft.tokenImage;
+      await saveTokenOverride(sel.cast.id, patch);
+      sync.post({ type: 'tokens', castId: sel.cast.id, override: overrideFor(sel.cast.id) });
+      repaintBoards(); renderPicker();
+      savedTag.hidden = false;
+    });
+    q('.tb-reset').addEventListener('click', async () => {
+      if (!sel) return;
+      await resetTokenOverride(sel.cast.id);
+      sync.post({ type: 'tokens', castId: sel.cast.id, override: null });
+      selectChar(sel.cast.id);   // reseed the draft from the restored built-in
+      repaintBoards(); renderPicker();
+    });
+
+    // ---- Add / remove / hide tokens ----
+    q('.tb-new-token').addEventListener('click', () => { q('.tb-add-name').value = ''; addKind = 'hero'; renderSeg('.tb-add-kind', addKind); showAdd(); q('.tb-add-name').focus(); });
+    q('.tb-add-kind').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; addKind = b.dataset.v; renderSeg('.tb-add-kind', addKind); });
+    q('.tb-add-cancel').addEventListener('click', () => { if (sel) showEdit(); else showEmpty(); });
+    q('.tb-add-create').addEventListener('click', async () => {
+      const name = q('.tb-add-name').value.trim();
+      if (!name) { q('.tb-add-name').focus(); return; }
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'token';
+      const id = 'usr_' + slug + '_' + Date.now().toString(36).slice(-4);
+      await addCharacter({ id, name, kind: addKind, ringColor: defRing(addKind) });
+      broadcastRoster(); renderPicker(); selectChar(id);   // now assign its art + crop
+    });
+    q('.tb-show-hidden-cb').addEventListener('change', (e) => { showHidden = e.target.checked; renderPicker(); });
+
+    // ---- Open / close ----
+    function open() { seedGlobal(); renderGlobalControls(); showHidden = false; q('.tb-show-hidden-cb').checked = false; renderPicker(); if (!sel) showEmpty(); overlay.hidden = false; }
+    function close() { overlay.hidden = true; }
+    els.tokensBtn.addEventListener('click', open);
+    q('.tb-close').addEventListener('click', close);
+    q('.tb-backdrop').addEventListener('click', close);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) close(); });
   }
 }
