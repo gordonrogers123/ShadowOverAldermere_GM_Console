@@ -165,10 +165,14 @@ function normalizeStage(s) {
     // looks up grids[state.mapState], so the grid follows the active map (incl. cue
     // switches). Seeded from scene.grids and mirrored back. Optional -> no VERSION bump.
     grids: normGrids(s.grids),
-    // A targeting link (attacker -> target) drawn as a red arrow + glow on both
-    // screens during an attack. Optional/additive; cleared on turn change.
+    // A targeting link (attacker -> target) drawn as an arrow + glow on both screens
+    // during an attack. Carries an optional grid distance (feet) + range status
+    // ('in'|'disadv'|'out') so the arrow can label + tint (PR 6B). Cleared on turn change.
     targetLink: (s.targetLink && s.targetLink.from && s.targetLink.to)
-      ? { from: String(s.targetLink.from), to: String(s.targetLink.to) } : null,
+      ? Object.assign({ from: String(s.targetLink.from), to: String(s.targetLink.to) },
+          isFinite(+s.targetLink.feet) ? { feet: +s.targetLink.feet } : null,
+          /^(in|disadv|out)$/.test(s.targetLink.status) ? { status: s.targetLink.status } : null)
+      : null,
     // A dice roll pushed to the Player TV ("show the room"): { flat:[{d,r}], total,
     // notation, n }; n is a bump counter so a repeat roll re-triggers the display.
     roomDice: normRoomDice(s.roomDice)

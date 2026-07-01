@@ -2012,6 +2012,52 @@ export function mountGm(root) {
     const link = state.stage && state.stage.targetLink;
     return (link && link.from === state.stage.activeTokenId) ? findToken(link.to) : null;
   }
+  // ---- PR 6B: grid range check. Parse an attack's range string, measure the grid
+  //      distance to the target (Chebyshev * feet/cell), and verdict it. Degrades to
+  //      no-op when the scene/map has no grid. ----
+  function parseAtkRange(rangeStr) {
+    const s = String(rangeStr || '');
+    let m;
+    if ((m = /reach\s+(\d+)/i.exec(s))) return { type: 'melee', reach: +m[1] };
+    if ((m = /(?:range|thrown)\s+(\d+)\s*\/\s*(\d+)/i.exec(s))) return { type: 'ranged', normal: +m[1], long: +m[2] };
+    if ((m = /(?:range|thrown)\s+(\d+)/i.exec(s))) return { type: 'ranged', normal: +m[1], long: +m[1] };
+    return null;   // a save or an unparseable range -> no check
+  }
+  function rangeVerdict(pr, feet) {
+    if (pr.type === 'melee') return feet <= pr.reach ? { status: 'in', label: 'in reach' } : { status: 'out', label: 'out of reach' };
+    if (feet <= pr.normal) return { status: 'in', label: 'in range' };
+    if (feet <= pr.long) return { status: 'disadv', label: 'long · disadv' };
+    return { status: 'out', label: 'out of range' };
+  }
+  // Grid distance from the active attacker to its target ({cells, feet}), or null.
+  function targetDistance() {
+    const link = state.stage && state.stage.targetLink;
+    if (!link) return null;
+    const from = findToken(link.from), to = findToken(link.to);
+    if (!from || !to) return null;
+    return boardView.gridDistance({ x: from.x, y: from.y }, { x: to.x, y: to.y });
+  }
+  // Refresh targetLink.feet + overall range status (best across the attacker's
+  // attacks) so the board arrow can label + tint. Called after target-set / a move.
+  function computeTargetRange() {
+    const link = state.stage && state.stage.targetLink;
+    if (!link) return;
+    const dist = targetDistance();
+    if (!dist) { delete link.feet; delete link.status; return; }
+    link.feet = dist.feet;
+    const from = findToken(link.from);
+    const cast = from && castEntry(from.castId, from.kind);
+    const attacks = (cast && cast.stats && cast.stats.attacks) || [];
+    let best = null;
+    for (const atk of attacks) {
+      const pr = parseAtkRange(atk.range); if (!pr) continue;
+      const st = rangeVerdict(pr, dist.feet).status;
+      if (st === 'in') { best = 'in'; break; }
+      if (st === 'disadv' && best !== 'in') best = 'disadv';
+      else if (st === 'out' && !best) best = 'out';
+    }
+    if (best) link.status = best; else delete link.status;
+  }
   function armTargeting() { targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
   function setTarget(toInstId) {
     const from = state.stage && state.stage.activeTokenId;
@@ -2020,6 +2066,7 @@ export function mountGm(root) {
     ensureTokens();
     state.stage.targetLink = { from, to: toInstId };
     attackRoll = null;
+    computeTargetRange();   // grid distance + range tint for the arrow
     commit();   // broadcasts the arrow + target glow, re-renders the card
   }
   function clearTarget() { if (state.stage) state.stage.targetLink = null; attackRoll = null; targeting = false; renderBoardTargeting(); commit(); }
@@ -2048,13 +2095,25 @@ export function mountGm(root) {
     applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
   }
   // One attack line + its Target / Hit / Dmg buttons (+ ▶ if it carries SFX).
-  function attackRow(token, atk, compact) {
+  function attackRow(token, atk, compact, dist) {
     const a = document.createElement('div'); a.className = 'stat-attack';
     if (!compact) { const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name; a.append(nm); }
     const line = document.createElement('div'); line.className = 'stat-attack-line';
     const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
     line.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
     a.append(line);
+    // PR 6B: when a target is picked and the map has a grid, this attack's own
+    // range verdict (in reach / in range / long-disadvantage / out) at the measured
+    // distance. Absent grid or unparseable range -> no badge (graceful).
+    if (dist) {
+      const pr = parseAtkRange(atk.range);
+      if (pr) {
+        const v = rangeVerdict(pr, dist.feet);
+        const rb = document.createElement('span'); rb.className = 'atk-range atk-range-' + v.status;
+        rb.textContent = dist.feet + ' ft · ' + v.label;
+        a.append(rb);
+      }
+    }
     const btns = document.createElement('div'); btns.className = 'stat-atk-btns';
     const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
     if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
@@ -2145,9 +2204,11 @@ export function mountGm(root) {
       }
       // ---- Target line: who this attacker is aimed at (or the "click a target" prompt). ----
       const tgt = currentTarget();
+      const dist = tgt ? targetDistance() : null;   // grid distance to the target (PR 6B), or null
       if (tgt) {
         const tl = document.createElement('div'); tl.className = 'stat-target';
-        const txt = document.createElement('span'); txt.className = 'stat-target-txt'; txt.textContent = '⌖ Targeting ' + tgt.label;
+        const txt = document.createElement('span'); txt.className = 'stat-target-txt';
+        txt.textContent = '⌖ Targeting ' + tgt.label + (dist ? ' · ' + dist.feet + ' ft' : '');
         const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'gm-button btn--quiet stat-target-cancel'; clr.textContent = 'Clear'; clr.addEventListener('click', clearTarget);
         tl.append(txt, clr); host.append(tl);
       } else if (targeting) {
@@ -2161,12 +2222,12 @@ export function mountGm(root) {
       if (attacks.length) {
         const wrap = document.createElement('div'); wrap.className = 'stat-attacks';
         if (attacks.length <= 4) {
-          for (const atk of attacks) wrap.append(attackRow(token, atk, false));
+          for (const atk of attacks) wrap.append(attackRow(token, atk, false, dist));
         } else {
           const sel = document.createElement('select'); sel.className = 'stat-atk-select';
           attacks.forEach((atk, i) => { const o = document.createElement('option'); o.value = i; o.textContent = atk.name; sel.append(o); });
           const detail = document.createElement('div'); detail.className = 'stat-atk-detail';
-          const draw = () => { detail.innerHTML = ''; detail.append(attackRow(token, attacks[+sel.value] || attacks[0], true)); };
+          const draw = () => { detail.innerHTML = ''; detail.append(attackRow(token, attacks[+sel.value] || attacks[0], true, dist)); };
           sel.addEventListener('change', draw);
           wrap.append(sel, detail); draw();
         }
@@ -2267,6 +2328,7 @@ export function mountGm(root) {
     drag = null;
     if (dragRAF) cancelAnimationFrame(dragRAF);
     dragPending = false;
+    computeTargetRange();              // a moved token changes the range verdict
     commit();                          // final save + broadcast + refreshed lists
   }
 
