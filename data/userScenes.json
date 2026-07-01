@@ -1,28 +1,5 @@
 [
   {
-    "id": "the-refugee-encampment",
-    "name": "The Refugee Encampment",
-    "maps": {
-      "hidden": ""
-    },
-    "variantModes": {
-      "hidden": {
-        "scene": true,
-        "map": false
-      }
-    },
-    "defaultMapState": "hidden",
-    "tokens": null,
-    "music": null,
-    "ambience": [],
-    "audio": null,
-    "gmNotes": "",
-    "defaults": {
-      "visible": true
-    },
-    "titleHeader": "The Shadow Over Aldermere"
-  },
-  {
     "id": "the-city-gate",
     "name": "The City Gate",
     "maps": {
@@ -962,6 +939,258 @@
           "src": "assets/characters/npcs/Marsh Family -- Watching.png",
           "enter": "fade",
           "x": -10
+        }
+      ]
+    },
+    "defaults": {
+      "visible": true
+    },
+    "titleHeader": "The Shadow Over Aldermere"
+  },
+  {
+    "id": "the-refugee-encampment",
+    "name": "The Refugee Encampment",
+    "maps": {
+      "title-screen": "",
+      "tent-camp-day": "assets/backgrounds/A1 S2 Tent Camp -- Day.png",
+      "tent-camp-night": "assets/backgrounds/A1 S2 Tent Camp -- Night.png",
+      "pale-husk": "assets/backgrounds/A1 S3 -- Pale Husk.png",
+      "map-day": "assets/maps/A1 S2 Tent Camp -- Day.png",
+      "map-night": "assets/maps/A1 S2 Tent Camp -- Night.png"
+    },
+    "variantModes": {
+      "title-screen": {
+        "scene": true,
+        "map": false
+      },
+      "tent-camp-day": {
+        "scene": true,
+        "map": false
+      },
+      "tent-camp-night": {
+        "scene": true,
+        "map": false
+      },
+      "pale-husk": {
+        "scene": true,
+        "map": false
+      },
+      "map-day": {
+        "scene": true,
+        "map": true
+      },
+      "map-night": {
+        "scene": true,
+        "map": true
+      }
+    },
+    "defaultMapState": "title-screen",
+    "tokens": {
+      "heroes": [
+        "lysander",
+        "telstar",
+        "thraka",
+        "khaleesi",
+        "sai",
+        "samsara",
+        "truf"
+      ],
+      "enemies": [
+        "palehusks"
+      ]
+    },
+    "music": null,
+    "ambience": [],
+    "audio": {
+      "music": [
+        {
+          "src": "assets/audio/music/Beneath_the_Battlements.mp3",
+          "volume": 0.8,
+          "pan": 0,
+          "loop": true,
+          "fadeIn": 2,
+          "fadeOut": 2
+        }
+      ],
+      "ambience": [],
+      "sfx": []
+    },
+    "gmNotes": "",
+    "cues": [
+      {
+        "id": "cue-1",
+        "label": "Title",
+        "opening": true,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": true,
+          "characters": false,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": "title-screen",
+          "mapMode": false,
+          "visible": true,
+          "left": null,
+          "right": null,
+          "tokens": [],
+          "audio": {
+            "playing": [
+              "mus:0"
+            ],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 700
+          },
+          "audioOut": {
+            "at": 0,
+            "ramp": 600
+          },
+          "background": {
+            "at": 800,
+            "ramp": 400
+          },
+          "audioIn": {
+            "at": 1000,
+            "ramp": 1000
+          },
+          "reveal": {
+            "at": 1000,
+            "ramp": 700
+          }
+        }
+      },
+      {
+        "id": "cue-2",
+        "label": "Tent Camp Day",
+        "opening": false,
+        "affects": {
+          "background": true,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": false
+        },
+        "snapshot": {
+          "mapState": "tent-camp-day",
+          "mapMode": false,
+          "visible": true,
+          "left": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "right": {
+            "shown": false,
+            "srcOverride": null
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "blackout": {
+            "at": 0,
+            "ramp": 700
+          },
+          "background": {
+            "at": 800,
+            "ramp": 2000
+          },
+          "reveal": {
+            "at": 1000,
+            "ramp": 700
+          }
+        }
+      },
+      {
+        "id": "cue-3",
+        "label": "Granny Edna",
+        "opening": false,
+        "affects": {
+          "background": false,
+          "mapMode": false,
+          "curtain": false,
+          "characters": true,
+          "tokens": false,
+          "audio": true
+        },
+        "snapshot": {
+          "mapState": null,
+          "mapMode": false,
+          "visible": true,
+          "left": null,
+          "right": {
+            "shown": true,
+            "srcOverride": "assets/characters/npcs/grannyEdna -- Cooking.png"
+          },
+          "tokens": [],
+          "audio": {
+            "playing": [],
+            "master": 0.8,
+            "sfx": []
+          }
+        },
+        "timeline": {
+          "audioOut": {
+            "at": 0,
+            "ramp": 600
+          },
+          "audioIn": {
+            "at": 1000,
+            "ramp": 1000
+          },
+          "characters": {
+            "at": 2000,
+            "ramp": 500
+          }
+        }
+      }
+    ],
+    "characters": {
+      "right": [
+        {
+          "id": "grannyEdna -- Cooking",
+          "src": "assets/characters/npcs/grannyEdna -- Cooking.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "x": 3,
+          "y": -10
+        },
+        {
+          "id": "Wren -- Upset",
+          "src": "assets/characters/npcs/Wren -- Upset.png",
+          "enter": "fade"
+        },
+        {
+          "id": "Borin",
+          "src": "assets/characters/npcs/Borin.png",
+          "enter": "fade"
+        },
+        {
+          "id": "Naia and Theron",
+          "src": "assets/characters/npcs/Naia and Theron.png",
+          "enter": "fade",
+          "scale": 0.9,
+          "x": 9,
+          "y": -10
+        },
+        {
+          "id": "Marsh Family -- Talking",
+          "src": "assets/characters/npcs/Marsh Family -- Talking.png",
+          "enter": "fade",
+          "flip": true,
+          "x": -4
         }
       ]
     },

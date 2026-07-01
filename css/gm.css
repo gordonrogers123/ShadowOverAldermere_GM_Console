@@ -830,9 +830,17 @@ body.view-gm {
 /* Combat surface: a head row, then a BODY grid [ initiative + stat-block column |
    board ], then the rosters full-width below. The column carries the tracker and
    the active combatant's card beside the board. Collapses to one column narrow. */
-.view-gm .mapmode-body { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-4); align-items: start; margin-bottom: var(--space-4); }
-.view-gm .mm-combat-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.view-gm .mapmode-body { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-4); align-items: stretch; margin-bottom: var(--space-4); }
+.view-gm .mm-combat-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; min-height: 0; }
 @media (max-width: 1100px) { .view-gm .mapmode-body { grid-template-columns: 1fr; } }
+/* In the 2-column combat layout the init+stat column tracks the board's height: the
+   board defines the row (align-self:start keeps its 16:9 box), the column stretches to
+   match, and the stat sheet scrolls inside. Capped at the board's own max so a long
+   card never outgrows the map -- shrunk type/buttons keep the common case scroll-free. */
+@media (min-width: 1101px) {
+  .view-gm .mapmode-body .mapmode-board { align-self: start; }
+  .view-gm .mm-combat-col { max-height: 72vh; }
+}
 /* In map mode the whole performance surface (preview + live controls + the old
    map-controls strip) is gone -- the map-variant reveal and Save/Reset layout now
    ride the board header, so there is no separate strip below the board. */
@@ -904,6 +912,9 @@ body.view-gm {
 .view-gm .mmr-type .mmr-name { font-weight: 700; }
 .view-gm .mmr-copy .mmr-namecell { padding-left: var(--space-4); }          /* numbered copies indent under their type */
 .view-gm .mmr-copy .mmr-name { font-style: italic; }
+/* The active combatant's roster row: a gold band matching the token ring + init row. */
+.view-gm .mmr-row.is-active > td { background: #fbf1da; }
+.view-gm .mmr-row.is-active > td:first-child { box-shadow: inset 3px 0 0 #b07d2b; }
 .view-gm .mmr-init { width: 3.2rem; padding: 0.25rem 0.3rem; text-align: center; }
 .view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
 .view-gm .mmr-vis.is-hidden { background: var(--support); color: var(--paper); border-color: var(--support); }  /* Reveal stands out */
@@ -937,6 +948,7 @@ body.view-gm {
 .view-gm .gm-initiative {
   background: var(--gm-panel); border: 1px solid var(--rule);
   border-left: 6px solid #b07d2b; border-radius: 8px; padding: 0;
+  flex: 0 0 auto;
 }
 .view-gm .init-head { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
 .view-gm .init-title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 1rem; margin-right: auto; }
@@ -944,6 +956,10 @@ body.view-gm {
 .view-gm .init-prev, .view-gm .init-next { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
 .view-gm .init-track { padding: 0.35rem 0.45rem 0.15rem; }
 .view-gm .init-win-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.62rem; letter-spacing: 0.06em; color: var(--neutral); padding: 0.1rem 0.2rem 0.3rem; }
+/* "Turn x/y · up next" and the Show-all toggle share one row above the list. */
+.view-gm .init-winrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.view-gm .init-winrow .init-win-label { padding: 0.1rem 0.2rem; }
+.view-gm .init-winrow .init-more { width: auto; margin: 0; padding: 0.1rem 0.25rem; }
 .view-gm .init-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0; padding: 0.3rem 0.2rem; }
 .view-gm .init-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .view-gm .init-row {
@@ -976,7 +992,7 @@ body.view-gm {
 .view-gm .gm-statsheet {
   background: var(--gm-panel); border: 1px solid var(--rule);
   border-left: 6px solid var(--offense); border-radius: 8px; padding: 0.8rem 1rem;
-  flex: 0 0 auto; max-height: 60vh; overflow-y: auto;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
 }
 /* In map mode (the stat sheet is showing) the scene list shrinks to its content
    so the content-height stat card sits right beneath it instead of being pushed
@@ -1002,13 +1018,13 @@ body.view-gm {
 .view-gm .stat-hpbar { height: 6px; border-radius: 3px; background: #e7ddc7; overflow: hidden; margin: 0.15rem 0 0.3rem; }
 .view-gm .stat-hpbar > i { display: block; height: 100%; background: var(--support); }
 .view-gm .stat-hpbar > i.is-low { background: var(--offense); }
-.view-gm .stat-abils { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-1); margin-bottom: 0.6rem; }
+.view-gm .stat-abils { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.2rem; margin-bottom: 0.5rem; }
 .view-gm .stat-abil {
-  display: flex; flex-direction: column; align-items: center; gap: 0.05rem;
-  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.25rem 0.1rem; background: var(--fill);
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: 0.12rem 0.05rem; background: var(--fill);
 }
-.view-gm .stat-abil-k { font-size: 0.6rem; letter-spacing: 0.02em; color: var(--neutral); }
-.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
+.view-gm .stat-abil-k { font-size: 0.52rem; letter-spacing: 0.02em; color: var(--neutral); }
+.view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; }
 .view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
 .view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
 .view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }

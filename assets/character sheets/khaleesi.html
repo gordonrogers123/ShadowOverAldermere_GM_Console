@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Khaleesi — Dragonborn Fighter (Kusum)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tier-elder">
+
+<!-- =========================== FRONT: PLAY SIDE =========================== -->
+<section class="page front">
+
+  <div class="identity">
+    <div class="art-box"><img src="art/khaleesi.png" alt="Khaleesi"></div>
+    <div class="who">
+      <h1 class="name">KHALEESI</h1>
+      <div class="subtitle">Dragonborn Fighter, Battle Master</div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><div class="label">Hit Points</div><div class="num hp"><span class="hp-blank"></span> <span class="slash">/ 28</span></div></div>
+      <div class="vital"><div class="label">Armor Class</div><div class="num">18</div></div>
+      <div class="vital"><div class="label">Initiative</div><div class="num">+1</div></div>
+    </div>
+  </div>
+
+  <div class="abilities">
+    <div class="ability"><span class="ab-name">Strength</span><span class="ab-mod">+3</span></div>
+    <div class="ability"><span class="ab-name">Dexterity</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Constitution</span><span class="ab-mod">+2</span></div>
+    <div class="ability"><span class="ab-name">Intelligence</span><span class="ab-mod">&minus;1</span></div>
+    <div class="ability"><span class="ab-name">Wisdom</span><span class="ab-mod">+1</span></div>
+    <div class="ability"><span class="ab-name">Charisma</span><span class="ab-mod">+0</span></div>
+  </div>
+
+  <div class="skills">
+    <h3>Skills</h3>
+    <div class="skills-grid">
+      <div class="skill"><span class="sk-name">Acrobatics</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Animal Handling</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Arcana</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill trained"><span class="sk-name">Athletics</span><span class="sk-num">+5</span></div>
+      <div class="skill"><span class="sk-name">Deception</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">History</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill trained"><span class="sk-name">Insight</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Intimidation</span><span class="sk-num">+0</span></div>
+      <div class="skill"><span class="sk-name">Investigation</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Medicine</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Nature</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill trained"><span class="sk-name">Perception</span><span class="sk-num">+3</span></div>
+      <div class="skill"><span class="sk-name">Performance</span><span class="sk-num">+0</span></div>
+      <div class="skill trained"><span class="sk-name">Persuasion</span><span class="sk-num">+2</span></div>
+      <div class="skill"><span class="sk-name">Religion</span><span class="sk-num">&minus;1</span></div>
+      <div class="skill"><span class="sk-name">Sleight of Hand</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Stealth</span><span class="sk-num">+1</span></div>
+      <div class="skill"><span class="sk-name">Survival</span><span class="sk-num">+1</span></div>
+    </div>
+    <div class="hint">Roll d20 and add the modifier.</div>
+  </div>
+
+  <div class="actions fill">
+    <div class="action-head"><span>Name</span><span>What it does</span><span>To hit</span><span>Damage</span><span>Type</span></div>
+
+    <div class="action-group">
+      <div class="section-bar offense">Attacks &amp; Damage</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Longsword</span><span class="a-desc">A strong, reliable sword swing.</span><span class="a-hit">+5</span><span class="a-dmg">1d8+5</span><span class="a-type">weapon</span></div>
+        <div class="action"><span class="a-name">Breath Weapon</span><span class="a-desc">Breathe a 15 foot cone of fire (half on a save).</span><span class="a-hit">DEX save 12</span><span class="a-dmg">2d6 fire</span><span class="a-type">1/rest</span></div>
+        <div class="action"><span class="a-name">Javelin</span><span class="a-desc">Thrown at a foe who is out of reach.</span><span class="a-hit">+5</span><span class="a-dmg">1d6+3</span><span class="a-type">thrown</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar support">Healing &amp; Support</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Second Wind</span><span class="a-desc">Catch your breath and recover in a fight.</span><span class="a-hit"></span><span class="a-dmg">heal 1d10+3</span><span class="a-type">bonus, 1/rest</span></div>
+        <div class="action"><span class="a-name">Rally</span><span class="a-desc">Steady a friend with an encouraging shout.</span><span class="a-hit"></span><span class="a-dmg">1d8 temp HP</span><span class="a-type">spends 1 die</span></div>
+      </div>
+    </div>
+
+    <div class="action-group">
+      <div class="section-bar control">Control &amp; Special</div>
+      <div class="rows">
+        <div class="action"><span class="a-name">Commander's Strike</span><span class="a-desc">Point at an ally and they attack right now.</span><span class="a-hit"></span><span class="a-dmg">ally +1d8</span><span class="a-type">spends 1 die</span></div>
+        <div class="action"><span class="a-name">Action Surge</span><span class="a-desc">Take a whole extra action on your turn.</span><span class="a-hit"></span><span class="a-dmg"></span><span class="a-type">1/rest</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="turn-helper">
+    <div class="th-title">On your turn</div>
+    <div class="th-grid">
+      <div class="th-item"><span class="t-key">Move</span><span class="t-sub">up to 30 feet</span></div>
+      <div class="th-item"><span class="t-key">Action</span><span class="t-sub">attack or a maneuver</span></div>
+      <div class="th-item"><span class="t-key">Bonus Action</span><span class="t-sub">a quick extra move</span></div>
+      <div class="th-item"><span class="t-key">Reaction</span><span class="t-sub">one quick response</span></div>
+    </div>
+  </div>
+
+  <div class="trackers">
+    <div class="tracker"><span class="tk-label">Superiority dice</span><span class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Second Wind</span><span class="pips"><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Action Surge</span><span class="pips"><span class="pip"></span></span></div>
+    <div class="tracker"><span class="tk-label">Breath Weapon</span><span class="pips"><span class="pip"></span></span></div>
+  </div>
+
+</section>
+
+<!-- =========================== BACK: REFERENCE SIDE =========================== -->
+<section class="page back">
+
+  <div class="block">
+    <div class="section-bar offense">Your moves</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Longsword.</span> Your everyday attack, one-handed with the shield up. On a hit (roll +5) it deals 1d8 + 5. The Dueling style adds the extra 2 automatically. <span class="a-type">weapon</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Breath Weapon.</span> Once per rest, breathe a 15 foot cone of dragon-fire. Every creature in it makes a Dexterity save (beat 12), taking 2d6 fire, or half as much on a save. <span class="a-type">1/rest</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Second Wind.</span> A bonus action to catch your breath and heal 1d10 + 3 in the middle of a fight. Once per rest. <span class="a-type">1/rest</span></div></div>
+      <div class="def"><div class="gloss"><span class="term">Rally.</span> Spend a superiority die to steady a friend with a shout. They gain 1d8 temporary hit points.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Commander's Strike.</span> Give up one of your attacks and spend a die to let an ally strike now. They make a weapon attack and add 1d8 to its damage. The matriarch handing someone a hero moment.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Action Surge.</span> Once per rest, take one extra action on your turn when it matters most.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar support">Features &amp; traits</div>
+    <div class="rows">
+      <div class="def"><div class="gloss"><span class="term">Dragon-blooded.</span> You resist fire damage, and your breath weapon recharges after a rest.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Battle Master.</span> You have four superiority dice (d8) that power your two maneuvers, Commander's Strike and Rally. They come back after a rest.</div></div>
+      <div class="def"><div class="gloss"><span class="term">Dueling style.</span> Fighting with a single one-handed weapon and a shield gives +2 damage (already in your longsword number).</div></div>
+      <div class="def"><div class="gloss"><span class="term">Coming at level 5 (Act III): Extra Attack.</span> You will swing twice with each Attack action. Not yet, just so you know it is ahead.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="section-bar">Inventory &amp; coins</div>
+    <div class="rows">
+      <ul class="inv-list">
+        <li>Chain mail</li>
+        <li>Shield</li>
+        <li>Longsword (one-handed, dueling style)</li>
+        <li>3 javelins</li>
+      </ul>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="writeon"></div>
+      <div class="coins">Coins: ____ gp&nbsp;&nbsp; ____ sp&nbsp;&nbsp; ____ cp</div>
+    </div>
+  </div>
+
+  <div class="block notes-block fill">
+    <div class="section-bar">Notes</div>
+    <div class="notes-fill"></div>
+  </div>
+
+</section>
+
+</body>
+</html>
