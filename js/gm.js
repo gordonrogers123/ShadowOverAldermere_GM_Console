@@ -416,7 +416,24 @@ export function mountGm(root) {
   const mapBody = document.createElement('div');
   mapBody.className = 'mapmode-body';
   els.mapboard.replaceWith(mapBody);
-  mapBody.append(combatCol, els.mapboard);
+  // A slim toolbar directly above the board holds the on-map display toggles:
+  // hero/NPC HP bars + condition icons, drawn on the GM board AND the Player TV.
+  const boardWrap = document.createElement('div'); boardWrap.className = 'mm-board-wrap';
+  const boardToolbar = document.createElement('div'); boardToolbar.className = 'mm-board-toolbar';
+  const tbLabel = document.createElement('span'); tbLabel.className = 'mm-toolbar-label'; tbLabel.textContent = 'On map';
+  els.hpToggle = document.createElement('button');
+  els.hpToggle.type = 'button'; els.hpToggle.className = 'gm-button btn--toggle mm-toggle mm-hp-toggle';
+  els.hpToggle.textContent = 'Hero HP';
+  els.hpToggle.title = 'Show HP bars on hero / NPC tokens (GM board + Player TV)';
+  els.hpToggle.addEventListener('click', () => { ensureTokens(); state.stage.hpOnMap = !state.stage.hpOnMap; commit(); });
+  els.condToggle = document.createElement('button');
+  els.condToggle.type = 'button'; els.condToggle.className = 'gm-button btn--toggle mm-toggle mm-cond-toggle';
+  els.condToggle.textContent = 'Conditions';
+  els.condToggle.title = 'Show condition icons on every token (GM board + Player TV)';
+  els.condToggle.addEventListener('click', () => { ensureTokens(); state.stage.conditionsOnMap = !state.stage.conditionsOnMap; commit(); });
+  boardToolbar.append(tbLabel, els.hpToggle, els.condToggle);
+  mapBody.append(combatCol, boardWrap);
+  boardWrap.append(boardToolbar, els.mapboard);
   // The map-variant reveal + Save/Reset layout ride ON the board header row, next
   // to the title and the Edit/Exit nav -- no separate controls strip.
   els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
@@ -1960,6 +1977,8 @@ export function mountGm(root) {
 
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
+    if (els.hpToggle) els.hpToggle.classList.toggle('is-on', !!(state.stage && state.stage.hpOnMap));
+    if (els.condToggle) els.condToggle.classList.toggle('is-on', !!(state.stage && state.stage.conditionsOnMap));
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now

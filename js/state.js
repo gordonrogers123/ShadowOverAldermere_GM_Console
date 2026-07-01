@@ -80,7 +80,7 @@ function normalizeToken(t, i) {
   if (!t || typeof t !== 'object') return null;
   const castId = typeof t.castId === 'string' ? t.castId.trim() : '';
   if (!castId) return null;
-  const kind = t.kind === 'hero' ? 'hero' : 'enemy';
+  const kind = t.kind === 'hero' ? 'hero' : (t.kind === 'npc' ? 'npc' : 'enemy');
   const instId = (typeof t.instId === 'string' && t.instId) ? t.instId : ('t' + i + '_' + castId);
   let label = castId;
   if (t.label != null && String(t.label).trim()) label = String(t.label);
@@ -117,7 +117,12 @@ function normalizeStage(s) {
     tokens,
     // The token whose turn it is (initiative). Broadcast so both the GM board
     // and the Player TV ring it gold; null when no encounter is running.
-    activeTokenId: s.activeTokenId != null ? String(s.activeTokenId) : null
+    activeTokenId: s.activeTokenId != null ? String(s.activeTokenId) : null,
+    // GM-toggled on-map overlays (map mode): hero/NPC HP bars + condition icons on
+    // the tokens themselves, shown on the GM board AND the Player TV. Enemy HP is
+    // never rendered (enforced in stageView). Optional/additive -> no VERSION bump.
+    hpOnMap: !!s.hpOnMap,
+    conditionsOnMap: !!s.conditionsOnMap
   };
 }
 

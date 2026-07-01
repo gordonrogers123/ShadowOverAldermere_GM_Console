@@ -832,13 +832,18 @@ body.view-gm {
    the active combatant's card beside the board. Collapses to one column narrow. */
 .view-gm .mapmode-body { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-4); align-items: stretch; margin-bottom: var(--space-4); }
 .view-gm .mm-combat-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; min-height: 0; }
+/* The board cell is a slim on-map toggle toolbar stacked over the board itself. */
+.view-gm .mm-board-wrap { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.view-gm .mm-board-toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.view-gm .mm-toolbar-label { font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.05em; color: var(--neutral); }
+.view-gm .mm-toggle { font-size: var(--fs-100); padding: 0.3rem 0.7rem; }
 @media (max-width: 1100px) { .view-gm .mapmode-body { grid-template-columns: 1fr; } }
 /* In the 2-column combat layout the init+stat column tracks the board's height: the
    board defines the row (align-self:start keeps its 16:9 box), the column stretches to
    match, and the stat sheet scrolls inside. Capped at the board's own max so a long
    card never outgrows the map -- shrunk type/buttons keep the common case scroll-free. */
 @media (min-width: 1101px) {
-  .view-gm .mapmode-body .mapmode-board { align-self: start; }
+  .view-gm .mapmode-body .mm-board-wrap { align-self: start; }
   .view-gm .mm-combat-col { max-height: 72vh; }
 }
 /* In map mode the whole performance surface (preview + live controls + the old
