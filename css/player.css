@@ -228,6 +228,14 @@
   .stage .token.is-targeted { animation: none !important; }
   .stage .target-line { animation: none !important; }
 }
+/* Round clip for the portrait + initials so a zoomed image (faceZoom) can't spill past
+   the ring; the token itself stays overflow:visible so the condition arc rides above it. */
+.stage .token-crop {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
 .stage .token-portrait,
 .stage .token-fallback {
   position: absolute;

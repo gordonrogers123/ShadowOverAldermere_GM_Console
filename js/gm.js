@@ -3982,6 +3982,7 @@ export function mountGm(root) {
                     <div class="tb-crop-ring"></div>
                   </div>
                   <p class="tb-hint">Drag the portrait to center the face</p>
+                  <label class="tb-set tb-zoom-row"><span class="tb-set-label">Zoom</span><input type="range" class="tb-crop-zoom" min="1" max="3" step="0.05" value="1"></label>
                   <div class="tb-ring"><span class="tb-set-label">Ring color</span><div class="tb-swatches"></div></div>
                   <div class="tb-image">
                     <div class="tb-image-head"><span class="tb-set-label">Token image</span><button class="gm-button btn--quiet tb-upload-btn" type="button">Upload&hellip;</button></div>
@@ -4023,7 +4024,7 @@ export function mountGm(root) {
 
     const q = (s) => overlay.querySelector(s);
     const editBox = q('.tb-edit'), emptyMsg = q('.tb-empty'), addBox = q('.tb-add');
-    const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
+    const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring'), cropZoom = q('.tb-crop-zoom');
     const swatches = q('.tb-swatches'), imageGrid = q('.tb-image-grid');
     const uploadBtn = q('.tb-upload-btn'), uploadInput = q('.tb-upload-input'), uploadStatus = q('.tb-upload-status');
     const nameSize = q('.tb-name-size'), nameSpacing = q('.tb-name-spacing'), condSize = q('.tb-cond-size'), condSpacing = q('.tb-cond-spacing'), condPosSlider = q('.tb-cond-pos'), condCurve = q('.tb-cond-curve'), condColor = q('.tb-cond-color'), condOutline = q('.tb-cond-outline'), hpPos = q('.tb-hp-pos');
@@ -4056,8 +4057,7 @@ export function mountGm(root) {
     const sampleTok = document.createElement('div');
     sampleTok.className = 'token token-hero';
     sampleTok.innerHTML =
-      '<div class="token-fallback"></div>' +
-      '<img class="token-portrait" alt="">' +
+      '<div class="token-crop"><div class="token-fallback"></div><img class="token-portrait" alt=""></div>' +
       '<div class="token-label"></div>' +
       '<div class="token-hpbar"><i></i></div>' +
       '<svg class="token-cond" viewBox="0 0 100 100"><defs><path id="tb-cond-arc" d="' + condArcPath(55, false) + '" fill="none"></path></defs>' +
@@ -4078,6 +4078,9 @@ export function mountGm(root) {
       cropRing.style.borderColor = draft.ringColor;
       cropFb.style.background = draft.ringColor;
       cropFb.textContent = iniOf(sel.cast.name);
+      if (cropZoom) cropZoom.value = draft.faceZoom || 1;
+      cropImg.style.transformOrigin = draft.face;
+      cropImg.style.transform = 'scale(' + (draft.faceZoom || 1) + ')';
       if (draft.tokenImage) {
         cropImg.style.objectPosition = draft.face;
         // Only toggle display on a real src change, so onload/onerror stays the
@@ -4112,6 +4115,8 @@ export function mountGm(root) {
     function renderSample() {
       sampleTok.style.borderColor = draft.ringColor;
       sampleFb.style.background = draft.ringColor; sampleFb.textContent = iniOf(sel.cast.name);
+      sampleImg.style.transformOrigin = draft.face;
+      sampleImg.style.transform = 'scale(' + (draft.faceZoom || 1) + ')';
       if (draft.tokenImage) {
         sampleImg.style.objectPosition = draft.face;
         if (sampleImg.getAttribute('src') !== draft.tokenImage) {
@@ -4160,6 +4165,7 @@ export function mountGm(root) {
       const c = found.cast;
       draft = {
         face: c.face || '50% 50%',
+        faceZoom: (c.faceZoom != null && isFinite(+c.faceZoom)) ? +c.faceZoom : 1,
         ringColor: c.ringColor || defRing(found.kind),
         // Heroes/enemies ship token art; an NPC borrows its portrait until given its own.
         tokenImage: c.tokenImage || c.portrait || ''
@@ -4222,6 +4228,8 @@ export function mountGm(root) {
     const endDrag = (e) => { if (!dragging) return; dragging = false; crop.classList.remove('is-dragging'); try { crop.releasePointerCapture(e.pointerId); } catch (_) {} };
     crop.addEventListener('pointerup', endDrag);
     crop.addEventListener('pointercancel', endDrag);
+    // Zoom the token image (1..3). Previews live; saved with the token.
+    if (cropZoom) cropZoom.addEventListener('input', () => { if (!draft) return; draft.faceZoom = +cropZoom.value || 1; cropImg.style.transformOrigin = draft.face; cropImg.style.transform = 'scale(' + draft.faceZoom + ')'; renderSample(); markDirty(); });
 
     // ---- Upload a new token image (needs the helper server) ----
     uploadBtn.addEventListener('click', () => uploadInput.click());
@@ -4271,7 +4279,7 @@ export function mountGm(root) {
     }
     q('.tb-save').addEventListener('click', async () => {
       if (!sel) return;
-      const patch = { face: draft.face, ringColor: draft.ringColor };
+      const patch = { face: draft.face, faceZoom: draft.faceZoom, ringColor: draft.ringColor };
       if (draft.tokenImage) patch.tokenImage = draft.tokenImage;
       await saveTokenOverride(sel.cast.id, patch);
       sync.post({ type: 'tokens', castId: sel.cast.id, override: overrideFor(sel.cast.id) });
