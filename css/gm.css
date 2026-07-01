@@ -928,7 +928,7 @@ body.view-gm {
 .view-gm .mmr-table th.c, .view-gm .mmr-table td.c { text-align: center; }
 .view-gm .mmr-table td { padding: 0.3rem 0.4rem; border-bottom: 1px solid #ece5d4; vertical-align: middle; }
 .view-gm .mmr-table tr:last-child td { border-bottom: none; }
-.view-gm .mmr-namecell { display: flex; align-items: center; gap: var(--space-2); }
+.view-gm .mmr-namecell { display: flex; align-items: center; gap: var(--space-2); width: 100%; }   /* Name column takes the slack so the Auto/Manual toggle right-aligns in a tidy column */
 .view-gm .mmr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .view-gm .mmr-name.is-hidden-name { opacity: 0.55; font-style: italic; }   /* staged, not yet revealed */
 .view-gm .mmr-type .mmr-name { font-weight: 700; }
@@ -1085,7 +1085,7 @@ body.view-gm {
 .view-gm .stat-roll-input { width: 4.2rem; margin: 0 0.3rem; padding: 0.12rem 0.35rem; font-family: var(--font-display); }
 .view-gm .stat-roll-crit { display: inline-flex; align-items: center; gap: 0.2rem; font-size: var(--fs-100); }
 .view-gm .atk-apply { background: var(--fill); color: var(--offense); border-color: var(--offense); }
-.view-gm .roster-manual { padding: 0.02rem 0.3rem; font-size: var(--fs-100); line-height: 1.25; margin-left: 0.3rem; flex: 0 0 auto; }
+.view-gm .roster-manual { padding: 0.02rem 0.3rem; font-size: var(--fs-100); line-height: 1.25; margin-left: auto; flex: 0 0 auto; }
 .view-gm .roster-manual.is-manual { background: #f4ecd7; color: #8a5a12; border-color: #b07d2b; }
 .view-gm .stat-id .roster-manual { margin-left: 0; margin-top: 0.3rem; }
 .view-gm .stat-target { margin-top: 0.45rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; display: flex; align-items: center; gap: 0.5rem; }

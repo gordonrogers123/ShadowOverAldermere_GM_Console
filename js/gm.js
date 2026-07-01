@@ -2500,9 +2500,29 @@ export function mountGm(root) {
     dragPending = true;
     dragRAF = requestAnimationFrame(flushDragBroadcast);
   }
+  // A token is a SQUARE element drawn as a circle, and the active token sits above the rest
+  // (z-index:5), so its transparent corner can overhang a neighbour and swallow the click --
+  // which read as self-targeting and silently did nothing. Resolve a board click to the token
+  // whose CIRCLE is actually under the pointer (nearest centre wins when circles overlap), so
+  // you always target/grab the marker you see, not whichever square the DOM happened to hit.
+  function tokenElAtPoint(cx, cy) {
+    const tokens = (state.stage && state.stage.tokens) || [];
+    let bestEl = null, bestDist = Infinity;
+    boardView.el.querySelectorAll('.token').forEach((el) => {
+      if (!tokens.some((t) => t.instId === el.dataset.instId)) return;
+      const r = el.getBoundingClientRect();
+      if (!r.width) return;
+      const rad = r.width / 2;
+      const dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= rad * rad && d2 < bestDist) { bestDist = d2; bestEl = el; }
+    });
+    return bestEl;
+  }
   function onBoardPointerDown(e) {
-    const tokenEl = e.target.closest && e.target.closest('.token');
+    let tokenEl = e.target.closest && e.target.closest('.token');
     if (!tokenEl || !boardView.el.contains(tokenEl)) return;
+    tokenEl = tokenElAtPoint(e.clientX, e.clientY) || tokenEl;   // prefer the circle under the pointer
     const instId = tokenEl.dataset.instId;
     const tokens = (state.stage && state.stage.tokens) || [];
     if (!tokens.some((t) => t.instId === instId)) return;
