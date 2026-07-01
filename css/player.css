@@ -300,7 +300,7 @@
   fill: var(--token-cond-color, #fff); stroke: var(--token-cond-outline, rgba(0, 0, 0, 0.85)); stroke-width: 3.4px; paint-order: stroke;
   /* Base 23px (in the 100x100 token viewBox), scaled by the builder's cond-size;
      letter-spacing (in viewBox units) is a slider that un-squishes the curved word. */
-  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1)); letter-spacing: var(--token-cond-spacing, 0.8px);
+  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1) * var(--token-cond-fit, 1)); letter-spacing: var(--token-cond-spacing, 0.8px);
 }
 
 /* ---------- Player view: fullscreen letterbox ---------- */

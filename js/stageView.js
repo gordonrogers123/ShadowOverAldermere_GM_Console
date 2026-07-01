@@ -738,15 +738,14 @@ export function createStageView(root) {
       if (tp) {
         const txt = list.join(' · ');
         if (tp.textContent !== txt) tp.textContent = txt;
-        // Fit the word(s) to the arc so SVG doesn't clip the overflow -- a long condition
-        // like "unconscious" would otherwise lose both ends ("nconsciou"), worse the larger
-        // the text. Re-measured each render so a condition-size change re-fits too. The arc
-        // chord is 120 user units wide; keep the text a touch inside that (COND_ARC_MAX).
-        tp.removeAttribute('textLength'); tp.removeAttribute('lengthAdjust');
-        if (list.length) {
-          let natural = 0; try { natural = tp.getComputedTextLength ? tp.getComputedTextLength() : 0; } catch (_) {}
-          if (natural > 108) { tp.setAttribute('textLength', 108); tp.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
-        }
+        // Fit long conditions to the arc so SVG doesn't drop the end characters: a word
+        // whose advance exceeds the arc PATH length rides off it and loses the ends
+        // ("unconscious" -> "nconsciou"), worse the larger the text. Scale the font by
+        // CHARACTER COUNT (deterministic -- getComputedTextLength is unreliable mid-render)
+        // so anything past what the arc comfortably holds (~MAX_CHARS) shrinks to fit.
+        // Drives --token-cond-fit in CSS.
+        const MAX_CHARS = 8;
+        el.style.setProperty('--token-cond-fit', (txt.length > MAX_CHARS ? MAX_CHARS / txt.length : 1).toFixed(3));
       }
     }
   }
