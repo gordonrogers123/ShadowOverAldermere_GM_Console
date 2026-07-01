@@ -412,9 +412,46 @@ export function createStageView(root) {
     });
   }
 
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  // HP fill colour by ratio: green stays through healthy (>=60%), fades to orange
+  // when hurt (~30%), then to red when critical (0%).
+  function hpColor(ratio) {
+    const r = Math.max(0, Math.min(1, ratio));
+    const green = [91, 189, 106], orange = [235, 160, 40], red = [224, 82, 79];
+    const mix = (a, b, t) => 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(', ') + ')';
+    if (r >= 0.6) return mix(orange, green, 1);                 // healthy: green
+    if (r >= 0.3) return mix(orange, green, (r - 0.3) / 0.3);   // 60% green -> 30% orange
+    return mix(red, orange, r / 0.3);                           // 30% orange -> 0% red
+  }
+  // Condition overlay: an SVG whose textPath curves the condition word(s) around
+  // the top arc of the token ring. One unique arc id per token instance.
+  function buildCondOverlay(instId) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'token-cond');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.style.display = 'none';
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const arc = document.createElementNS(SVG_NS, 'path');
+    const id = 'tcarc-' + instId;
+    arc.setAttribute('id', id);
+    arc.setAttribute('d', 'M -10,40 A 60,60 0 0 1 110,40');   // top arc well ABOVE the ring/glow, left -> right (upright)
+    arc.setAttribute('fill', 'none');
+    defs.append(arc);
+    const text = document.createElementNS(SVG_NS, 'text');
+    text.setAttribute('class', 'token-cond-text');
+    const tp = document.createElementNS(SVG_NS, 'textPath');
+    tp.setAttribute('startOffset', '50%');
+    tp.setAttribute('text-anchor', 'middle');
+    tp.setAttribute('href', '#' + id);
+    tp.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#' + id);
+    text.append(tp);
+    svg.append(defs, text);
+    return svg;
+  }
+
   function buildTokenEl(inst) {
     const cast = CAST_BY_ID[inst.castId] ||
-      { name: inst.label, ringColor: inst.kind === 'enemy' ? '#8a2e2e' : '#2f6b43' };
+      { name: inst.label, ringColor: inst.kind === 'enemy' ? '#8a2e2e' : inst.kind === 'npc' ? '#6f9bd1' : '#2f6b43' };
     const el = document.createElement('div');
     el.className = 'token token-' + inst.kind;
     el.dataset.instId = inst.instId;
@@ -438,12 +475,47 @@ export function createStageView(root) {
     label.className = 'token-label';
     label.textContent = inst.label;
 
-    el.append(fallback, img, label);
+    // GM-toggled on-map overlays: an HP bar (heroes/NPCs only) and condition
+    // badges. Kept hidden here; populated + shown per state in updateTokens.
+    const hpbar = document.createElement('div'); hpbar.className = 'token-hpbar'; hpbar.style.display = 'none';
+    hpbar.append(document.createElement('i'));
+    const cond = buildCondOverlay(inst.instId);
+
+    el.append(fallback, img, label, hpbar, cond);
     if (cast.tokenImage) {
       img.src = cast.tokenImage;
       if (img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
     }
     return el;
+  }
+
+  // On-map combat overlays, driven by state.stage.hpOnMap / conditionsOnMap. Runs
+  // on the GM board AND the Player TV (shared compositor). Enemy HP is never shown.
+  function updateTokenOverlays(el, inst, state) {
+    const hpOn = !!(state.stage && state.stage.hpOnMap);
+    const condOn = !!(state.stage && state.stage.conditionsOnMap);
+    const hpbar = el.querySelector('.token-hpbar');
+    if (hpbar) {
+      const hp = inst.hp || {};
+      const canHp = inst.kind === 'hero' || inst.kind === 'npc';   // enemy HP stays hidden
+      const showHp = hpOn && canHp && hp.max != null;
+      hpbar.style.display = showHp ? '' : 'none';
+      if (showHp) {
+        const cur = hp.current != null ? hp.current : hp.max;
+        const ratio = hp.max ? cur / hp.max : 0;
+        const fill = hpbar.firstChild;
+        fill.style.width = Math.max(0, Math.min(100, Math.round(ratio * 100))) + '%';
+        fill.style.background = hpColor(ratio);
+      }
+    }
+    const cond = el.querySelector('.token-cond');
+    if (cond) {
+      const list = (condOn && Array.isArray(inst.conditions)) ? inst.conditions.slice(0, 3) : [];
+      cond.style.display = list.length ? '' : 'none';
+      const tp = cond.querySelector('textPath');
+      const txt = list.join(' · ');
+      if (tp && tp.textContent !== txt) tp.textContent = txt;
+    }
   }
 
   function updateTokenEl(el, inst) {
@@ -477,6 +549,7 @@ export function createStageView(root) {
       el.dataset.y = inst.y;
       el.classList.toggle('is-hidden', inst.visible === false);
       el.classList.toggle('is-active', !!activeId && inst.instId === activeId);
+      updateTokenOverlays(el, inst, state);
     }
     existing.forEach((el, id) => { if (!seen.has(id)) el.remove(); });
 

@@ -20,7 +20,7 @@ import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
 import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
-import { CONDITIONS } from './conditions.js';
+import { CONDITIONS, CONDITION_INFO } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
 
@@ -238,6 +238,13 @@ export function mountGm(root) {
                   </div>
                   <div class="roster-group">
                     <div class="roster-group-head">
+                      <span class="roster-group-label">NPCs</span>
+                      <button class="roster-all" data-group="npcs" type="button">Select all</button>
+                    </div>
+                    <div class="roster-npcs"></div>
+                  </div>
+                  <div class="roster-group">
+                    <div class="roster-group-head">
                       <span class="roster-group-label">Enemies</span>
                       <button class="roster-all" data-group="enemies" type="button">Select all</button>
                     </div>
@@ -350,8 +357,10 @@ export function mountGm(root) {
     mmResetLayout: root.querySelector('.mm-reset-layout'),
     mapRoster:    root.querySelector('.mapmode-roster'),
     rosterHeroes: root.querySelector('.roster-heroes'),
+    rosterNpcs:   root.querySelector('.roster-npcs'),
     rosterEnemies: root.querySelector('.roster-enemies'),
     rosterAllHeroes:  root.querySelector('.roster-all[data-group="heroes"]'),
+    rosterAllNpcs:    root.querySelector('.roster-all[data-group="npcs"]'),
     rosterAllEnemies: root.querySelector('.roster-all[data-group="enemies"]'),
     bMusic:       root.querySelector('.b-music'),
     bAmbience:    root.querySelector('.b-ambience'),
@@ -416,7 +425,24 @@ export function mountGm(root) {
   const mapBody = document.createElement('div');
   mapBody.className = 'mapmode-body';
   els.mapboard.replaceWith(mapBody);
-  mapBody.append(combatCol, els.mapboard);
+  // A slim toolbar directly above the board holds the on-map display toggles:
+  // hero/NPC HP bars + condition icons, drawn on the GM board AND the Player TV.
+  const boardWrap = document.createElement('div'); boardWrap.className = 'mm-board-wrap';
+  const boardToolbar = document.createElement('div'); boardToolbar.className = 'mm-board-toolbar';
+  const tbLabel = document.createElement('span'); tbLabel.className = 'mm-toolbar-label'; tbLabel.textContent = 'On map';
+  els.hpToggle = document.createElement('button');
+  els.hpToggle.type = 'button'; els.hpToggle.className = 'gm-button btn--toggle mm-toggle mm-hp-toggle';
+  els.hpToggle.textContent = 'Hero HP';
+  els.hpToggle.title = 'Show HP bars on hero / NPC tokens (GM board + Player TV)';
+  els.hpToggle.addEventListener('click', () => { ensureTokens(); state.stage.hpOnMap = !state.stage.hpOnMap; commit(); });
+  els.condToggle = document.createElement('button');
+  els.condToggle.type = 'button'; els.condToggle.className = 'gm-button btn--toggle mm-toggle mm-cond-toggle';
+  els.condToggle.textContent = 'Conditions';
+  els.condToggle.title = 'Show condition icons on every token (GM board + Player TV)';
+  els.condToggle.addEventListener('click', () => { ensureTokens(); state.stage.conditionsOnMap = !state.stage.conditionsOnMap; commit(); });
+  boardToolbar.append(tbLabel, els.hpToggle, els.condToggle);
+  mapBody.append(combatCol, boardWrap);
+  boardWrap.append(boardToolbar, els.mapboard);
   // The map-variant reveal + Save/Reset layout ride ON the board header row, next
   // to the title and the Edit/Exit nav -- no separate controls strip.
   els.mapmodeHeadActions.append(els.variantRow, els.controlsMap);
@@ -1314,7 +1340,7 @@ export function mountGm(root) {
   function clamp01(n) { n = +n; if (!isFinite(n)) return 0; return n < 0 ? 0 : n > 1 ? 1 : n; }
   function sceneHasMap(scene) { return !!(scene && scene.maps && Object.keys(scene.maps).length); }
   function castEntry(castId, kind) {
-    const list = kind === 'hero' ? CAST.heroes : CAST.enemies;
+    const list = kind === 'hero' ? CAST.heroes : kind === 'npc' ? CAST.npcs : CAST.enemies;
     return (list || []).find((c) => c.id === castId) || null;
   }
   // "Brigands" -> "Brigand": prefer an explicit singular, else strip a
@@ -1359,10 +1385,10 @@ export function mountGm(root) {
     ensureTokens();
     const tokens = state.stage.tokens;
     let label, visible;
-    if (kind === 'hero') {
-      if (tokens.some((t) => t.kind === 'hero' && t.castId === castId)) return;  // heroes are unique
+    if (kind === 'hero' || kind === 'npc') {
+      if (tokens.some((t) => t.kind === kind && t.castId === castId)) return;  // heroes/NPCs are unique
       label = cast.name;
-      visible = true;                              // heroes are placed in the open
+      visible = true;                              // allies are placed in the open
     } else {
       label = enemySingular(cast) + ' ' + nextEnemyNumber(tokens, castId);
       visible = false;                             // enemies are staged hidden, revealed on cue
@@ -1724,11 +1750,12 @@ export function mountGm(root) {
   function renderRoster(scene) {
     const roster = scene.tokens || {};
     const heroes = Array.isArray(roster.heroes) ? roster.heroes : [];
+    const npcs = Array.isArray(roster.npcs) ? roster.npcs : [];
     const enemies = Array.isArray(roster.enemies) ? roster.enemies : [];
     const placed = (state.stage && state.stage.tokens) || [];
     els.mapRoster.innerHTML = '';
 
-    if (!heroes.length && !enemies.length) {
+    if (!heroes.length && !enemies.length && !npcs.length) {
       const p = document.createElement('p'); p.className = 'mmr-empty';
       p.textContent = 'No roster set. Edit the scene to choose heroes and enemies.';
       els.mapRoster.append(p); return;
@@ -1738,13 +1765,24 @@ export function mountGm(root) {
     const nameCell = (c, label, hidden) => { const e = cell('mmr-namecell'); e.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(label, hidden)); return e; };
     const addRow = (tbody, cells, cls) => { const tr = document.createElement('tr'); tr.className = 'mmr-row' + (cls ? ' ' + cls : ''); for (const td of cells) tr.append(td); tbody.append(tr); };
 
-    if (heroes.length) {
-      const { col, tbody } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero'));
+    if (heroes.length || npcs.length) {
+      const { col, tbody } = rosterColumn('Heroes', () => { for (const id of heroes) addToken(id, 'hero'); }, placed.filter((t) => t.kind === 'hero' || t.kind === 'npc'));
       for (const id of heroes) {
         const c = castEntry(id, 'hero'); if (!c) continue;
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
         if (inst) tbody.append(placedRow(inst, c));
         else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'hero')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 4), addTd]); }
+      }
+      // Allied NPCs live under the Heroes column, in their own labelled sub-section.
+      if (npcs.length) {
+        const sub = document.createElement('tr'); sub.className = 'mmr-subhead';
+        const sc = document.createElement('td'); sc.colSpan = 6; sc.textContent = 'NPCs'; sub.append(sc); tbody.append(sub);
+        for (const id of npcs) {
+          const c = castEntry(id, 'npc'); if (!c) continue;
+          const inst = placed.find((t) => t.kind === 'npc' && t.castId === id);
+          if (inst) tbody.append(placedRow(inst, c));
+          else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'npc')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 4), addTd]); }
+        }
       }
       els.mapRoster.append(col);
     }
@@ -1871,6 +1909,7 @@ export function mountGm(root) {
     const host = els.statsheet; host.innerHTML = '';
     const ctx = activeStatContext();
     host.classList.toggle('is-hero', !!ctx && ctx.token.kind === 'hero');
+    host.classList.toggle('is-npc', !!ctx && ctx.token.kind === 'npc');
     if (!ctx) {
       const p = document.createElement('p'); p.className = 'stat-empty';
       p.textContent = 'Place a combatant and apply initiative to see its card.';
@@ -1889,8 +1928,10 @@ export function mountGm(root) {
     const nameRow = document.createElement('div'); nameRow.className = 'stat-name-row';
     // Heading is the token's own label so the numbered iteration shows ("Pale Husk 3").
     const nm = document.createElement('h3'); nm.className = 'stat-name'; nm.textContent = token.label;
-    const tag = document.createElement('span'); tag.className = 'stat-tag ' + (token.kind === 'hero' ? 'is-hero' : 'is-enemy');
-    tag.textContent = 'Active · ' + (token.kind === 'hero' ? 'Hero' : 'Enemy');
+    const kindTag = token.kind === 'hero' ? 'is-hero' : token.kind === 'npc' ? 'is-npc' : 'is-enemy';
+    const kindLabel = token.kind === 'hero' ? 'Hero' : token.kind === 'npc' ? 'NPC' : 'Enemy';
+    const tag = document.createElement('span'); tag.className = 'stat-tag ' + kindTag;
+    tag.textContent = 'Active · ' + kindLabel;
     nameRow.append(nm, tag); idBox.append(nameRow);
     // Subtitle: the class line if present, else the stat block's flavour name when the
     // label doesn't already carry it (so "Brigand 1" shows "Roadside Raider", but
@@ -1928,38 +1969,56 @@ export function mountGm(root) {
     if (stats && stats.speed) lines.append(line('Speed', stats.speed));
     if (lines.children.length) host.append(lines);
 
-    // ---- No stat block yet (e.g. a hero before their sheet, or a plain enemy):
-    //      a compact card -- name + HP + conditions above is the whole card. ----
-    if (!stats) {
-      if (max == null) { const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p); }
-      return;
+    // A stat block present -> full card (abilities + attacks). Absent (a hero before
+    // their sheet, an NPC, a plain enemy) -> compact card; name + HP + conditions.
+    if (stats) {
+      // ---- Abilities ----
+      if (stats.abilities) {
+        const ab = document.createElement('div'); ab.className = 'stat-abils';
+        for (const [k, lab] of [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']]) {
+          const v = stats.abilities[k] == null ? 0 : stats.abilities[k];
+          const tile = document.createElement('div'); tile.className = 'stat-abil';
+          const t = document.createElement('span'); t.className = 'stat-abil-k'; t.textContent = lab;
+          const n = document.createElement('span'); n.className = 'stat-abil-v'; n.textContent = (v >= 0 ? '+' : '') + v;
+          tile.append(t, n); ab.append(tile);
+        }
+        host.append(ab);
+      }
+      // ---- Attacks (append " to hit" only to a numeric bonus, not a save/keyword) ----
+      for (const atk of (stats.attacks || [])) {
+        const a = document.createElement('div'); a.className = 'stat-attack';
+        const nm2 = document.createElement('div'); nm2.className = 'stat-attack-name'; nm2.textContent = atk.name;
+        const d = document.createElement('div'); d.className = 'stat-attack-line';
+        const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
+        d.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
+        a.append(nm2, d); host.append(a);
+      }
+    } else if (max == null) {
+      const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p);
     }
 
-    // ---- Abilities ----
-    if (stats.abilities) {
-      const ab = document.createElement('div'); ab.className = 'stat-abils';
-      for (const [k, lab] of [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']]) {
-        const v = stats.abilities[k] == null ? 0 : stats.abilities[k];
-        const tile = document.createElement('div'); tile.className = 'stat-abil';
-        const t = document.createElement('span'); t.className = 'stat-abil-k'; t.textContent = lab;
-        const n = document.createElement('span'); n.className = 'stat-abil-v'; n.textContent = (v >= 0 ? '+' : '') + v;
-        tile.append(t, n); ab.append(tile);
+    // ---- Condition effects: the rules text for each active condition, at the very
+    //      bottom, so the GM never has to look one up (e.g. what Prone actually does). ----
+    if (conds.length) {
+      const cx = document.createElement('div'); cx.className = 'stat-cond-info';
+      const lbl = document.createElement('div'); lbl.className = 'stat-cond-info-label'; lbl.textContent = 'Condition effects';
+      cx.append(lbl);
+      for (const cn of conds) {
+        const entry = document.createElement('div'); entry.className = 'stat-cond-entry';
+        const enm = document.createElement('span'); enm.className = 'stat-cond-name'; enm.textContent = cn;
+        entry.append(enm);
+        const info = CONDITION_INFO[cn];
+        if (info) { const ed = document.createElement('span'); ed.className = 'stat-cond-desc'; ed.textContent = ' — ' + info; entry.append(ed); }
+        cx.append(entry);
       }
-      host.append(ab);
-    }
-    // ---- Attacks (append " to hit" only to a numeric bonus, not a save/keyword) ----
-    for (const atk of (stats.attacks || [])) {
-      const a = document.createElement('div'); a.className = 'stat-attack';
-      const nm2 = document.createElement('div'); nm2.className = 'stat-attack-name'; nm2.textContent = atk.name;
-      const d = document.createElement('div'); d.className = 'stat-attack-line';
-      const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
-      d.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
-      a.append(nm2, d); host.append(a);
+      host.append(cx);
     }
   }
 
   function renderMapMode(scene) {
     els.mapmodeTitle.textContent = scene.name;
+    if (els.hpToggle) els.hpToggle.classList.toggle('is-on', !!(state.stage && state.stage.hpOnMap));
+    if (els.condToggle) els.condToggle.classList.toggle('is-on', !!(state.stage && state.stage.conditionsOnMap));
     els.mmResetLayout.hidden = !(scene && Array.isArray(scene.savedLayout) && scene.savedLayout.length);
     boardView.render(state, scene, { instant: true });
     boardView.layoutTokens();          // the board was just unhidden; re-pin now
@@ -2032,7 +2091,7 @@ export function mountGm(root) {
       // Each side is a roster (array) of cutouts; a new scene starts empty.
       left:  [],
       right: [],
-      roster: { heroes: [], enemies: [] },
+      roster: { heroes: [], enemies: [], npcs: [] },
       savedLayout: [],
       cues: [],
       audio: { music: [], ambience: [], sfx: [] }
@@ -2067,6 +2126,7 @@ export function mountGm(root) {
       right: sideList(scene.characters && scene.characters.right),
       roster: {
         heroes: Array.isArray(t.heroes) ? t.heroes.slice() : [],
+        npcs: Array.isArray(t.npcs) ? t.npcs.slice() : [],
         enemies: Array.isArray(t.enemies) ? t.enemies.slice() : []
       },
       // Carried opaquely through the builder; positions are edited in map mode.
@@ -2095,8 +2155,8 @@ export function mountGm(root) {
     });
     const keys = Object.keys(maps);
     const id = d.editingId || slug(d.name);
-    const roster = d.roster || { heroes: [], enemies: [] };
-    const hasRoster = (roster.heroes && roster.heroes.length) || (roster.enemies && roster.enemies.length);
+    const roster = d.roster || { heroes: [], enemies: [], npcs: [] };
+    const hasRoster = (roster.heroes && roster.heroes.length) || (roster.enemies && roster.enemies.length) || (roster.npcs && roster.npcs.length);
     const scene = {
       id,
       name: (d.name || '').trim() || humanize(id),
@@ -2449,6 +2509,7 @@ export function mountGm(root) {
       syncAllBtn();
     };
     build(els.rosterHeroes, els.rosterAllHeroes, CAST.heroes || [], draft.roster.heroes);
+    build(els.rosterNpcs, els.rosterAllNpcs, CAST.npcs || [], (draft.roster.npcs || (draft.roster.npcs = [])));
     build(els.rosterEnemies, els.rosterAllEnemies, CAST.enemies || [], draft.roster.enemies);
   }
 
