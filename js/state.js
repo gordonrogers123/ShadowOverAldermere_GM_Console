@@ -106,10 +106,10 @@ function normRoomDice(rd) {
   if (!flat.length) return null;
   return { flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0 };
 }
-// The map grid config (PR 6A). cellSize / offsetX / offsetY are fractions of the
-// map WIDTH (so cells stay square in displayed px and both screens scale alike);
-// feetPerCell drives distance/range later; color is a solid hex with a separate
-// opacity so the overlay reads at a glance. Absent -> null (Player ignores it).
+// The map grid config (PR 6A), PER MAP VARIANT. cellSize / offsetX / offsetY are
+// fractions of the map WIDTH (so cells stay square in displayed px and both screens
+// scale alike); feetPerCell drives distance/range later; color is a solid hex with
+// a separate opacity so the overlay reads at a glance.
 function normGrid(g) {
   if (!g || typeof g !== 'object') return null;
   const num = (v, d, lo, hi) => { v = +v; if (!isFinite(v)) return d; return v < lo ? lo : v > hi ? hi : v; };
@@ -118,11 +118,20 @@ function normGrid(g) {
     cellSize: num(g.cellSize, 1 / 16, 0.01, 0.5),
     offsetX: num(g.offsetX, 0, -0.5, 0.5),
     offsetY: num(g.offsetY, 0, -0.5, 0.5),
-    feetPerCell: num(g.feetPerCell, 5, 1, 100),
+    feetPerCell: num(g.feetPerCell, 5, 1, 1000),
     color: /^#[0-9a-fA-F]{6}$/.test(g.color) ? g.color : '#ffffff',
     opacity: num(g.opacity, 0.5, 0.05, 1),
     lineWidth: num(g.lineWidth, 1, 0.5, 4)
   };
+}
+// A scene can hold several maps (variants -- upper/lower floor, day/night), each
+// with its own grid alignment, so the live grids are keyed by map-variant key
+// (state.mapState). The compositor looks up the current key. Absent -> null.
+function normGrids(g) {
+  if (!g || typeof g !== 'object') return null;
+  const out = {};
+  for (const k of Object.keys(g)) { const v = normGrid(g[k]); if (v) out[k] = v; }
+  return Object.keys(out).length ? out : null;
 }
 function normalizeStage(s) {
   s = s || {};
@@ -150,12 +159,12 @@ function normalizeStage(s) {
     // never rendered (enforced in stageView). Optional/additive -> no VERSION bump.
     hpOnMap: !!s.hpOnMap,
     conditionsOnMap: !!s.conditionsOnMap,
-    // The LIVE map grid (map mode): a square cell overlay drawn on the GM board AND
-    // the Player TV. Rides the broadcast (like tokens/targetLink) so the TV always
-    // has the current geometry live; seeded from the scene's persisted default
-    // (scene.grid) when a scene is selected, and mirrored back to it when calibrated.
-    // Null when unset. Optional/additive -> no VERSION bump.
-    grid: normGrid(s.grid),
+    // The LIVE map grids (map mode), keyed by map-variant key: a square cell overlay
+    // drawn on the GM board AND the Player TV. Rides the broadcast (like tokens/
+    // targetLink) so the TV always has the current geometry live; the compositor
+    // looks up grids[state.mapState], so the grid follows the active map (incl. cue
+    // switches). Seeded from scene.grids and mirrored back. Optional -> no VERSION bump.
+    grids: normGrids(s.grids),
     // A targeting link (attacker -> target) drawn as a red arrow + glow on both
     // screens during an attack. Optional/additive; cleared on turn change.
     targetLink: (s.targetLink && s.targetLink.from && s.targetLink.to)

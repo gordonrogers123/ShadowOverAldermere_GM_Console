@@ -442,9 +442,17 @@ export function createStageView(root) {
   // Hidden unless a scene grid exists, gridVisible is on, a map is up, and tokens
   // show (map mode). Lines are clipped to the map rect so none spill onto the
   // letterbox bars.
+  // The live grid for the CURRENT map variant. Grids are keyed by map-variant key
+  // (state.mapState), so the overlay follows the active map on both screens without
+  // any re-seed plumbing -- state.mapState already rides the broadcast.
+  function currentGrid() {
+    const st = lastState && lastState.stage;
+    const grids = st && st.grids;
+    return (grids && lastState.mapState != null) ? grids[lastState.mapState] : null;
+  }
   function layoutGrid() {
     if (!gridOverlay) return;
-    const grid = lastState && lastState.stage && lastState.stage.grid;
+    const grid = currentGrid();
     const img = activeMapImg();
     if (!grid || !grid.enabled || !img || !tokensShown) { gridOverlay.style.display = 'none'; return; }
     const r = stage.getBoundingClientRect();
@@ -472,7 +480,7 @@ export function createStageView(root) {
   // unchanged when there's no enabled grid (or no map). The CALLER still decides
   // WHEN to snap (e.g. skip when the Alt key is held, for free placement).
   function snapFractionToCell(frac) {
-    const grid = lastState && lastState.stage && lastState.stage.grid;
+    const grid = currentGrid();
     const img = activeMapImg();
     if (!grid || !grid.enabled || !frac || !img) return frac;
     const r = stage.getBoundingClientRect();
