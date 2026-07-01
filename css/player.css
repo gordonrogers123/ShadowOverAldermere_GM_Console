@@ -313,3 +313,40 @@ body.view-player {
   cursor: pointer;
 }
 .view-player .sound-gate.gone { display: none; }
+
+/* ============================================================
+   Room dice -- the GM's "show the dice to the room" push. A floating panel
+   of the same polyhedral shapes the GM tray uses, the rolled number on each
+   die + a big total, centred near the top so the table can read it. It
+   slides in, then auto-dismisses (player.js timer). Crit/fumble tint a d20.
+   ============================================================ */
+.view-player .room-dice {
+  position: fixed; top: 6vh; left: 50%; transform: translateX(-50%) translateY(-1.4rem);
+  z-index: 55; display: flex; align-items: center; gap: 1.4rem;
+  padding: 1rem 1.6rem; border-radius: 14px;
+  background: rgba(28, 22, 15, 0.9); border: 1px solid #6f5a33;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+  opacity: 0; pointer-events: none;
+}
+.view-player .room-dice.is-in { animation: room-dice-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+@keyframes room-dice-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-1.4rem); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.view-player .room-dice-row { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.view-player .room-die { position: relative; width: 3.4rem; height: 3.4rem; display: inline-flex; }
+.view-player .room-die svg { width: 100%; height: 100%; display: block; }
+.view-player .room-die svg polygon, .view-player .room-die svg rect { fill: rgba(202, 166, 79, 0.1); stroke: #caa64f; stroke-width: 2; stroke-linejoin: round; }
+.view-player .room-die svg .facet { fill: rgba(202, 166, 79, 0.2); stroke-width: 1.2; }
+.view-player .room-die-num {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.35rem;
+  color: #efe4cb; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+.view-player .room-die.is-crit svg polygon { fill: rgba(123, 216, 143, 0.28); stroke: #7bd88f; }
+.view-player .room-die.is-crit .room-die-num { color: #bff2c8; }
+.view-player .room-die.is-fumble svg polygon { fill: rgba(233, 139, 139, 0.26); stroke: #e98b8b; }
+.view-player .room-die.is-fumble .room-die-num { color: #f4c4c4; }
+.view-player .room-dice-sum { display: flex; flex-direction: column; align-items: center; padding-left: 1.4rem; border-left: 1px solid #6f5a33; }
+.view-player .room-dice-eq { font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a884; }
+.view-player .room-dice-total { font-family: var(--font-display); font-weight: 700; font-size: 2.8rem; line-height: 1; color: #caa64f; }

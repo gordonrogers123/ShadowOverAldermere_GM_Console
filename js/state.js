@@ -97,6 +97,15 @@ function normalizeToken(t, i) {
 // is in map mode, telling the Player to reveal tokens). It is deliberately not
 // persisted or normalized here, so a reload clears it and the Player hides
 // tokens until the GM re-enters map mode.
+function normRoomDice(rd) {
+  if (!rd || typeof rd !== 'object' || !Array.isArray(rd.flat)) return null;
+  const flat = rd.flat
+    .map((x) => ({ d: Math.floor(+(x && x.d)) || 0, r: Math.floor(+(x && x.r)) || 0 }))
+    .filter((x) => x.d > 0 && x.r > 0)
+    .slice(0, 40);
+  if (!flat.length) return null;
+  return { flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0 };
+}
 function normalizeStage(s) {
   s = s || {};
   const side = (x) => ({
@@ -126,7 +135,10 @@ function normalizeStage(s) {
     // A targeting link (attacker -> target) drawn as a red arrow + glow on both
     // screens during an attack. Optional/additive; cleared on turn change.
     targetLink: (s.targetLink && s.targetLink.from && s.targetLink.to)
-      ? { from: String(s.targetLink.from), to: String(s.targetLink.to) } : null
+      ? { from: String(s.targetLink.from), to: String(s.targetLink.to) } : null,
+    // A dice roll pushed to the Player TV ("show the room"): { flat:[{d,r}], total,
+    // notation, n }; n is a bump counter so a repeat roll re-triggers the display.
+    roomDice: normRoomDice(s.roomDice)
   };
 }
 
@@ -175,6 +187,8 @@ function normalizeAudio(a) {
   return {
     master: clamp01(a.master == null ? 0.8 : a.master),
     masterMuted: !!a.masterMuted,   // mixer Master mute / Fade -> whole mix silent
+    sfxVolume: clamp01(a.sfxVolume == null ? 0.8 : a.sfxVolume),   // global SFX bus level
+    sfxMuted: !!a.sfxMuted,
     outputs: { player: o.player !== false, gm: !!o.gm },
     tracks,
     sfxTrigger

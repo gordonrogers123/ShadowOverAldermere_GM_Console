@@ -59,6 +59,7 @@ function resolveTrackSrc(scene, key) {
 export function createAudioEngine({ role, gestureTarget } = {}) {
   let ctx = null;
   let masterGain = null;
+  let sfxGain = null;      // global SFX bus (one-shots) under master
   let unlocked = false;
   let lastState = null;
   let lastScene = null;
@@ -79,6 +80,9 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
       masterGain = ctx.createGain();
       masterGain.gain.value = 0.8;
       masterGain.connect(ctx.destination);
+      sfxGain = ctx.createGain();
+      sfxGain.gain.value = 0.8;
+      sfxGain.connect(masterGain);   // one-shot SFX ride a global bus under master
     } catch (e) { ctx = null; }
     return ctx;
   }
@@ -106,14 +110,14 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
   // mixer level and mute, set live without disturbing the (normalised) envelope --
   // so dragging a fader never desyncs the loop dip. A bed with no fade keeps a
   // flat envelope (envGain = 1) and native looping, exactly as before.
-  function buildTrackGraph(buffer, t) {
+  function buildTrackGraph(buffer, t, dest) {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
     const panner = ctx.createStereoPanner();
     const envGain = ctx.createGain(); envGain.gain.value = 1;   // fade SHAPE (0..1)
     const volGain = ctx.createGain(); volGain.gain.value = 0;   // live LEVEL (ramps up from silence)
-    source.connect(panner); panner.connect(envGain); envGain.connect(volGain); volGain.connect(masterGain);
+    source.connect(panner); panner.connect(envGain); envGain.connect(volGain); volGain.connect(dest || masterGain);
 
     const fadeIn = Math.max(0, +t.fadeIn || 0);
     const fadeOut = Math.max(0, +t.fadeOut || 0);
@@ -227,7 +231,7 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
       const stillOut = lastState && lastState.audio && lastState.audio.outputs && lastState.audio.outputs[role];
       if (!stillOut || !unlocked) return;
       const t = { volume: cfg.volume == null ? 0.8 : cfg.volume, pan: cfg.pan || 0, loop: false };
-      const handle = buildTrackGraph(buf, t);
+      const handle = buildTrackGraph(buf, t, sfxGain);   // through the global SFX bus
       handle.update(t, 0.01);   // one-shots hit sharply, never on a cue's slow ramp
       handle.source.onended = () => handle.stop();
       try { handle.source.start(); } catch (e) {}
@@ -250,6 +254,12 @@ export function createAudioEngine({ role, gestureTarget } = {}) {
     // while keeping the stored master level for an instant un-mute.
     const effMaster = audio.masterMuted ? 0 : audio.master;
     masterGain.gain.setTargetAtTime(clamp01(effMaster), ctx.currentTime, currentTau);
+    // Global SFX bus sits UNDER master (so masterMuted already silences it); this
+    // just sets its own level from the floating audio menu's SFX fader + mute.
+    if (sfxGain) {
+      const effSfx = audio.sfxMuted ? 0 : (audio.sfxVolume == null ? 0.8 : audio.sfxVolume);
+      sfxGain.gain.setTargetAtTime(clamp01(effSfx), ctx.currentTime, currentTau);
+    }
 
     const want = new Set();
     for (const [key, t] of Object.entries(audio.tracks || {})) {

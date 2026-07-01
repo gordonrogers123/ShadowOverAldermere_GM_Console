@@ -6,15 +6,17 @@
 //  read a clear result -- the per-die breakdown and a big total, with a
 //  crit highlight on a d20. No modifier, no history: just dice + result.
 //
-//  Local UI only -- it lives in the GM window and broadcasts nothing to
-//  the Player TV (no dice on the board, by design).
+//  Local UI by default -- it lives in the GM window. With "To room" armed,
+//  a roll is ALSO pushed to the Player TV (via opts.showToRoom); the GM's
+//  own breakdown always stays local. SHAPES/dieSvg are exported so the
+//  Player renderer can draw the same dice shapes for the room display.
 // ============================================================
 
 const DICE = [4, 6, 8, 10, 12, 20, 100];
 
 // Flat polyhedral silhouettes (viewBox 0 0 48 48). The die TYPE reads from the
 // shape + its caption; the COUNT renders as a number over the die.
-const SHAPES = {
+export const SHAPES = {
   4:   '<polygon points="24,5 43,41 5,41"/>',
   6:   '<rect x="9" y="9" width="30" height="30" rx="5"/>',
   8:   '<polygon points="24,4 44,24 24,44 4,24"/>',
@@ -23,10 +25,13 @@ const SHAPES = {
   20:  '<polygon points="24,4 42,14 42,34 24,44 6,34 6,14"/><polygon class="facet" points="24,4 42,34 6,34"/>',
   100: '<polygon points="24,4 42,14 42,34 24,44 6,34 6,14"/><polygon class="facet" points="6,14 42,14 24,44"/>'
 };
-const dieSvg = (d) => `<svg viewBox="0 0 48 48" aria-hidden="true">${SHAPES[d]}</svg>`;
+export const dieSvg = (d) => `<svg viewBox="0 0 48 48" aria-hidden="true">${SHAPES[d]}</svg>`;
 const dieLabel = (d) => 'd' + d;
 
-export function mountDiceRoller(root) {
+// opts (optional): { showToRoom({flat,total,notation}), clearRoom() } -- when the
+// "To room" toggle is armed, showToRoom fires on every roll and clearRoom fires
+// when the toggle is switched off or the local result is dismissed/cleared.
+export function mountDiceRoller(root, opts = {}) {
   const host = document.createElement('div');
   host.className = 'dice-roller';
   host.innerHTML = `
@@ -40,6 +45,7 @@ export function mountDiceRoller(root) {
     <div class="dice-panel" hidden>
       <div class="dice-head">
         <span class="dice-title">Dice</span>
+        <button class="dice-toroom" type="button" aria-pressed="false" title="Also show the roll on the Player TV">To room</button>
         <button class="dice-close" type="button" aria-label="Close dice roller">&times;</button>
       </div>
       <div class="dice-tray"></div>
@@ -57,6 +63,18 @@ export function mountDiceRoller(root) {
   const panel = q('.dice-panel');
   const tray = q('.dice-tray');
   const resultEl = q('.dice-result');
+  const toRoomBtn = q('.dice-toroom');
+
+  // "To room": when armed, each roll is mirrored to the Player TV; switching it
+  // off (or dismissing the result) pulls the dice back off the TV.
+  let roomOn = false;
+  const clearRoom = () => { if (opts.clearRoom) opts.clearRoom(); };
+  toRoomBtn.addEventListener('click', () => {
+    roomOn = !roomOn;
+    toRoomBtn.classList.toggle('is-on', roomOn);
+    toRoomBtn.setAttribute('aria-pressed', roomOn ? 'true' : 'false');
+    if (!roomOn) clearRoom();
+  });
 
   const counts = {};      // sides -> count
   const dieEls = {};
@@ -105,6 +123,7 @@ export function mountDiceRoller(root) {
     }
     const notation = active.map((d) => counts[d] + 'd' + d).join(' + ');
     renderResult(flat, total, notation);
+    if (roomOn && opts.showToRoom) opts.showToRoom({ flat, total, notation });
   }
 
   function renderResult(flat, total, notation) {
@@ -117,7 +136,7 @@ export function mountDiceRoller(root) {
     dismiss.textContent = '×';
     dismiss.title = 'Dismiss';
     dismiss.setAttribute('aria-label', 'Dismiss result');
-    dismiss.addEventListener('click', () => { resultEl.hidden = true; });
+    dismiss.addEventListener('click', () => { resultEl.hidden = true; if (roomOn) clearRoom(); });
 
     const note = document.createElement('div');
     note.className = 'dr-notation';
@@ -162,5 +181,5 @@ export function mountDiceRoller(root) {
   launcher.addEventListener('click', () => setOpen(panel.hidden));
   q('.dice-close').addEventListener('click', () => setOpen(false));
   q('.dice-roll').addEventListener('click', roll);
-  q('.dice-clear').addEventListener('click', () => { clearAll(); resultEl.hidden = true; });
+  q('.dice-clear').addEventListener('click', () => { clearAll(); resultEl.hidden = true; if (roomOn) clearRoom(); });
 }

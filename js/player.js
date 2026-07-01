@@ -16,12 +16,49 @@ import { loadState } from './state.js';
 import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { createAudioEngine } from './audioEngine.js';
+import { dieSvg } from './diceRoller.js';
 
 const CURSOR_HIDE_MS = 3000;
+const ROOM_DICE_MS = 7000;   // how long a pushed roll lingers on the TV
 
 export function mountPlayer(root) {
   const view = createStageView(root);
   let firstPaint = true;
+
+  // "Show the dice to the room": when the GM arms "To room", each roll arrives as
+  // state.stage.roomDice = { flat:[{d,r}], total, notation, n }. We draw the same
+  // die shapes the GM tray uses, with the rolled number on each and a big total,
+  // then auto-dismiss. n is a bump counter so a repeat roll re-triggers the show.
+  const roomDice = document.createElement('div');
+  roomDice.className = 'room-dice';
+  roomDice.hidden = true;
+  document.body.appendChild(roomDice);
+  let roomDiceN = -1;
+  let roomDiceTimer = null;
+  function renderRoomDice(rd) {
+    if (!rd || !Array.isArray(rd.flat) || !rd.flat.length) {
+      roomDice.hidden = true;
+      roomDice.classList.remove('is-in');
+      roomDiceN = rd ? rd.n : -1;
+      clearTimeout(roomDiceTimer);
+      return;
+    }
+    if (rd.n === roomDiceN) return;   // already processed this roll (shown, adopted, or dismissed)
+    roomDiceN = rd.n;
+    const dice = rd.flat.map((x) => {
+      const cls = (x.d === 20 && x.r === 20) ? ' is-crit' : (x.d === 20 && x.r === 1) ? ' is-fumble' : '';
+      return `<span class="room-die${cls}">${dieSvg(x.d)}<span class="room-die-num">${x.r}</span></span>`;
+    }).join('');
+    roomDice.innerHTML =
+      `<div class="room-dice-row">${dice}</div>` +
+      `<div class="room-dice-sum"><span class="room-dice-eq">Total</span><span class="room-dice-total">${rd.total}</span></div>`;
+    roomDice.hidden = false;
+    roomDice.classList.remove('is-in');
+    void roomDice.offsetWidth;   // restart the entrance animation on a repeat roll
+    roomDice.classList.add('is-in');
+    clearTimeout(roomDiceTimer);
+    roomDiceTimer = setTimeout(() => { roomDice.hidden = true; roomDice.classList.remove('is-in'); }, ROOM_DICE_MS);
+  }
 
   // Audio: the Player is on the TV, so it is the room's output by default. The
   // engine follows state; a one-time click anywhere unlocks it (browsers block
@@ -37,10 +74,16 @@ export function mountPlayer(root) {
 
   function paint(state) {
     const scene = sceneById(state.sceneId);
-    view.render(state, scene, { instant: firstPaint });
+    const first = firstPaint;
+    view.render(state, scene, { instant: first });
     firstPaint = false;
     preloadAround(state, scene);
     engine.sync(state, scene);
+    const rd = state.stage && state.stage.roomDice;
+    // On the very first paint we adopt any restored roll silently (no stale pop-up
+    // on a page reload); after that a bumped n shows a fresh roll.
+    if (first) roomDiceN = rd ? rd.n : -1;
+    else renderRoomDice(rd);
   }
 
   // Preload the other background variants and both character cutouts so a
