@@ -11,26 +11,28 @@
 // ============================================================
 
 export const BACKGROUNDS = [
-  { id: "A1 S1 -- Brigands", name: "A1 S1 Brigands", src: "assets/backgrounds/A1 S1 -- Brigands.png", kind: "background" },
-  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png", kind: "background" },
-  { id: "A1 S2 City Gates -- Day", name: "A1 S2 City Gates Day", src: "assets/backgrounds/A1 S2 City Gates -- Day.png", kind: "background" },
-  { id: "A1 S2 City Gates -- Night", name: "A1 S2 City Gates Night", src: "assets/backgrounds/A1 S2 City Gates -- Night.png", kind: "background" },
-  { id: "A1 S2 Gate Guard Post", name: "A1 S2 Gate Guard Post", src: "assets/backgrounds/A1 S2 Gate Guard Post.png", kind: "background" },
-  { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/backgrounds/A1 S2 Tent Camp -- Day.png", kind: "background" },
-  { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/backgrounds/A1 S2 Tent Camp -- Night.png", kind: "background" },
-  { id: "A1 S3 -- Pale Husk", name: "A1 S3 Pale Husk", src: "assets/backgrounds/A1 S3 -- Pale Husk.png", kind: "background" },
-  { id: "A1 S5 Tavern Harth", name: "A1 S5 Tavern Harth", src: "assets/backgrounds/A1 S5 Tavern Harth.png", kind: "background" },
-  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png", kind: "map" },
-  { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png", kind: "map" },
-  { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map" },
-  { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/maps/A1 S2 Tent Camp -- Day.png", kind: "map" },
-  { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/maps/A1 S2 Tent Camp -- Night.png", kind: "map" },
-  { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png", kind: "map" },
-  { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png", kind: "map" },
-  { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png", kind: "map" },
-  { id: "A1 S3 Town Center -- Night", name: "A1 S3 Town Center Night", src: "assets/maps/A1 S3 Town Center -- Night.png", kind: "map" },
-  { id: "A1 S3 Town Center", name: "A1 S3 Town Center", src: "assets/maps/A1 S3 Town Center.png", kind: "map" },
-  { id: "A1 S4 Market", name: "A1 S4 Market", src: "assets/maps/A1 S4 Market.png", kind: "map" }
+  { id: "A1 S1 -- Brigands", name: "A1 S1 Brigands", src: "assets/backgrounds/A1 S1 -- Brigands.png", kind: "background", type: "image" },
+  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/backgrounds/A1 S1 Road to Aldermere.png", kind: "background", type: "image" },
+  { id: "A1 S2 City Gates -- Day", name: "A1 S2 City Gates Day", src: "assets/backgrounds/A1 S2 City Gates -- Day.png", kind: "background", type: "image" },
+  { id: "A1 S2 City Gates -- Night", name: "A1 S2 City Gates Night", src: "assets/backgrounds/A1 S2 City Gates -- Night.png", kind: "background", type: "image" },
+  { id: "A1 S2 Gate Guard Post", name: "A1 S2 Gate Guard Post", src: "assets/backgrounds/A1 S2 Gate Guard Post.png", kind: "background", type: "image" },
+  { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/backgrounds/A1 S2 Tent Camp -- Day.png", kind: "background", type: "image" },
+  { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/backgrounds/A1 S2 Tent Camp -- Night.png", kind: "background", type: "image" },
+  { id: "A1 S3 -- Pale Husk", name: "A1 S3 Pale Husk", src: "assets/backgrounds/A1 S3 -- Pale Husk.png", kind: "background", type: "image" },
+  { id: "A1 S5 Tavern Harth", name: "A1 S5 Tavern Harth", src: "assets/backgrounds/A1 S5 Tavern Harth.png", kind: "background", type: "image" },
+  { id: "A1 S1 Road to Aldermere", name: "A1 S1 Road To Aldermere", src: "assets/maps/A1 S1 Road to Aldermere.png", kind: "map", type: "image" },
+  { id: "A1 S2 City Gate -- Day", name: "A1 S2 City Gate Day", src: "assets/maps/A1 S2 City Gate -- Day.png", kind: "map", type: "image" },
+  { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map", type: "image" },
+  { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/maps/A1 S2 Tent Camp -- Day.png", kind: "map", type: "image" },
+  { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/maps/A1 S2 Tent Camp -- Night.png", kind: "map", type: "image" },
+  { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png", kind: "map", type: "image" },
+  { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png", kind: "map", type: "image" },
+  { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png", kind: "map", type: "image" },
+  { id: "A1 S3 Town Center -- Night", name: "A1 S3 Town Center Night", src: "assets/maps/A1 S3 Town Center -- Night.png", kind: "map", type: "image" },
+  { id: "A1 S3 Town Center", name: "A1 S3 Town Center", src: "assets/maps/A1 S3 Town Center.png", kind: "map", type: "image" },
+  { id: "A1 S4 Market", name: "A1 S4 Market", src: "assets/maps/A1 S4 Market.png", kind: "map", type: "image" },
+  { id: "A1 S3 Inn - Level 1", name: "A1 S3 Inn Level 1", src: "assets/maps/animated/A1 S3 Inn - Level 1.mp4", kind: "map", type: "video" },
+  { id: "This_is_a_dungeons_and_dragons", name: "This Is A Dungeons And Dragons", src: "assets/maps/animated/This_is_a_dungeons_and_dragons.mp4", kind: "map", type: "video" }
 ];
 
 export const CHARACTERS = [

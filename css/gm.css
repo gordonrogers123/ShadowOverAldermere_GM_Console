@@ -837,6 +837,17 @@ body.view-gm {
 .view-gm .mm-board-toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .view-gm .mm-toolbar-label { font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-100); font-weight: 700; letter-spacing: 0.05em; color: var(--neutral); }
 .view-gm .mm-toggle { font-size: var(--fs-100); padding: 0.3rem 0.7rem; }
+/* Grid calibration panel (PR 6A): compact live sliders under the board toolbar,
+   shown only while the grid is on. Cell size + X/Y offset calibrate the overlay
+   against the map's own grid; feet/cell, opacity, width and color style it. */
+.view-gm .mm-grid-panel { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 6px; }
+.view-gm .mm-grid-panel[hidden] { display: none; }
+.view-gm .mm-grid-set { display: flex; flex-direction: column; gap: 2px; }
+.view-gm .mm-grid-label { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--neutral); text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--fs-100); font-weight: 700; }
+.view-gm .mm-grid-val { color: #e8dcc0; font-variant-numeric: tabular-nums; font-weight: 600; }
+.view-gm .mm-grid-range { width: 8rem; max-width: 40vw; }
+.view-gm .mm-grid-colorset { justify-content: flex-end; }
+.view-gm .mm-grid-colorinp { width: 2.6rem; height: 1.6rem; padding: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; background: none; cursor: pointer; }
 @media (max-width: 1100px) { .view-gm .mapmode-body { grid-template-columns: 1fr; } }
 /* In the 2-column combat layout the init+stat column tracks the board's height: the
    board defines the row (align-self:start keeps its 16:9 box), the column stretches to

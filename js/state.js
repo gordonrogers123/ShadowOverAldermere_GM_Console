@@ -106,6 +106,24 @@ function normRoomDice(rd) {
   if (!flat.length) return null;
   return { flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0 };
 }
+// The map grid config (PR 6A). cellSize / offsetX / offsetY are fractions of the
+// map WIDTH (so cells stay square in displayed px and both screens scale alike);
+// feetPerCell drives distance/range later; color is a solid hex with a separate
+// opacity so the overlay reads at a glance. Absent -> null (Player ignores it).
+function normGrid(g) {
+  if (!g || typeof g !== 'object') return null;
+  const num = (v, d, lo, hi) => { v = +v; if (!isFinite(v)) return d; return v < lo ? lo : v > hi ? hi : v; };
+  return {
+    enabled: !!g.enabled,
+    cellSize: num(g.cellSize, 1 / 16, 0.01, 0.5),
+    offsetX: num(g.offsetX, 0, -0.5, 0.5),
+    offsetY: num(g.offsetY, 0, -0.5, 0.5),
+    feetPerCell: num(g.feetPerCell, 5, 1, 100),
+    color: /^#[0-9a-fA-F]{6}$/.test(g.color) ? g.color : '#ffffff',
+    opacity: num(g.opacity, 0.5, 0.05, 1),
+    lineWidth: num(g.lineWidth, 1, 0.5, 4)
+  };
+}
 function normalizeStage(s) {
   s = s || {};
   const side = (x) => ({
@@ -132,6 +150,12 @@ function normalizeStage(s) {
     // never rendered (enforced in stageView). Optional/additive -> no VERSION bump.
     hpOnMap: !!s.hpOnMap,
     conditionsOnMap: !!s.conditionsOnMap,
+    // The LIVE map grid (map mode): a square cell overlay drawn on the GM board AND
+    // the Player TV. Rides the broadcast (like tokens/targetLink) so the TV always
+    // has the current geometry live; seeded from the scene's persisted default
+    // (scene.grid) when a scene is selected, and mirrored back to it when calibrated.
+    // Null when unset. Optional/additive -> no VERSION bump.
+    grid: normGrid(s.grid),
     // A targeting link (attacker -> target) drawn as a red arrow + glow on both
     // screens during an attack. Optional/additive; cleared on turn change.
     targetLink: (s.targetLink && s.targetLink.from && s.targetLink.to)

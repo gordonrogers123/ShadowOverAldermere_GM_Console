@@ -207,6 +207,11 @@
   0%, 100% { box-shadow: 0 0 0 0.06em #e5342f, 0 0 0.32em 0.06em rgba(229, 52, 47, 0.6), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
   50%      { box-shadow: 0 0 0 0.06em #e5342f, 0 0 0.6em 0.14em rgba(229, 52, 47, 1), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
 }
+/* Map grid overlay (PR 6A): a single SVG path of cell lines over the displayed
+   map rect, above the map and below the tokens/targeting arrow. Colour, width and
+   opacity are set inline by layoutGrid from the per-scene grid config. */
+.stage .grid-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.stage .grid-overlay path { fill: none; stroke: var(--grid-color, rgba(255, 255, 255, 0.4)); stroke-width: var(--grid-width, 1px); shape-rendering: crispEdges; }
 .stage .target-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .stage .target-line { fill: none; stroke: #e5342f; stroke-linecap: round; stroke-dasharray: 11 7; animation: target-march 0.5s linear infinite; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
 .stage .target-arrowhead { fill: #e5342f; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
