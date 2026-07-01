@@ -247,8 +247,10 @@
   transform: translateX(-50%);
   margin-top: 0.12em;
   white-space: nowrap;
-  /* Base 0.24em, scaled by the token builder's per-character name-size setting. */
+  /* Base 0.24em, scaled by the token builder's name-size setting; letter-spacing
+     is a separate builder slider (0 .. 0.4em). */
   font-size: calc(0.24em * var(--token-name-scale, 1));
+  letter-spacing: var(--token-name-spacing, 0);
   font-weight: 600;
   line-height: 1.25;
   padding: 0 0.4em;
@@ -282,8 +284,9 @@
 }
 .stage .token-cond-text {
   fill: #fff; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3.4px; paint-order: stroke;
-  /* Base 23px (in the 100x100 token viewBox), scaled by the builder's cond-size. */
-  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1)); letter-spacing: 0.4px;
+  /* Base 23px (in the 100x100 token viewBox), scaled by the builder's cond-size;
+     letter-spacing (in viewBox units) is a slider that un-squishes the curved word. */
+  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1)); letter-spacing: var(--token-cond-spacing, 0.48);
 }
 
 /* ---------- Player view: fullscreen letterbox ---------- */

@@ -514,7 +514,9 @@ export function createStageView(root) {
     // size, condition side + word-wrap depth, HP-bar height.
     const d = globalDisplay();
     el.style.setProperty('--token-name-scale', d.nameSize || 1);
+    el.style.setProperty('--token-name-spacing', ((Number(d.nameSpacing) || 0) / 100 * 0.4).toFixed(3) + 'em');
     el.style.setProperty('--token-cond-scale', d.condSize || 1);
+    el.style.setProperty('--token-cond-spacing', ((d.condSpacing == null ? 8 : Number(d.condSpacing)) / 100 * 6).toFixed(2));   // SVG user units
     el.classList.toggle('cond-below', d.condPos === 'below');
     // HP-bar vertical position: hpPos 0 (bottom) .. 100 (top) -> a top offset in %.
     el.style.setProperty('--token-hp-y', (84 - (Number(d.hpPos) || 0) * 0.82).toFixed(1) + '%');

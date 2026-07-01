@@ -67,7 +67,9 @@ function cleanDisplay(d) {
   if (!d || typeof d !== 'object') return null;
   const out = {};
   if (d.nameSize != null) out.nameSize = clampNum(d.nameSize, 0.6, 1.6, 1);
+  if (d.nameSpacing != null) out.nameSpacing = clampNum(d.nameSpacing, 0, 100, 0);   // name letter-spacing (0 .. 0.4em)
   if (d.condSize != null) out.condSize = clampNum(d.condSize, 0.6, 1.8, 1);
+  if (d.condSpacing != null) out.condSpacing = clampNum(d.condSpacing, 0, 100, 8);   // condition letter-spacing (spreads the curved word)
   if (d.condPos === 'above' || d.condPos === 'below') out.condPos = d.condPos;
   if (d.condCurve != null) out.condCurve = clampNum(d.condCurve, 0, 100, 55);   // how tightly the word wraps (0 flat .. 100 deep)
   if (d.hpPos != null) out.hpPos = clampNum(d.hpPos, 0, 100, 0);                 // HP-bar height: 0 bottom .. 100 top

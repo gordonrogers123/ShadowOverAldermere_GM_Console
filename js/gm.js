@@ -3549,11 +3549,22 @@ export function mountGm(root) {
                 </section>
                 <section class="tb-col tb-global-col">
                   <h3 class="tb-section-h">All tokens<span class="tb-section-note"> &middot; applies to every token</span></h3>
-                  <label class="tb-set"><span class="tb-set-label">Name text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
-                  <label class="tb-set"><span class="tb-set-label">Condition text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
-                  <div class="tb-set"><span class="tb-set-label">Condition position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
-                  <label class="tb-set"><span class="tb-set-label">Condition curve <span class="tb-set-hint">flat &harr; wrapped</span></span><input type="range" class="tb-cond-curve" min="0" max="100" step="5"></label>
-                  <label class="tb-set"><span class="tb-set-label">HP bar position <span class="tb-set-hint">down &harr; up</span></span><input type="range" class="tb-hp-pos" min="0" max="100" step="5"></label>
+                  <div class="tb-subgroup">
+                    <span class="tb-subgroup-h">Name</span>
+                    <label class="tb-set"><span class="tb-set-label">Text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
+                    <label class="tb-set"><span class="tb-set-label">Letter spacing</span><input type="range" class="tb-name-spacing" min="0" max="100" step="5"></label>
+                  </div>
+                  <div class="tb-subgroup">
+                    <span class="tb-subgroup-h">Conditions</span>
+                    <label class="tb-set"><span class="tb-set-label">Text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
+                    <label class="tb-set"><span class="tb-set-label">Letter spacing</span><input type="range" class="tb-cond-spacing" min="0" max="100" step="5"></label>
+                    <div class="tb-set"><span class="tb-set-label">Position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
+                    <label class="tb-set"><span class="tb-set-label">Curve <span class="tb-set-hint">flat &harr; wrapped</span></span><input type="range" class="tb-cond-curve" min="0" max="100" step="5"></label>
+                  </div>
+                  <div class="tb-subgroup">
+                    <span class="tb-subgroup-h">HP bar</span>
+                    <label class="tb-set"><span class="tb-set-label">Position <span class="tb-set-hint">down &harr; up</span></span><input type="range" class="tb-hp-pos" min="0" max="100" step="5"></label>
+                  </div>
                   <div class="tb-sample-wrap"><span class="tb-set-label">On-map preview</span><div class="tb-sample"><div class="stage tb-stage"></div></div></div>
                 </section>
               </div>
@@ -3567,7 +3578,7 @@ export function mountGm(root) {
     const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
     const swatches = q('.tb-swatches'), imageGrid = q('.tb-image-grid');
     const uploadBtn = q('.tb-upload-btn'), uploadInput = q('.tb-upload-input'), uploadStatus = q('.tb-upload-status');
-    const nameSize = q('.tb-name-size'), condSize = q('.tb-cond-size'), condCurve = q('.tb-cond-curve'), hpPos = q('.tb-hp-pos');
+    const nameSize = q('.tb-name-size'), nameSpacing = q('.tb-name-spacing'), condSize = q('.tb-cond-size'), condSpacing = q('.tb-cond-spacing'), condCurve = q('.tb-cond-curve'), hpPos = q('.tb-hp-pos');
     const savedTag = q('.tb-saved');
     const stage = q('.tb-stage');
 
@@ -3670,17 +3681,19 @@ export function mountGm(root) {
     }
     function styleSampleGlobal() {
       sampleTok.style.setProperty('--token-name-scale', gd.nameSize);
+      sampleTok.style.setProperty('--token-name-spacing', (gd.nameSpacing / 100 * 0.4).toFixed(3) + 'em');
       sampleTok.style.setProperty('--token-cond-scale', gd.condSize);
+      sampleTok.style.setProperty('--token-cond-spacing', (gd.condSpacing / 100 * 6).toFixed(2));
       sampleTok.classList.toggle('cond-below', gd.condPos === 'below');
       sampleTok.style.setProperty('--token-hp-y', (84 - gd.hpPos * 0.82).toFixed(1) + '%');
       sampleTok.querySelector('.token-cond path').setAttribute('d', condArcPath(gd.condCurve, gd.condPos === 'below'));
     }
     function seedGlobal() {
       const g = globalDisplay();
-      gd = { nameSize: g.nameSize || 1, condSize: g.condSize || 1, condPos: g.condPos || 'above', condCurve: g.condCurve == null ? 55 : g.condCurve, hpPos: g.hpPos || 0 };
+      gd = { nameSize: g.nameSize || 1, nameSpacing: g.nameSpacing || 0, condSize: g.condSize || 1, condSpacing: g.condSpacing == null ? 8 : g.condSpacing, condPos: g.condPos || 'above', condCurve: g.condCurve == null ? 55 : g.condCurve, hpPos: g.hpPos || 0 };
     }
     function renderGlobalControls() {
-      nameSize.value = gd.nameSize; condSize.value = gd.condSize; condCurve.value = gd.condCurve; hpPos.value = gd.hpPos;
+      nameSize.value = gd.nameSize; nameSpacing.value = gd.nameSpacing; condSize.value = gd.condSize; condSpacing.value = gd.condSpacing; condCurve.value = gd.condCurve; hpPos.value = gd.hpPos;
       renderSeg('.tb-cond-pos', gd.condPos);
     }
     // Live: update this window's cache + repaint (no disk). Persist: POST + broadcast.
@@ -3782,8 +3795,12 @@ export function mountGm(root) {
     // ---- Global settings inputs (live on input, persist + broadcast on change) ----
     nameSize.addEventListener('input', () => { gd.nameSize = +nameSize.value; applyGlobalLive(); });
     nameSize.addEventListener('change', persistGlobal);
+    nameSpacing.addEventListener('input', () => { gd.nameSpacing = +nameSpacing.value; applyGlobalLive(); });
+    nameSpacing.addEventListener('change', persistGlobal);
     condSize.addEventListener('input', () => { gd.condSize = +condSize.value; applyGlobalLive(); });
     condSize.addEventListener('change', persistGlobal);
+    condSpacing.addEventListener('input', () => { gd.condSpacing = +condSpacing.value; applyGlobalLive(); });
+    condSpacing.addEventListener('change', persistGlobal);
     condCurve.addEventListener('input', () => { gd.condCurve = +condCurve.value; applyGlobalLive(); });
     condCurve.addEventListener('change', persistGlobal);
     hpPos.addEventListener('input', () => { gd.hpPos = +hpPos.value; applyGlobalLive(); });
