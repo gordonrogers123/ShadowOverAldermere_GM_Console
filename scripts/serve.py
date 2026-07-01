@@ -68,6 +68,28 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as err:  # noqa: BLE001 -- report any failure to the UI
                 self._json(500, {"ok": False, "error": str(err)})
             return
+        if self.path.rstrip("/") == "/save-token-overrides":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                overrides = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                # Token overrides are the GM's per-character crop/ring/display tweaks,
+                # keyed by castId. Refuse anything that is not an object of objects, so
+                # a bad request can't corrupt the file the token builder writes.
+                if not isinstance(overrides, dict) or not all(
+                    isinstance(k, str) and k and isinstance(v, dict)
+                    for k, v in overrides.items()
+                ):
+                    self._json(400, {"ok": False, "error": "expected a JSON object of { castId: overrides }"})
+                    return
+                out = os.path.join(ROOT, "data", "tokenOverrides.json")
+                tmp = out + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as handle:
+                    json.dump(overrides, handle, indent=2)
+                os.replace(tmp, out)  # atomic swap, so a concurrent read never tears
+                self._json(200, {"ok": True, "count": len(overrides)})
+            except Exception as err:  # noqa: BLE001 -- report any failure to the UI
+                self._json(500, {"ok": False, "error": str(err)})
+            return
         self.send_error(404, "Not Found")
 
     def _json(self, code, obj):

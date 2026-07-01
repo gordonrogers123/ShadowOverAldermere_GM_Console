@@ -15,8 +15,13 @@ if (view === 'gm' || view === 'player') {
   // Saved scenes may live on disk (data/userScenes.json). Load them before
   // mounting so both the GM and the Player can resolve a file-only scene.
   // Failure is swallowed inside loadFileScenes, so a missing server never blocks.
-  const { loadFileScenes } = await import('./fileScenes.js');
-  await loadFileScenes();
+  // Token overrides (data/tokenOverrides.json) merge the GM's per-character crop /
+  // ring / display tweaks over CAST the same way, before either view draws a token.
+  const [{ loadFileScenes }, { loadTokenOverrides }] = await Promise.all([
+    import('./fileScenes.js'),
+    import('./tokenOverrides.js')
+  ]);
+  await Promise.all([loadFileScenes(), loadTokenOverrides()]);
 }
 
 if (view === 'gm') {

@@ -247,7 +247,8 @@
   transform: translateX(-50%);
   margin-top: 0.12em;
   white-space: nowrap;
-  font-size: 0.24em;
+  /* Base 0.24em, scaled by the token builder's per-character name-size setting. */
+  font-size: calc(0.24em * var(--token-name-scale, 1));
   font-weight: 600;
   line-height: 1.25;
   padding: 0 0.4em;
@@ -256,6 +257,9 @@
   color: var(--paper, #efe7d4);
   pointer-events: none;
 }
+/* When the token builder puts conditions BELOW the token, the name label flips
+   ABOVE it, so the curved condition word and the name never collide. */
+.stage .token.cond-below .token-label { top: auto; bottom: 100%; margin-top: 0; margin-bottom: 0.12em; }
 .stage .token.is-hidden { opacity: 0; }   /* hidden from the Player TV */
 
 /* On-map HP bar (heroes/NPCs only -- enemy HP is kind-gated out in JS). Overlaid
@@ -265,6 +269,8 @@
   border-radius: 0.08em; background: rgba(0, 0, 0, 0.6); overflow: hidden; z-index: 2;
   box-shadow: 0 0 0 0.015em rgba(0, 0, 0, 0.55);
 }
+/* The token builder can move the HP bar to the top edge instead of the bottom. */
+.stage .token.hp-above .token-hpbar { top: 0.12em; bottom: auto; }
 /* Fill colour is set inline per token by HP ratio (green -> orange -> red), so
    both the width and the colour animate as HP changes. */
 .stage .token-hpbar > i { display: block; height: 100%; width: 100%; background: #5bbd6a; transition: width 0.45s ease, background 0.45s ease; }
@@ -276,7 +282,8 @@
 }
 .stage .token-cond-text {
   fill: #fff; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3.4px; paint-order: stroke;
-  font-family: var(--font-display); font-weight: 700; font-size: 23px; letter-spacing: 0.4px;
+  /* Base 23px (in the 100x100 token viewBox), scaled by the builder's cond-size. */
+  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1)); letter-spacing: 0.4px;
 }
 
 /* ---------- Player view: fullscreen letterbox ---------- */

@@ -486,17 +486,47 @@ export function createStageView(root) {
     return svg;
   }
 
-  function buildTokenEl(inst) {
+  // Top vs bottom condition arc (the word curves over the token, or under it when
+  // the token builder sets condPos:"below"). Both read left -> right, upright.
+  const COND_ARC_ABOVE = 'M -10,40 A 60,60 0 0 1 110,40';
+  const COND_ARC_BELOW = 'M -10,66 A 60,60 0 0 0 110,66';
+
+  // Apply the per-character token-builder tweaks (face crop, ring color, and the
+  // on-map display settings) to a token element. Called on build AND on every
+  // update, so a change saved in the token builder shows on the next render
+  // without recreating the token -- on the GM board and the Player TV alike.
+  function applyTokenStyling(el, inst) {
     const cast = CAST_BY_ID[inst.castId] ||
-      { name: inst.label, ringColor: inst.kind === 'enemy' ? '#8a2e2e' : inst.kind === 'npc' ? '#6f9bd1' : '#2f6b43' };
+      { ringColor: inst.kind === 'enemy' ? '#8a2e2e' : inst.kind === 'npc' ? '#6f9bd1' : '#2f6b43' };
+    el.style.borderColor = cast.ringColor || '#888';
+    const fb = el.querySelector('.token-fallback');
+    if (fb) fb.style.background = cast.ringColor || '#555';
+    const img = el.querySelector('.token-portrait');
+    if (img) {
+      // The face crop centers the round token on the character's face (same
+      // object-position the stat card uses); default to centered.
+      img.style.objectPosition = cast.face || '50% 50%';
+      // Token art can be assigned/changed by the builder (e.g. an NPC borrowing
+      // its portrait); swap the src only when it actually differs.
+      if (cast.tokenImage && img.getAttribute('src') !== cast.tokenImage) img.src = cast.tokenImage;
+    }
+    const d = cast.display || {};
+    el.style.setProperty('--token-name-scale', d.nameSize || 1);
+    el.style.setProperty('--token-cond-scale', d.condSize || 1);
+    el.classList.toggle('hp-above', d.hpPos === 'above');
+    el.classList.toggle('cond-below', d.condPos === 'below');
+    const arc = el.querySelector('.token-cond path');
+    if (arc) arc.setAttribute('d', d.condPos === 'below' ? COND_ARC_BELOW : COND_ARC_ABOVE);
+  }
+
+  function buildTokenEl(inst) {
+    const cast = CAST_BY_ID[inst.castId] || { name: inst.label };
     const el = document.createElement('div');
     el.className = 'token token-' + inst.kind;
     el.dataset.instId = inst.instId;
-    el.style.borderColor = cast.ringColor || '#888';
 
     const fallback = document.createElement('div');
     fallback.className = 'token-fallback';
-    fallback.style.background = cast.ringColor || '#555';
     fallback.textContent = initials(inst.label);
 
     // The portrait sits over the initials; if the art is not vendored yet it
@@ -519,10 +549,8 @@ export function createStageView(root) {
     const cond = buildCondOverlay(inst.instId);
 
     el.append(fallback, img, label, hpbar, cond);
-    if (cast.tokenImage) {
-      img.src = cast.tokenImage;
-      if (img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
-    }
+    applyTokenStyling(el, inst);   // ring, face crop, name/cond scale, hp/cond position
+    if (cast.tokenImage && img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
     return el;
   }
 
@@ -574,6 +602,7 @@ export function createStageView(root) {
       const fb = el.querySelector('.token-fallback');
       if (fb) fb.textContent = initials(inst.label);
     }
+    applyTokenStyling(el, inst);   // pick up token-builder tweaks saved this session
   }
 
   // Diff the live token list against what is on stage: create new, drop gone,

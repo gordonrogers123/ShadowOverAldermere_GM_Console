@@ -23,6 +23,7 @@ import { CAST } from '../data/cast.js';
 import { CONDITIONS, CONDITION_INFO } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
+import { overrideFor, saveTokenOverride, resetTokenOverride } from './tokenOverrides.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -63,6 +64,7 @@ export function mountGm(root) {
       </div>
       <div class="gm-header-actions">
         <a class="gm-button btn--primary gm-open" href="?view=player" target="aldermere-player" rel="noopener">Open Player window</a>
+        <button class="gm-button btn--quiet tokens-btn" type="button">Tokens</button>
         <button class="gm-button btn--quiet rescan" type="button">Rescan assets</button>
       </div>
     </header>
@@ -297,6 +299,7 @@ export function mountGm(root) {
   const els = {
     sceneList:    root.querySelector('.scene-list'),
     rescanBtn:    root.querySelector('.rescan'),
+    tokensBtn:    root.querySelector('.tokens-btn'),
     rescanStatus: root.querySelector('.rescan-status'),
     newScene:     root.querySelector('.new-scene'),
     empty:        root.querySelector('.gm-empty'),
@@ -3437,6 +3440,7 @@ export function mountGm(root) {
     clearRoom() { if (state.stage && state.stage.roomDice) { state.stage.roomDice = null; commit(); } }
   });
   mountAudioFloater();
+  mountTokenBuilder();
 
   // Floating audio menu (lower-right, opposite the dice): Master / Music / SFX
   // volume + mute + the TV/Laptop output toggles -- quick reach mid-combat.
@@ -3473,5 +3477,260 @@ export function mountGm(root) {
     function setOpen(open) { panel.hidden = !open; launcher.setAttribute('aria-expanded', open ? 'true' : 'false'); host.classList.toggle('is-open', open); if (open) rebuild(); }
     launcher.addEventListener('click', () => setOpen(panel.hidden));
     host.querySelector('.af-close').addEventListener('click', () => setOpen(false));
+  }
+
+  // ============================================================
+  //  Token builder (opened from the header "Tokens" button)
+  // ------------------------------------------------------------
+  //  A setup tool, per character not per scene: drag the portrait to center
+  //  the face in the round token, recolor the ring, and tune the on-map
+  //  overlays (name size, condition word size + position, HP-bar position).
+  //  Saves per castId to data/tokenOverrides.json (merged over CAST at load),
+  //  applies live to the GM board, and broadcasts so the Player TV re-crops.
+  // ============================================================
+  function mountTokenBuilder() {
+    const RING_SWATCHES = ['#2f6b43', '#2a4d7a', '#6f9bd1', '#8a2e2e', '#b8862f', '#6a4d8a'];
+    const clampN = (n, lo, hi) => (n < lo ? lo : n > hi ? hi : n);
+    const parseFace = (f) => { const m = /(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%/.exec(f || ''); return m ? { x: +m[1], y: +m[2] } : { x: 50, y: 50 }; };
+    const fmtFace = (p) => `${Math.round(clampN(p.x, 0, 100))}% ${Math.round(clampN(p.y, 0, 100))}%`;
+    const defRing = (kind) => (kind === 'enemy' ? '#8a2e2e' : kind === 'npc' ? '#6f9bd1' : '#2f6b43');
+    const iniOf = (name) => String(name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+    const ARC_ABOVE = 'M -10,40 A 60,60 0 0 1 110,40';
+    const ARC_BELOW = 'M -10,66 A 60,60 0 0 0 110,66';
+    const findCast = (castId) => {
+      for (const [kind, arr] of [['hero', CAST.heroes], ['npc', CAST.npcs], ['enemy', CAST.enemies]]) {
+        const c = (arr || []).find((x) => x.id === castId);
+        if (c) return { cast: c, kind };
+      }
+      return null;
+    };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'token-builder';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <div class="tb-backdrop"></div>
+      <div class="tb-dialog" role="dialog" aria-modal="true" aria-label="Token builder">
+        <div class="tb-head"><h2 class="tb-title">Token builder</h2><button class="tb-close" type="button" aria-label="Close token builder">&times;</button></div>
+        <div class="tb-body">
+          <div class="tb-picker"></div>
+          <div class="tb-editor">
+            <p class="tb-empty">Pick a character on the left to shape their token.</p>
+            <div class="tb-edit" hidden>
+              <div class="tb-crop-col">
+                <div class="tb-crop" title="Drag to center the face">
+                  <div class="tb-crop-fallback"></div>
+                  <img class="tb-crop-img" alt="" draggable="false">
+                  <div class="tb-crop-ring"></div>
+                </div>
+                <p class="tb-hint">Drag the portrait to center the face</p>
+                <div class="tb-ring"><span class="tb-set-label">Ring color</span><div class="tb-swatches"></div></div>
+              </div>
+              <div class="tb-settings">
+                <label class="tb-set"><span class="tb-set-label">Name text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
+                <label class="tb-set"><span class="tb-set-label">Condition text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
+                <div class="tb-set"><span class="tb-set-label">Condition position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
+                <div class="tb-set"><span class="tb-set-label">HP bar position</span><div class="tb-seg tb-hp-pos"><button type="button" data-v="above">Up</button><button type="button" data-v="below">Down</button></div></div>
+                <div class="tb-sample-wrap"><span class="tb-set-label">On-map preview</span><div class="tb-sample"><div class="stage tb-stage"></div></div></div>
+                <div class="tb-actions"><button class="gm-button btn--primary tb-save" type="button">Save token</button><button class="gm-button btn--quiet tb-reset" type="button">Reset to default</button><span class="tb-saved" role="status" aria-live="polite" hidden>Saved &#10003;</span></div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    root.appendChild(overlay);
+
+    const q = (s) => overlay.querySelector(s);
+    const editBox = q('.tb-edit'), emptyMsg = q('.tb-empty');
+    const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
+    const swatches = q('.tb-swatches'), nameSize = q('.tb-name-size'), condSize = q('.tb-cond-size');
+    const savedTag = q('.tb-saved');
+    const stage = q('.tb-stage');
+
+    let sel = null;     // { cast, kind }
+    let draft = null;   // { face, ringColor, tokenImage, display:{nameSize,condSize,condPos,hpPos} }
+
+    // Ring swatches (built once).
+    for (const color of RING_SWATCHES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'tb-swatch'; b.dataset.color = color;
+      b.style.background = color; b.setAttribute('aria-label', 'Ring ' + color);
+      b.addEventListener('click', () => { if (!draft) return; draft.ringColor = color; markDirty(); renderRing(); renderSample(); });
+      swatches.append(b);
+    }
+
+    // The live sample token: the exact .stage .token markup + classes, so the
+    // display settings render precisely as they will on the board / TV.
+    const sampleTok = document.createElement('div');
+    sampleTok.className = 'token token-hero';
+    sampleTok.innerHTML =
+      '<div class="token-fallback"></div>' +
+      '<img class="token-portrait" alt="">' +
+      '<div class="token-label"></div>' +
+      '<div class="token-hpbar"><i></i></div>' +
+      '<svg class="token-cond" viewBox="0 0 100 100"><defs><path id="tb-cond-arc" d="' + ARC_ABOVE + '" fill="none"></path></defs>' +
+      '<text class="token-cond-text"><textPath startOffset="50%" text-anchor="middle" href="#tb-cond-arc" xlink:href="#tb-cond-arc">Prone</textPath></text></svg>';
+    stage.append(sampleTok);
+    const sampleImg = sampleTok.querySelector('.token-portrait');
+    const sampleFb = sampleTok.querySelector('.token-fallback');
+
+    // Art may not be vendored yet (NPC portraits especially): fall back to the
+    // initials on the ring if the image fails, exactly like the board token.
+    cropImg.onload = () => { cropImg.style.display = ''; cropFb.style.display = 'none'; };
+    cropImg.onerror = () => { cropImg.style.display = 'none'; cropFb.style.display = ''; };
+    sampleImg.onload = () => { sampleImg.style.display = ''; sampleFb.style.display = 'none'; };
+    sampleImg.onerror = () => { sampleImg.style.display = 'none'; sampleFb.style.display = ''; };
+
+    function renderCrop() {
+      cropRing.style.borderColor = draft.ringColor;
+      cropFb.style.background = draft.ringColor;
+      cropFb.textContent = iniOf(sel.cast.name);
+      if (draft.tokenImage) {
+        cropImg.style.objectPosition = draft.face;
+        // Only toggle display on a real src change, so onload/onerror stays the
+        // authority (a setting tweak must not un-hide a broken image).
+        if (cropImg.getAttribute('src') !== draft.tokenImage) {
+          cropImg.src = draft.tokenImage; cropImg.style.display = ''; cropFb.style.display = 'none';
+        }
+      } else { cropImg.removeAttribute('src'); cropImg.style.display = 'none'; cropFb.style.display = ''; }
+    }
+    function renderRing() {
+      swatches.querySelectorAll('.tb-swatch').forEach((b) => b.classList.toggle('is-on', b.dataset.color === draft.ringColor));
+      cropRing.style.borderColor = draft.ringColor;
+    }
+    function renderSeg(cls, val) {
+      q(cls).querySelectorAll('button').forEach((b) => b.classList.toggle('is-on', b.dataset.v === val));
+    }
+    function renderSample() {
+      const d = draft.display;
+      sampleTok.style.borderColor = draft.ringColor;
+      sampleFb.style.background = draft.ringColor; sampleFb.textContent = iniOf(sel.cast.name);
+      if (draft.tokenImage) {
+        sampleImg.style.objectPosition = draft.face;
+        if (sampleImg.getAttribute('src') !== draft.tokenImage) {
+          sampleImg.src = draft.tokenImage; sampleImg.style.display = ''; sampleFb.style.display = 'none';
+        }
+      } else { sampleImg.removeAttribute('src'); sampleImg.style.display = 'none'; sampleFb.style.display = ''; }
+      sampleTok.querySelector('.token-label').textContent = sel.cast.name;
+      sampleTok.style.setProperty('--token-name-scale', d.nameSize);
+      sampleTok.style.setProperty('--token-cond-scale', d.condSize);
+      sampleTok.classList.toggle('hp-above', d.hpPos === 'above');
+      sampleTok.classList.toggle('cond-below', d.condPos === 'below');
+      sampleTok.querySelector('.token-cond path').setAttribute('d', d.condPos === 'below' ? ARC_BELOW : ARC_ABOVE);
+      const fill = sampleTok.querySelector('.token-hpbar > i'); fill.style.width = '62%'; fill.style.background = '#e0a52e';
+    }
+    function renderEditor() {
+      renderCrop(); renderRing(); renderSample();
+      nameSize.value = draft.display.nameSize;
+      condSize.value = draft.display.condSize;
+      renderSeg('.tb-cond-pos', draft.display.condPos);
+      renderSeg('.tb-hp-pos', draft.display.hpPos);
+    }
+
+    function markDirty() { savedTag.hidden = true; }
+
+    function selectChar(castId) {
+      const found = findCast(castId);
+      if (!found) return;
+      sel = found;
+      const c = found.cast;
+      draft = {
+        face: c.face || '50% 50%',
+        ringColor: c.ringColor || defRing(found.kind),
+        // Heroes/enemies ship token art; an NPC borrows its portrait until given its own.
+        tokenImage: c.tokenImage || c.portrait || '',
+        display: {
+          nameSize: (c.display && c.display.nameSize) || 1,
+          condSize: (c.display && c.display.condSize) || 1,
+          condPos: (c.display && c.display.condPos) || 'above',
+          hpPos: (c.display && c.display.hpPos) || 'below'
+        }
+      };
+      overlay.querySelectorAll('.tb-chip').forEach((ch) => ch.classList.toggle('is-active', ch.dataset.id === castId));
+      emptyMsg.hidden = true; editBox.hidden = false; savedTag.hidden = true;
+      renderEditor();
+    }
+
+    function renderPicker() {
+      const picker = q('.tb-picker');
+      picker.innerHTML = '';
+      for (const [kind, label, arr] of [['hero', 'Heroes', CAST.heroes], ['npc', 'NPCs', CAST.npcs], ['enemy', 'Enemies', CAST.enemies]]) {
+        if (!(arr || []).length) continue;
+        const group = document.createElement('div'); group.className = 'tb-group';
+        const h = document.createElement('h3'); h.className = 'tb-group-h'; h.textContent = label; group.append(h);
+        const list = document.createElement('div'); list.className = 'tb-list';
+        for (const c of arr) {
+          const chip = document.createElement('button');
+          chip.type = 'button'; chip.className = 'tb-chip'; chip.dataset.id = c.id;
+          if (sel && sel.cast.id === c.id) chip.classList.add('is-active');
+          const art = c.tokenImage || c.portrait;
+          const tok = document.createElement('span'); tok.className = 'tb-chip-tok'; tok.style.borderColor = c.ringColor || defRing(kind);
+          if (art) { const im = document.createElement('img'); im.alt = ''; im.src = art; im.style.objectPosition = c.face || '50% 50%'; tok.append(im); }
+          else { const ini = document.createElement('span'); ini.className = 'tb-chip-ini'; ini.textContent = iniOf(c.name); tok.append(ini); }
+          const nm = document.createElement('span'); nm.className = 'tb-chip-name'; nm.textContent = c.name;
+          chip.append(tok, nm);
+          chip.addEventListener('click', () => selectChar(c.id));
+          list.append(chip);
+        }
+        group.append(list); picker.append(group);
+      }
+    }
+
+    // ---- Crop drag: move the portrait within the ring to center the face ----
+    let dragging = false, startPt = null, startFace = null;
+    crop.addEventListener('pointerdown', (e) => {
+      if (!draft || !draft.tokenImage) return;
+      dragging = true; startPt = { x: e.clientX, y: e.clientY }; startFace = parseFace(draft.face);
+      try { crop.setPointerCapture(e.pointerId); } catch (_) {}
+      crop.classList.add('is-dragging'); e.preventDefault();
+    });
+    crop.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const r = crop.getBoundingClientRect();
+      const dx = (e.clientX - startPt.x) / (r.width || 1) * 100;
+      const dy = (e.clientY - startPt.y) / (r.height || 1) * 100;
+      draft.face = fmtFace({ x: startFace.x - dx, y: startFace.y - dy });
+      cropImg.style.objectPosition = draft.face;
+      renderSample(); markDirty();
+    });
+    const endDrag = (e) => { if (!dragging) return; dragging = false; crop.classList.remove('is-dragging'); try { crop.releasePointerCapture(e.pointerId); } catch (_) {} };
+    crop.addEventListener('pointerup', endDrag);
+    crop.addEventListener('pointercancel', endDrag);
+
+    // ---- Settings inputs ----
+    nameSize.addEventListener('input', () => { draft.display.nameSize = +nameSize.value; renderSample(); markDirty(); });
+    condSize.addEventListener('input', () => { draft.display.condSize = +condSize.value; renderSample(); markDirty(); });
+    q('.tb-cond-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !draft) return; draft.display.condPos = b.dataset.v; renderSeg('.tb-cond-pos', b.dataset.v); renderSample(); markDirty(); });
+    q('.tb-hp-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !draft) return; draft.display.hpPos = b.dataset.v; renderSeg('.tb-hp-pos', b.dataset.v); renderSample(); markDirty(); });
+
+    // ---- Save / Reset ----
+    function repaintBoards() {
+      const scene = sceneById(state.sceneId);
+      try { previewView.render(state, scene, {}); } catch (_) {}
+      try { boardView.render(state, scene, {}); boardView.layoutTokens(); } catch (_) {}
+    }
+    q('.tb-save').addEventListener('click', async () => {
+      if (!sel) return;
+      const patch = { face: draft.face, ringColor: draft.ringColor, display: { ...draft.display } };
+      if (sel.kind === 'npc' && draft.tokenImage) patch.tokenImage = draft.tokenImage;   // persist the borrowed portrait
+      await saveTokenOverride(sel.cast.id, patch);
+      sync.post({ type: 'tokens', castId: sel.cast.id, override: overrideFor(sel.cast.id) });
+      repaintBoards(); renderPicker();
+      savedTag.hidden = false;
+    });
+    q('.tb-reset').addEventListener('click', async () => {
+      if (!sel) return;
+      await resetTokenOverride(sel.cast.id);
+      sync.post({ type: 'tokens', castId: sel.cast.id, override: null });
+      selectChar(sel.cast.id);   // reseed the draft from the restored built-in
+      repaintBoards(); renderPicker();
+    });
+
+    // ---- Open / close ----
+    function open() { renderPicker(); overlay.hidden = false; }
+    function close() { overlay.hidden = true; }
+    els.tokensBtn.addEventListener('click', open);
+    q('.tb-close').addEventListener('click', close);
+    q('.tb-backdrop').addEventListener('click', close);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) close(); });
   }
 }

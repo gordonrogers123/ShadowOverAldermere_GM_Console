@@ -17,6 +17,7 @@ import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { createAudioEngine } from './audioEngine.js';
 import { dieSvg } from './diceRoller.js';
+import { applyLiveOverride } from './tokenOverrides.js';
 
 const CURSOR_HIDE_MS = 3000;
 const ROOM_DICE_MS = 7000;   // how long a pushed roll lingers on the TV
@@ -110,11 +111,16 @@ export function mountPlayer(root) {
   }
 
   // 1) Restore immediately from the last saved state (offline friendly).
-  paint(loadState());
+  let lastPainted = loadState();
+  paint(lastPainted);
 
   // 2) React to live updates from the GM window.
   const sync = createSync((msg) => {
-    if (msg && msg.type === 'state' && msg.state) paint(msg.state);
+    if (!msg) return;
+    if (msg.type === 'state' && msg.state) { lastPainted = msg.state; paint(msg.state); }
+    // The token builder changed a character's crop/ring/display: merge it into
+    // this window's CAST and repaint the last state so the TV re-crops live.
+    else if (msg.type === 'tokens') { applyLiveOverride(msg.castId, msg.override); if (lastPainted) paint(lastPainted); }
   });
 
   // 3) Ask an already-open GM window for the current state.
