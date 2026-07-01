@@ -1070,6 +1070,16 @@ body.view-gm {
 .view-gm .stat-roll { margin-top: 0.45rem; padding: 0.3rem 0.5rem; border-radius: var(--radius-sm); background: var(--fill); border: 1px solid var(--rule); font-family: var(--font-display); font-size: var(--fs-100); }
 .view-gm .stat-roll.is-hit { border-color: var(--support); color: var(--support); background: #eef6ef; }
 .view-gm .stat-roll.is-miss { border-color: var(--offense); color: var(--offense); background: #f8ecec; }
+/* PR 6C: save + heal resolution. Save resolves the spell (offense); Heal mends (support).
+   A failed save reads like a hit (green, attacker's view); a made save reads like a miss. */
+.view-gm .atk-save { background: var(--fill); color: var(--offense); border-color: var(--offense); }
+.view-gm .atk-heal { background: var(--fill); color: var(--support); border-color: var(--support); }
+.view-gm .atk-save-no { background: var(--fill); color: var(--offense); border-color: var(--offense); }
+.view-gm .atk-save-yes { background: var(--fill); color: var(--control); border-color: var(--control); }
+.view-gm .stat-roll.is-heal { border-color: var(--support); color: var(--support); background: #eef6ef; }
+.view-gm .stat-roll.is-pending { border-color: var(--control); color: var(--control); display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.view-gm .stat-roll.is-pending .gm-button { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
+.view-gm .stat-roll-q { flex: 1 1 auto; }
 .view-gm .stat-target { margin-top: 0.45rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; display: flex; align-items: center; gap: 0.5rem; }
 .view-gm .stat-target.is-arming { background: #e7eef7; border-color: var(--control); }
 .view-gm .stat-target.is-arming .stat-target-txt { color: var(--control); }

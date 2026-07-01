@@ -2005,6 +2005,10 @@ export function mountGm(root) {
   const rollN = (count, sides) => { let s = 0; for (let k = 0; k < count; k++) s += Math.floor(Math.random() * sides) + 1; return s; };
   const parseHitMod = (toHit) => { const m = /^\s*([+-]?\d+)\s*$/.exec(String(toHit || '')); return m ? parseInt(m[1], 10) : null; };
   const parseDamage = (dmg) => { const m = /(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i.exec(String(dmg || '')); if (!m) return null; return { count: +m[1], sides: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0, type: String(dmg).replace(m[0], '').trim() }; };
+  // PR 6C: an attack whose toHit reads "DEX save 13" is a saving throw, not an attack
+  // roll. Parse the ability + DC so we can auto-roll the target's save when its stats
+  // are known (else fall back to a manual verdict).
+  const parseSave = (toHit) => { const m = /(STR|DEX|CON|INT|WIS|CHA)\s+save\s+(\d+)/i.exec(String(toHit || '')); return m ? { ability: m[1].toUpperCase(), dc: +m[2] } : null; };
   const sceneHasSfx = (id) => { const sc = sceneById(state.sceneId); return !!(sc && sc.audio && (sc.audio.sfx || []).some((s) => s.id === id)); };
   function fireAttackSfx(id) { if (!id || !sceneHasSfx(id)) return; ensureAudio(); state.audio.sfxTrigger[id] = (state.audio.sfxTrigger[id] || 0) + 1; commitAudio(); }
   function renderBoardTargeting() { if (boardView && boardView.el) boardView.el.classList.toggle('is-targeting', !!targeting); }
@@ -2089,10 +2093,68 @@ export function mountGm(root) {
     const target = currentTarget();
     if (!target) { armTargeting(); return; }
     const p = parseDamage(atk.damage); if (!p) return;
-    const total = Math.max(0, rollN(p.count, p.sides) + p.mod);
-    attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation: p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), dtype: p.type, targetLabel: target.label };
+    // Magic Missile & friends: multi.darts rolls the die that many times (was a
+    // single-die under-roll before). One die otherwise.
+    const darts = (atk.multi && atk.multi.darts > 1) ? atk.multi.darts : 1;
+    let total = 0; for (let k = 0; k < darts; k++) total += rollN(p.count, p.sides) + p.mod;
+    total = Math.max(0, total);
+    const notation = (darts > 1 ? darts + '× ' : '') + p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : '');
+    attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation, dtype: p.type, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
+  }
+  // ---- PR 6C: saving throws. A save action (toHit like "DEX save 13") resolves in one
+  //      click: auto-roll the target's d20 + its ability modifier vs the DC when the
+  //      target has a stat block, else expose a manual ✓/✗. On a FAILED save apply full
+  //      damage + any condition; on a SUCCESS, half damage (save.half) or none. ----
+  function abilityMod(tok, ability) {
+    if (!tok || !ability) return null;
+    const c = castEntry(tok.castId, tok.kind);
+    const ab = c && c.stats && c.stats.abilities;
+    const v = ab ? ab[ability.toLowerCase()] : undefined;
+    return (v == null || !isFinite(+v)) ? null : +v;
+  }
+  function applySaveOutcome(token, atk, target, outcome, roll) {
+    const ps = parseSave(atk.toHit) || {};
+    const p = parseDamage(atk.damage);   // null for a condition-only save (Entangle/Turn Undead)
+    let dmg = 0;
+    if (p) { const full = Math.max(0, rollN(p.count, p.sides) + p.mod); dmg = outcome === 'fail' ? full : ((atk.save && atk.save.half) ? Math.floor(full / 2) : 0); }
+    const cond = (outcome === 'fail' && atk.condition) ? atk.condition : null;
+    attackRoll = { instId: token.instId, kind: 'save', name: atk.name, outcome, ability: (roll && roll.ability) || ps.ability, dc: (roll && roll.dc) || ps.dc, d: roll ? roll.d : null, mod: roll ? roll.mod : null, total: roll ? roll.total : null, manual: !roll, dmg, dtype: p ? p.type : '', condition: cond, targetLabel: target.label };
+    if (atk.sfxId) fireAttackSfx(atk.sfxId);
+    if (cond) addCondition(target.instId, cond);   // commits + re-renders
+    if (dmg > 0) applyHp(target.instId, -dmg);      // commits + re-renders
+    if (!cond && dmg === 0) renderStatSheet();       // a clean save with no damage: just show the verdict
+  }
+  function rollSave(token, atk) {
+    const target = currentTarget();
+    if (!target) { armTargeting(); return; }   // enforce: target first
+    const ps = parseSave(atk.toHit);
+    if (!ps) { setStatus(atk.name + ' has no save to roll', false); return; }
+    const mod = abilityMod(target, ps.ability);
+    if (mod == null) {   // unknown target (no stat block) -> the GM records the result
+      attackRoll = { instId: token.instId, kind: 'save', name: atk.name, pending: true, atk, target: target.instId, ability: ps.ability, dc: ps.dc, targetLabel: target.label };
+      renderStatSheet();
+      return;
+    }
+    const d = d20(); const total = d + mod;
+    applySaveOutcome(token, atk, target, total >= ps.dc ? 'save' : 'fail', { ability: ps.ability, dc: ps.dc, d, mod, total });
+  }
+  function resolveSaveManual(token, atk, outcome) {
+    const target = currentTarget(); if (!target) return;
+    applySaveOutcome(token, atk, target, outcome, null);
+  }
+  // ---- PR 6C: healing. Roll the "heal NdM+K" and add it back (clamped to max). A
+  //      self-heal (Second Wind) applies to the caster with no target; an ally heal
+  //      (Cure Wounds / Healing Word) uses the normal arm→click target. ----
+  function rollHeal(token, atk) {
+    const target = atk.target === 'self' ? token : currentTarget();
+    if (!target) { armTargeting(); return; }
+    const p = parseDamage(String(atk.damage).replace(/^\s*heal\s+/i, '')); if (!p) return;
+    const total = Math.max(0, rollN(p.count, p.sides) + p.mod);
+    attackRoll = { instId: token.instId, kind: 'heal', name: atk.name, total, notation: p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), targetLabel: target.label };
+    if (atk.sfxId) fireAttackSfx(atk.sfxId);
+    applyHp(target.instId, +total);
   }
   // One attack line + its Target / Hit / Dmg buttons (+ ▶ if it carries SFX).
   function attackRow(token, atk, compact, dist) {
@@ -2100,7 +2162,8 @@ export function mountGm(root) {
     if (!compact) { const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name; a.append(nm); }
     const line = document.createElement('div'); line.className = 'stat-attack-line';
     const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
-    line.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
+    const dmgText = (atk.multi && atk.multi.darts > 1) ? atk.multi.darts + '× ' + atk.damage : atk.damage;
+    line.textContent = [hit, atk.range, dmgText].filter(Boolean).join(' · ');
     a.append(line);
     // PR 6B: when a target is picked and the map has a grid, this attack's own
     // range verdict (in reach / in range / long-disadvantage / out) at the measured
@@ -2116,8 +2179,21 @@ export function mountGm(root) {
     }
     const btns = document.createElement('div'); btns.className = 'stat-atk-btns';
     const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
-    if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
-    if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
+    // Buttons depend on the action's shape: a heal gets Heal; a save gets Save (which
+    // fully resolves — roll or manual, then damage + condition); everything else keeps
+    // the attack-roll Hit + Dmg. AoE/zone placement ([Area]) arrives in 6D/6E.
+    if (atk.heal) {
+      const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button atk-heal'; hb.textContent = 'Heal';
+      hb.title = atk.target === 'self' ? 'Heal the caster (' + String(atk.damage).replace(/^\s*heal\s+/i, '') + ')' : 'Heal the targeted ally';
+      hb.addEventListener('click', () => rollHeal(token, atk)); btns.append(hb);
+    } else if (atk.save) {
+      const ps = parseSave(atk.toHit); const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'gm-button atk-save'; sv.textContent = 'Save';
+      sv.title = 'Resolve the ' + (ps ? ps.ability + ' save vs ' + ps.dc : 'saving throw') + ' on the target';
+      sv.addEventListener('click', () => rollSave(token, atk)); btns.append(sv);
+    } else {
+      if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
+      if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
+    }
     if (atk.sfxId && sceneHasSfx(atk.sfxId)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'gm-button btn--quiet atk-sfx'; sb.textContent = '▶'; sb.title = 'Play attack SFX'; sb.addEventListener('click', () => fireAttackSfx(atk.sfxId)); btns.append(sb); }
     a.append(btns);
     return a;
@@ -2233,18 +2309,42 @@ export function mountGm(root) {
         }
         host.append(wrap);
       }
-      // ---- Roll result: Hit is auto-checked vs the target's AC; Dmg names the target. ----
+      // ---- Roll result: Hit auto-checks vs AC; Dmg names the target; Save shows the
+      //      d20 vs DC (or a manual ✓/✗ for statless targets) and what it applied; Heal
+      //      names the mended target. ----
       if (attackRoll && attackRoll.instId === token.instId) {
-        const oc = attackRoll.kind === 'hit' ? attackRoll.outcome : null;
-        const r = document.createElement('div'); r.className = 'stat-roll' + (oc === 'crit' || oc === 'hit' ? ' is-hit' : oc === 'miss' ? ' is-miss' : '');
-        if (attackRoll.kind === 'hit') {
-          const vs = attackRoll.ac != null ? ' vs AC ' + attackRoll.ac : '';
-          const verdict = oc === 'crit' ? ' → CRIT' : oc === 'hit' ? ' → HIT' : oc === 'miss' ? (attackRoll.d === 1 ? ' → MISS (nat 1)' : ' → MISS') : '';
-          r.textContent = attackRoll.name + ' — d20 (' + attackRoll.d + ') ' + (attackRoll.mod >= 0 ? '+' : '') + attackRoll.mod + ' = ' + attackRoll.total + vs + verdict;
+        const ar = attackRoll;
+        if (ar.kind === 'save' && ar.pending) {
+          // Statless target: the GM records the player's own save roll.
+          const r = document.createElement('div'); r.className = 'stat-roll is-pending';
+          const q = document.createElement('span'); q.className = 'stat-roll-q'; q.textContent = ar.name + ' — ' + ar.ability + ' save vs ' + ar.dc + ' · did ' + ar.targetLabel + ' save? ';
+          const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'gm-button btn--quiet atk-save-yes'; yes.textContent = '✓ Saved'; yes.addEventListener('click', () => resolveSaveManual(token, ar.atk, 'save'));
+          const no = document.createElement('button'); no.type = 'button'; no.className = 'gm-button atk-save-no'; no.textContent = '✗ Failed'; no.addEventListener('click', () => resolveSaveManual(token, ar.atk, 'fail'));
+          r.append(q, yes, no); host.append(r);
+        } else if (ar.kind === 'save') {
+          const failed = ar.outcome === 'fail';
+          const r = document.createElement('div'); r.className = 'stat-roll ' + (failed ? 'is-hit' : 'is-miss');
+          const rollTxt = ar.manual ? '' : ' — d20 (' + ar.d + ') ' + (ar.mod >= 0 ? '+' : '') + ar.mod + ' = ' + ar.total;
+          const dmgTxt = ar.dmg > 0 ? ' · ' + ar.dmg + (ar.dtype ? ' ' + ar.dtype : '') : (failed ? '' : ' · no damage');
+          const condTxt = ar.condition ? ' · ' + ar.condition : '';
+          r.textContent = ar.name + ' — ' + ar.ability + ' save vs ' + ar.dc + rollTxt + (failed ? ' → FAILED' : ' → SAVED') + dmgTxt + condTxt + ' → ' + ar.targetLabel;
+          host.append(r);
+        } else if (ar.kind === 'heal') {
+          const r = document.createElement('div'); r.className = 'stat-roll is-heal';
+          r.textContent = ar.name + ' — ' + ar.notation + ' = +' + ar.total + ' HP → ' + ar.targetLabel;
+          host.append(r);
+        } else if (ar.kind === 'hit') {
+          const oc = ar.outcome;
+          const r = document.createElement('div'); r.className = 'stat-roll' + (oc === 'crit' || oc === 'hit' ? ' is-hit' : oc === 'miss' ? ' is-miss' : '');
+          const vs = ar.ac != null ? ' vs AC ' + ar.ac : '';
+          const verdict = oc === 'crit' ? ' → CRIT' : oc === 'hit' ? ' → HIT' : oc === 'miss' ? (ar.d === 1 ? ' → MISS (nat 1)' : ' → MISS') : '';
+          r.textContent = ar.name + ' — d20 (' + ar.d + ') ' + (ar.mod >= 0 ? '+' : '') + ar.mod + ' = ' + ar.total + vs + verdict;
+          host.append(r);
         } else {
-          r.textContent = attackRoll.name + ' — ' + attackRoll.notation + ' = ' + attackRoll.total + (attackRoll.dtype ? ' ' + attackRoll.dtype : '') + ' → ' + attackRoll.targetLabel;
+          const r = document.createElement('div'); r.className = 'stat-roll';
+          r.textContent = ar.name + ' — ' + ar.notation + ' = ' + ar.total + (ar.dtype ? ' ' + ar.dtype : '') + ' → ' + ar.targetLabel;
+          host.append(r);
         }
-        host.append(r);
       }
     } else if (max == null) {
       const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p);
