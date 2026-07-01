@@ -920,6 +920,8 @@ body.view-gm {
 /* The active combatant's roster row: a gold band matching the token ring + init row. */
 .view-gm .mmr-row.is-active > td { background: #fbf1da; }
 .view-gm .mmr-row.is-active > td:first-child { box-shadow: inset 3px 0 0 #b07d2b; }
+/* Allied-NPC sub-section header inside the Heroes column. */
+.view-gm .mmr-subhead td { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.05em; color: var(--control); font-weight: 700; padding: 0.45rem 0.4rem 0.15rem; border-bottom: 1px solid var(--rule); }
 .view-gm .mmr-init { width: 3.2rem; padding: 0.25rem 0.3rem; text-align: center; }
 .view-gm .mmr-add, .view-gm .mmr-vis { font-size: var(--fs-100); padding: 0.3rem 0.55rem; }
 .view-gm .mmr-vis.is-hidden { background: var(--support); color: var(--paper); border-color: var(--support); }  /* Reveal stands out */
@@ -1004,6 +1006,7 @@ body.view-gm {
    to the rail bottom by a stretched list. */
 .view-gm .gm-scenes:has(.gm-statsheet:not([hidden])) .scene-list { flex: 0 1 auto; max-height: 45vh; }
 .view-gm .gm-statsheet.is-hero { border-left-color: var(--support); }   /* green spine on a hero's turn */
+.view-gm .gm-statsheet.is-npc { border-left-color: var(--control); }    /* blue spine on an allied NPC's turn */
 /* Head: face-centered profile picture + name / class subtitle / active tag. */
 .view-gm .stat-head { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: 0.5rem; }
 .view-gm .stat-pic { width: 3.4rem; height: 3.4rem; flex: 0 0 auto; border-radius: 8px; border: 1px solid var(--rule); object-fit: cover; object-position: 50% 18%; }
@@ -1013,6 +1016,7 @@ body.view-gm {
 .view-gm .stat-tag { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--paper); border-radius: 999px; padding: 0.1rem 0.45rem; }
 .view-gm .stat-tag.is-enemy { background: var(--offense); }
 .view-gm .stat-tag.is-hero { background: var(--support); }
+.view-gm .stat-tag.is-npc { background: var(--control); }
 .view-gm .stat-sub { font-size: 0.8rem; color: var(--neutral); font-style: italic; margin-top: 0.1rem; }
 .view-gm .stat-conditions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.5rem; }
 .view-gm .stat-cond-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--neutral); }
@@ -1036,6 +1040,12 @@ body.view-gm {
 .view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0; }
 /* Condition chip (shared by the stat card + the roster) -- conditions read as afflictions. */
 .view-gm .cond-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; border-radius: 999px; padding: 0.06rem 0.5rem; background: #f0dada; color: #7a2626; border: 1px solid #d9b3b3; }
+/* Condition effects: the rules text for each active condition, at the card bottom. */
+.view-gm .stat-cond-info { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--rule); }
+.view-gm .stat-cond-info-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--neutral); margin-bottom: 0.3rem; }
+.view-gm .stat-cond-entry { font-size: var(--fs-100); line-height: 1.35; margin-bottom: 0.3rem; }
+.view-gm .stat-cond-name { font-family: var(--font-display); font-weight: 700; color: #8a2626; }
+.view-gm .stat-cond-desc { color: var(--ink); }
 
 /* Interactive board: tokens are grabbable; a hidden token shows as a ghost so
    the GM sees what the Player does not (the Player keeps it fully hidden). */

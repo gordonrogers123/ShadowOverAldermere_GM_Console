@@ -117,13 +117,16 @@ export const CAST = {
       } }
   ],
 
+  // NPCs double as scene cutouts (portrait) and placeable allied tokens on the map.
+  // ringColor is the pale-blue "ally" ring; token art/face come later via the token
+  // builder, so until then a placed NPC shows initials on the blue ring.
   npcs: [
-    { id: "cassian",    name: "Cassian",      portrait: "assets/portraits/cassian.jpg" },
-    { id: "dorran",     name: "Dorran",       portrait: "assets/portraits/dorran.jpg" },
-    { id: "grannyedna", name: "Granny Edna",  portrait: "assets/portraits/grannyedna.jpg" },
-    { id: "marshfamily",name: "The Marshes",  portrait: "assets/portraits/marshfamily.jpg" },
-    { id: "pip",        name: "Pip",          portrait: "assets/portraits/pip.jpg" },
-    { id: "wick",       name: "Wick",         portrait: "assets/portraits/wick.jpg" },
-    { id: "wren",       name: "Wren",         portrait: "assets/portraits/wren.jpg" }
+    { id: "cassian",    name: "Cassian",      portrait: "assets/portraits/cassian.jpg",    ringColor: "#6f9bd1" },
+    { id: "dorran",     name: "Dorran",       portrait: "assets/portraits/dorran.jpg",      ringColor: "#6f9bd1" },
+    { id: "grannyedna", name: "Granny Edna",  portrait: "assets/portraits/grannyedna.jpg",  ringColor: "#6f9bd1" },
+    { id: "marshfamily",name: "The Marshes",  portrait: "assets/portraits/marshfamily.jpg", ringColor: "#6f9bd1" },
+    { id: "pip",        name: "Pip",          portrait: "assets/portraits/pip.jpg",         ringColor: "#6f9bd1" },
+    { id: "wick",       name: "Wick",         portrait: "assets/portraits/wick.jpg",        ringColor: "#6f9bd1" },
+    { id: "wren",       name: "Wren",         portrait: "assets/portraits/wren.jpg",        ringColor: "#6f9bd1" }
   ]
 };

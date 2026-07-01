@@ -176,15 +176,14 @@
 /* Initiative: the token whose turn it is wears a golden ring + glow, on the GM
    board AND the Player TV. Box-shadow only, so it never nudges the position. */
 .stage .token.is-active {
-  box-shadow: 0 0 0 0.06em #f4c95d, 0 0 0.55em 0.14em rgba(244, 201, 93, 0.9), 0 0.04em 0.18em rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 0.055em #f4c95d, 0 0 0.24em 0.04em rgba(244, 201, 93, 0.85), 0 0.04em 0.18em rgba(0, 0, 0, 0.6);
   z-index: 5;
-  animation: token-pulse 1.8s ease-in-out infinite;   /* slow shimmer draws the eye to whose turn it is */
+  animation: token-pulse 2s ease-in-out infinite;   /* slow, tight shimmer draws the eye to whose turn it is */
 }
-/* A gentle shimmer around the original tight ring -- brightness breathes, the halo
-   barely moves (no big diffuse glow). */
+/* A tight ring whose brightness breathes -- the halo barely moves (no diffuse glow). */
 @keyframes token-pulse {
-  0%, 100% { box-shadow: 0 0 0 0.06em #f4c95d, 0 0 0.45em 0.12em rgba(244, 201, 93, 0.7), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
-  50%      { box-shadow: 0 0 0 0.06em #f4c95d, 0 0 0.6em 0.16em rgba(244, 201, 93, 1), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
+  0%, 100% { box-shadow: 0 0 0 0.055em #f4c95d, 0 0 0.16em 0.02em rgba(244, 201, 93, 0.55), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
+  50%      { box-shadow: 0 0 0 0.055em #f4c95d, 0 0 0.3em 0.06em rgba(244, 201, 93, 0.95), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
 }
 @media (prefers-reduced-motion: reduce) { .stage .token.is-active { animation: none !important; } }
 .stage .token-portrait,
@@ -248,7 +247,7 @@
 }
 .stage .token-cond-text {
   fill: #ffe9a8; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3.4px; paint-order: stroke;
-  font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: 0.4px;
+  font-family: var(--font-display); font-weight: 700; font-size: 23px; letter-spacing: 0.4px;
 }
 
 /* ---------- Player view: fullscreen letterbox ---------- */
