@@ -374,3 +374,16 @@ body.view-player {
 .view-player .room-dice-sum { display: flex; flex-direction: column; align-items: center; padding-left: 1.4rem; border-left: 1px solid #6f5a33; }
 .view-player .room-dice-eq { font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a884; }
 .view-player .room-dice-total { font-family: var(--font-display); font-weight: 700; font-size: 2.8rem; line-height: 1; color: #caa64f; }
+/* PR 6C.1: a card roll (Hit/Save/Dmg/Heal mirrored from the GM) leads with a who/what
+   label and closes with a tone-coloured verdict; stack the pop-up into a column. */
+.view-player .room-dice:has(.room-dice-label) { flex-direction: column; gap: 0.55rem; min-width: 15rem; text-align: center; }
+.view-player .room-dice-label { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.02em; color: #e6d8b8; }
+.view-player .room-dice-outcome { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; line-height: 1.05; letter-spacing: 0.03em; color: #caa64f; }
+.view-player .room-dice.tone-good { border-color: #4f8a5c; }
+.view-player .room-dice.tone-good .room-dice-outcome { color: #8ee0a0; }
+.view-player .room-dice.tone-heal { border-color: #4f8a5c; }
+.view-player .room-dice.tone-heal .room-dice-outcome { color: #9be3b0; }
+.view-player .room-dice.tone-bad { border-color: #9a4a4a; }
+.view-player .room-dice.tone-bad .room-dice-outcome { color: #f0a3a3; }
+.view-player .room-dice.tone-crit { border-color: #caa64f; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55), 0 0 26px rgba(202, 166, 79, 0.55); }
+.view-player .room-dice.tone-crit .room-dice-outcome { color: #f2d789; }

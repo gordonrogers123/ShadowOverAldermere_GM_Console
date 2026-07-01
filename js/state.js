@@ -85,7 +85,9 @@ function normalizeToken(t, i) {
   let label = castId;
   if (t.label != null && String(t.label).trim()) label = String(t.label);
   const conditions = Array.isArray(t.conditions) ? t.conditions.filter((c) => typeof c === 'string' && c.trim()).map((c) => String(c).trim()) : [];
-  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false, hp: normHp(t.hp), conditions };
+  // `manual` (PR 6C.1): this combatant's dice are entered by the GM (the player rolled
+  // physically) rather than auto-rolled. GM-only; the Player ignores it. Optional/default off.
+  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false, hp: normHp(t.hp), conditions, manual: !!t.manual };
 }
 
 // Fill any missing piece of the nested stage block from defaults, so a
@@ -98,13 +100,20 @@ function normalizeToken(t, i) {
 // persisted or normalized here, so a reload clears it and the Player hides
 // tokens until the GM re-enters map mode.
 function normRoomDice(rd) {
-  if (!rd || typeof rd !== 'object' || !Array.isArray(rd.flat)) return null;
-  const flat = rd.flat
+  if (!rd || typeof rd !== 'object') return null;
+  const flat = (Array.isArray(rd.flat) ? rd.flat : [])
     .map((x) => ({ d: Math.floor(+(x && x.d)) || 0, r: Math.floor(+(x && x.r)) || 0 }))
     .filter((x) => x.d > 0 && x.r > 0)
     .slice(0, 40);
-  if (!flat.length) return null;
-  return { flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0 };
+  // A tray roll needs dice; a card roll (PR 6C.1) can carry just a label + outcome (a
+  // manual total has no die faces). Keep it only when there's dice OR a label to show.
+  const label = rd.label != null ? String(rd.label).slice(0, 80) : '';
+  if (!flat.length && !label) return null;
+  const tone = /^(good|bad|crit|heal)$/.test(rd.tone) ? rd.tone : '';
+  return {
+    flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0,
+    label, outcome: rd.outcome != null ? String(rd.outcome).slice(0, 40) : '', tone
+  };
 }
 // The map grid config (PR 6A), PER MAP VARIANT. cellSize / offsetX / offsetY are
 // fractions of the map WIDTH (so cells stay square in displayed px and both screens
@@ -159,6 +168,9 @@ function normalizeStage(s) {
     // never rendered (enforced in stageView). Optional/additive -> no VERSION bump.
     hpOnMap: !!s.hpOnMap,
     conditionsOnMap: !!s.conditionsOnMap,
+    // GM toggle (PR 6C.1): mirror every resolved card roll (Hit/Save/Dmg/Heal) onto the
+    // Player TV as a labelled, verdict-tagged pop-up (rides roomDice). Optional/default off.
+    rollsOnTv: !!s.rollsOnTv,
     // The LIVE map grids (map mode), keyed by map-variant key: a square cell overlay
     // drawn on the GM board AND the Player TV. Rides the broadcast (like tokens/
     // targetLink) so the TV always has the current geometry live; the compositor

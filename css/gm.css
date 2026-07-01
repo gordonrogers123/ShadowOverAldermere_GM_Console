@@ -1080,6 +1080,14 @@ body.view-gm {
 .view-gm .stat-roll.is-pending { border-color: var(--control); color: var(--control); display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 .view-gm .stat-roll.is-pending .gm-button { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
 .view-gm .stat-roll-q { flex: 1 1 auto; }
+/* PR 6C.1: manual roll entry (a typed total + Apply, with an optional crit tick) and the
+   per-combatant Auto/Manual switch (compact 🎲/✍ in the roster row, labelled on the card). */
+.view-gm .stat-roll-input { width: 4.2rem; margin: 0 0.3rem; padding: 0.12rem 0.35rem; font-family: var(--font-display); }
+.view-gm .stat-roll-crit { display: inline-flex; align-items: center; gap: 0.2rem; font-size: var(--fs-100); }
+.view-gm .atk-apply { background: var(--fill); color: var(--offense); border-color: var(--offense); }
+.view-gm .roster-manual { padding: 0.02rem 0.3rem; font-size: var(--fs-100); line-height: 1.25; margin-left: 0.3rem; flex: 0 0 auto; }
+.view-gm .roster-manual.is-manual { background: #f4ecd7; color: #8a5a12; border-color: #b07d2b; }
+.view-gm .stat-id .roster-manual { margin-left: 0; margin-top: 0.3rem; }
 .view-gm .stat-target { margin-top: 0.45rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; display: flex; align-items: center; gap: 0.5rem; }
 .view-gm .stat-target.is-arming { background: #e7eef7; border-color: var(--control); }
 .view-gm .stat-target.is-arming .stat-target-txt { color: var(--control); }
