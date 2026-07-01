@@ -115,6 +115,61 @@ round portrait. Until you vendor token art (below) a token shows the character's
 initials over the ring, so the board is fully usable right away. The whole-scene
 **Hide scene** curtain covers tokens too.
 
+## Combat: attacks, saves, and heals
+
+In map mode, whoever is up in the initiative tracker shows a **stat card** with
+their combat actions, taken from their character sheet. Each action resolves on
+the board against a **target** you pick (a red arrow links attacker and target on
+both screens); with a grid laid down, the card also flags range at the measured
+distance (in reach / in range / long — disadvantage / out).
+
+Actions come in three shapes, each with its own buttons after **Target**:
+
+- **Attack rolls** — **Hit** rolls d20 + the bonus versus the target's AC (with
+  crit and miss), then **Dmg** rolls the damage and subtracts it. Longsword, Fire
+  Bolt, Guiding Bolt, Scimitar, and the like. Magic Missile rolls all **three
+  darts**.
+- **Saving throws** — **Save**. When the target has a stat block the save is
+  rolled for you (its d20 + the relevant ability modifier versus the spell's DC);
+  a target with no stats (an NPC) gives you a **✓ Saved / ✗ Failed** button
+  instead. The outcome applies automatically: **negate** (Sacred Flame — full
+  damage on a fail, none on a save), **half on a save** (Breath Weapon, Hellish
+  Rebuke), and/or a **condition on a failed save** (Entangle / Web → restrained).
+- **Heals** — **Heal** adds HP back, clamped to the maximum. Second Wind heals the
+  caster with no target; Cure Wounds and Healing Word heal a targeted ally.
+
+A resolved roll prints a one-line readout on the card — the d20-versus-DC math and
+exactly what it applied.
+
+### What the card includes — and what it doesn't
+
+The card is the **combat-resolution subset** of each sheet: weapon and cantrip
+attacks, damaging and condition saving throws, area spells, healing, and a few
+damage riders (Sneak Attack, Reckless Attack) as manual rows. Every number is
+reconciled from the character sheets in the reference site repo, matched to real
+5e structure.
+
+Area spells whose shape you place on the board — the Breath Weapon **cone**, Turn
+Undead **radius**, and the placed **zones** (Entangle, Web, Spike Growth) — carry
+their area data on the card today and resolve against a **single target**; placing
+the template so it auto-collects everyone inside is the very next step (see
+`docs/ROADMAP.md`).
+
+Deliberately **not** on the card — these stay on the printed sheet and are run
+narratively by the GM, since they don't reduce to a target-and-roll:
+
+- **Utility & movement** — Mage Hand, Minor Illusion, Misty Step, Wild Shape,
+  Cunning Action, Step of the Wind, rituals (Speak with Animals), Action Surge.
+- **Buffs** — Bless, Guidance.
+- **Passives & reactions** — Rage, Danger Sense, Relentless, Portent, Deflect
+  Missiles, Shield.
+- **Control with no template / attack** — Sleep, Hold Person, Charm Person.
+- **One-off riders not auto-applied** — Guiding Bolt's granted advantage, Thorn
+  Whip's forced pull, the Flurry/Open Hand follow-ups.
+
+The full kit always lives on the printed character sheet; the card exists to make
+the parts that *do* reduce to dice fast to run at the table.
+
 ## Audio
 
 A scene can carry sound: a looping **music** bed, any number of **ambience**
