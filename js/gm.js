@@ -18,12 +18,12 @@ import { loadState, saveState } from './state.js';
 import { createSync } from './sync.js';
 import { createStageView } from './stageView.js';
 import { ENTER_TRANSITIONS, DEFAULT_ENTER } from './transitions.js';
-import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX } from '../data/manifest.js';
+import { BACKGROUNDS, CHARACTERS, MUSIC, AMBIENCE, SFX, TOKENART } from '../data/manifest.js';
 import { CAST } from '../data/cast.js';
 import { CONDITIONS, CONDITION_INFO } from './conditions.js';
 import { createAudioEngine } from './audioEngine.js';
 import { mountDiceRoller } from './diceRoller.js';
-import { overrideFor, saveTokenOverride, resetTokenOverride } from './tokenOverrides.js';
+import { overrideFor, saveTokenOverride, resetTokenOverride, globalDisplay, saveGlobalDisplay, applyGlobalDisplay } from './tokenOverrides.js';
 
 export function mountGm(root) {
   let state = loadState();
@@ -3517,22 +3517,33 @@ export function mountGm(root) {
           <div class="tb-editor">
             <p class="tb-empty">Pick a character on the left to shape their token.</p>
             <div class="tb-edit" hidden>
-              <div class="tb-crop-col">
-                <div class="tb-crop" title="Drag to center the face">
-                  <div class="tb-crop-fallback"></div>
-                  <img class="tb-crop-img" alt="" draggable="false">
-                  <div class="tb-crop-ring"></div>
-                </div>
-                <p class="tb-hint">Drag the portrait to center the face</p>
-                <div class="tb-ring"><span class="tb-set-label">Ring color</span><div class="tb-swatches"></div></div>
-              </div>
-              <div class="tb-settings">
-                <label class="tb-set"><span class="tb-set-label">Name text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
-                <label class="tb-set"><span class="tb-set-label">Condition text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
-                <div class="tb-set"><span class="tb-set-label">Condition position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
-                <div class="tb-set"><span class="tb-set-label">HP bar position</span><div class="tb-seg tb-hp-pos"><button type="button" data-v="above">Up</button><button type="button" data-v="below">Down</button></div></div>
-                <div class="tb-sample-wrap"><span class="tb-set-label">On-map preview</span><div class="tb-sample"><div class="stage tb-stage"></div></div></div>
-                <div class="tb-actions"><button class="gm-button btn--primary tb-save" type="button">Save token</button><button class="gm-button btn--quiet tb-reset" type="button">Reset to default</button><span class="tb-saved" role="status" aria-live="polite" hidden>Saved &#10003;</span></div>
+              <div class="tb-edit-cols">
+                <section class="tb-col tb-token-col">
+                  <h3 class="tb-section-h">This token</h3>
+                  <div class="tb-crop" title="Drag to center the face">
+                    <div class="tb-crop-fallback"></div>
+                    <img class="tb-crop-img" alt="" draggable="false">
+                    <div class="tb-crop-ring"></div>
+                  </div>
+                  <p class="tb-hint">Drag the portrait to center the face</p>
+                  <div class="tb-ring"><span class="tb-set-label">Ring color</span><div class="tb-swatches"></div></div>
+                  <div class="tb-image">
+                    <div class="tb-image-head"><span class="tb-set-label">Token image</span><button class="gm-button btn--quiet tb-upload-btn" type="button">Upload&hellip;</button></div>
+                    <input type="file" class="tb-upload-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                    <div class="tb-image-grid"></div>
+                    <p class="tb-upload-status" role="status" aria-live="polite" hidden></p>
+                  </div>
+                  <div class="tb-actions"><button class="gm-button btn--primary tb-save" type="button">Save token</button><button class="gm-button btn--quiet tb-reset" type="button">Reset token</button><span class="tb-saved" role="status" aria-live="polite" hidden>Saved &#10003;</span></div>
+                </section>
+                <section class="tb-col tb-global-col">
+                  <h3 class="tb-section-h">All tokens<span class="tb-section-note"> &middot; applies to every token</span></h3>
+                  <label class="tb-set"><span class="tb-set-label">Name text size</span><input type="range" class="tb-name-size" min="0.6" max="1.6" step="0.05"></label>
+                  <label class="tb-set"><span class="tb-set-label">Condition text size</span><input type="range" class="tb-cond-size" min="0.6" max="1.8" step="0.05"></label>
+                  <div class="tb-set"><span class="tb-set-label">Condition position</span><div class="tb-seg tb-cond-pos"><button type="button" data-v="above">Above</button><button type="button" data-v="below">Below</button></div></div>
+                  <label class="tb-set"><span class="tb-set-label">Condition word angle</span><input type="range" class="tb-cond-angle" min="-180" max="180" step="5"></label>
+                  <div class="tb-set"><span class="tb-set-label">HP bar position</span><div class="tb-seg tb-hp-pos"><button type="button" data-v="above">Up</button><button type="button" data-v="below">Down</button></div></div>
+                  <div class="tb-sample-wrap"><span class="tb-set-label">On-map preview</span><div class="tb-sample"><div class="stage tb-stage"></div></div></div>
+                </section>
               </div>
             </div>
           </div>
@@ -3542,12 +3553,16 @@ export function mountGm(root) {
     const q = (s) => overlay.querySelector(s);
     const editBox = q('.tb-edit'), emptyMsg = q('.tb-empty');
     const crop = q('.tb-crop'), cropImg = q('.tb-crop-img'), cropFb = q('.tb-crop-fallback'), cropRing = q('.tb-crop-ring');
-    const swatches = q('.tb-swatches'), nameSize = q('.tb-name-size'), condSize = q('.tb-cond-size');
+    const swatches = q('.tb-swatches'), imageGrid = q('.tb-image-grid');
+    const uploadBtn = q('.tb-upload-btn'), uploadInput = q('.tb-upload-input'), uploadStatus = q('.tb-upload-status');
+    const nameSize = q('.tb-name-size'), condSize = q('.tb-cond-size'), condAngle = q('.tb-cond-angle');
     const savedTag = q('.tb-saved');
     const stage = q('.tb-stage');
 
-    let sel = null;     // { cast, kind }
-    let draft = null;   // { face, ringColor, tokenImage, display:{nameSize,condSize,condPos,hpPos} }
+    let sel = null;     // { cast, kind }  -- the character being edited
+    let draft = null;   // per-token identity: { face, ringColor, tokenImage }
+    let gd = null;      // GLOBAL display settings (all tokens): {nameSize,condSize,condPos,condAngle,hpPos}
+    const extraImages = [];   // images uploaded this session, shown in the grid before a rescan
 
     // Ring swatches (built once).
     for (const color of RING_SWATCHES) {
@@ -3580,6 +3595,7 @@ export function mountGm(root) {
     sampleImg.onload = () => { sampleImg.style.display = ''; sampleFb.style.display = 'none'; };
     sampleImg.onerror = () => { sampleImg.style.display = 'none'; sampleFb.style.display = ''; };
 
+    // ---- per-token renders ----
     function renderCrop() {
       cropRing.style.borderColor = draft.ringColor;
       cropFb.style.background = draft.ringColor;
@@ -3597,11 +3613,25 @@ export function mountGm(root) {
       swatches.querySelectorAll('.tb-swatch').forEach((b) => b.classList.toggle('is-on', b.dataset.color === draft.ringColor));
       cropRing.style.borderColor = draft.ringColor;
     }
-    function renderSeg(cls, val) {
-      q(cls).querySelectorAll('button').forEach((b) => b.classList.toggle('is-on', b.dataset.v === val));
+    function renderImageGrid() {
+      imageGrid.innerHTML = '';
+      const seen = new Set();
+      for (const it of [...extraImages, ...(TOKENART || [])]) {
+        if (!it || !it.src || seen.has(it.src)) continue;
+        seen.add(it.src);
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'tb-img-opt'; b.dataset.src = it.src; b.title = it.name || it.src;
+        if (it.src === draft.tokenImage) b.classList.add('is-on');
+        const im = document.createElement('img'); im.alt = ''; im.src = it.src;
+        b.append(im);
+        b.addEventListener('click', () => {
+          draft.tokenImage = it.src; markDirty(); renderCrop(); renderSample();
+          imageGrid.querySelectorAll('.tb-img-opt').forEach((x) => x.classList.toggle('is-on', x.dataset.src === draft.tokenImage));
+        });
+        imageGrid.append(b);
+      }
     }
     function renderSample() {
-      const d = draft.display;
       sampleTok.style.borderColor = draft.ringColor;
       sampleFb.style.background = draft.ringColor; sampleFb.textContent = iniOf(sel.cast.name);
       if (draft.tokenImage) {
@@ -3611,20 +3641,35 @@ export function mountGm(root) {
         }
       } else { sampleImg.removeAttribute('src'); sampleImg.style.display = 'none'; sampleFb.style.display = ''; }
       sampleTok.querySelector('.token-label').textContent = sel.cast.name;
-      sampleTok.style.setProperty('--token-name-scale', d.nameSize);
-      sampleTok.style.setProperty('--token-cond-scale', d.condSize);
-      sampleTok.classList.toggle('hp-above', d.hpPos === 'above');
-      sampleTok.classList.toggle('cond-below', d.condPos === 'below');
-      sampleTok.querySelector('.token-cond path').setAttribute('d', d.condPos === 'below' ? ARC_BELOW : ARC_ABOVE);
       const fill = sampleTok.querySelector('.token-hpbar > i'); fill.style.width = '62%'; fill.style.background = '#e0a52e';
+      styleSampleGlobal();
     }
-    function renderEditor() {
-      renderCrop(); renderRing(); renderSample();
-      nameSize.value = draft.display.nameSize;
-      condSize.value = draft.display.condSize;
-      renderSeg('.tb-cond-pos', draft.display.condPos);
-      renderSeg('.tb-hp-pos', draft.display.hpPos);
+
+    // ---- global (all-tokens) display ----
+    function renderSeg(cls, val) {
+      q(cls).querySelectorAll('button').forEach((b) => b.classList.toggle('is-on', b.dataset.v === val));
     }
+    function styleSampleGlobal() {
+      sampleTok.style.setProperty('--token-name-scale', gd.nameSize);
+      sampleTok.style.setProperty('--token-cond-scale', gd.condSize);
+      sampleTok.classList.toggle('hp-above', gd.hpPos === 'above');
+      sampleTok.classList.toggle('cond-below', gd.condPos === 'below');
+      const cond = sampleTok.querySelector('.token-cond');
+      cond.querySelector('path').setAttribute('d', gd.condPos === 'below' ? ARC_BELOW : ARC_ABOVE);
+      cond.style.transformOrigin = '50% 50%';
+      cond.style.transform = gd.condAngle ? `rotate(${gd.condAngle}deg)` : '';
+    }
+    function seedGlobal() {
+      const g = globalDisplay();
+      gd = { nameSize: g.nameSize || 1, condSize: g.condSize || 1, condPos: g.condPos || 'above', condAngle: g.condAngle || 0, hpPos: g.hpPos || 'below' };
+    }
+    function renderGlobalControls() {
+      nameSize.value = gd.nameSize; condSize.value = gd.condSize; condAngle.value = gd.condAngle;
+      renderSeg('.tb-cond-pos', gd.condPos); renderSeg('.tb-hp-pos', gd.hpPos);
+    }
+    // Live: update this window's cache + repaint (no disk). Persist: POST + broadcast.
+    function applyGlobalLive() { applyGlobalDisplay(gd); if (sel) styleSampleGlobal(); repaintBoards(); }
+    async function persistGlobal() { await saveGlobalDisplay(gd); sync.post({ type: 'tokens', global: globalDisplay() }); }
 
     function markDirty() { savedTag.hidden = true; }
 
@@ -3637,17 +3682,11 @@ export function mountGm(root) {
         face: c.face || '50% 50%',
         ringColor: c.ringColor || defRing(found.kind),
         // Heroes/enemies ship token art; an NPC borrows its portrait until given its own.
-        tokenImage: c.tokenImage || c.portrait || '',
-        display: {
-          nameSize: (c.display && c.display.nameSize) || 1,
-          condSize: (c.display && c.display.condSize) || 1,
-          condPos: (c.display && c.display.condPos) || 'above',
-          hpPos: (c.display && c.display.hpPos) || 'below'
-        }
+        tokenImage: c.tokenImage || c.portrait || ''
       };
       overlay.querySelectorAll('.tb-chip').forEach((ch) => ch.classList.toggle('is-active', ch.dataset.id === castId));
       emptyMsg.hidden = true; editBox.hidden = false; savedTag.hidden = true;
-      renderEditor();
+      renderCrop(); renderRing(); renderImageGrid(); renderSample();
     }
 
     function renderPicker() {
@@ -3696,13 +3735,37 @@ export function mountGm(root) {
     crop.addEventListener('pointerup', endDrag);
     crop.addEventListener('pointercancel', endDrag);
 
-    // ---- Settings inputs ----
-    nameSize.addEventListener('input', () => { draft.display.nameSize = +nameSize.value; renderSample(); markDirty(); });
-    condSize.addEventListener('input', () => { draft.display.condSize = +condSize.value; renderSample(); markDirty(); });
-    q('.tb-cond-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !draft) return; draft.display.condPos = b.dataset.v; renderSeg('.tb-cond-pos', b.dataset.v); renderSample(); markDirty(); });
-    q('.tb-hp-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !draft) return; draft.display.hpPos = b.dataset.v; renderSeg('.tb-hp-pos', b.dataset.v); renderSample(); markDirty(); });
+    // ---- Upload a new token image (needs the helper server) ----
+    uploadBtn.addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', async () => {
+      const file = uploadInput.files && uploadInput.files[0];
+      uploadInput.value = '';
+      if (!file || !sel) return;
+      uploadStatus.hidden = false; uploadStatus.textContent = 'Uploading…';
+      try {
+        const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+        const resp = await fetch('/upload-token-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: file.name, dataUrl }) });
+        const j = await resp.json().catch(() => ({}));
+        if (resp.ok && j.src) {
+          if (!extraImages.some((x) => x.src === j.src)) extraImages.unshift({ src: j.src, name: file.name });
+          draft.tokenImage = j.src; markDirty(); renderCrop(); renderSample(); renderImageGrid();
+          uploadStatus.textContent = 'Uploaded ✓';
+        } else { uploadStatus.textContent = 'Upload failed' + (j.error ? ': ' + j.error : ''); }
+      } catch (e) { uploadStatus.textContent = 'Upload needs the local server running'; }
+      setTimeout(() => { uploadStatus.hidden = true; }, 3000);
+    });
 
-    // ---- Save / Reset ----
+    // ---- Global settings inputs (live on input, persist + broadcast on change) ----
+    nameSize.addEventListener('input', () => { gd.nameSize = +nameSize.value; applyGlobalLive(); });
+    nameSize.addEventListener('change', persistGlobal);
+    condSize.addEventListener('input', () => { gd.condSize = +condSize.value; applyGlobalLive(); });
+    condSize.addEventListener('change', persistGlobal);
+    condAngle.addEventListener('input', () => { gd.condAngle = +condAngle.value; applyGlobalLive(); });
+    condAngle.addEventListener('change', persistGlobal);
+    q('.tb-cond-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; gd.condPos = b.dataset.v; renderSeg('.tb-cond-pos', b.dataset.v); applyGlobalLive(); persistGlobal(); });
+    q('.tb-hp-pos').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; gd.hpPos = b.dataset.v; renderSeg('.tb-hp-pos', b.dataset.v); applyGlobalLive(); persistGlobal(); });
+
+    // ---- Save / Reset (per-token identity: image, crop, ring) ----
     function repaintBoards() {
       const scene = sceneById(state.sceneId);
       try { previewView.render(state, scene, {}); } catch (_) {}
@@ -3710,8 +3773,8 @@ export function mountGm(root) {
     }
     q('.tb-save').addEventListener('click', async () => {
       if (!sel) return;
-      const patch = { face: draft.face, ringColor: draft.ringColor, display: { ...draft.display } };
-      if (sel.kind === 'npc' && draft.tokenImage) patch.tokenImage = draft.tokenImage;   // persist the borrowed portrait
+      const patch = { face: draft.face, ringColor: draft.ringColor };
+      if (draft.tokenImage) patch.tokenImage = draft.tokenImage;
       await saveTokenOverride(sel.cast.id, patch);
       sync.post({ type: 'tokens', castId: sel.cast.id, override: overrideFor(sel.cast.id) });
       repaintBoards(); renderPicker();
@@ -3726,7 +3789,7 @@ export function mountGm(root) {
     });
 
     // ---- Open / close ----
-    function open() { renderPicker(); overlay.hidden = false; }
+    function open() { seedGlobal(); renderGlobalControls(); renderPicker(); overlay.hidden = false; }
     function close() { overlay.hidden = true; }
     els.tokensBtn.addEventListener('click', open);
     q('.tb-close').addEventListener('click', close);

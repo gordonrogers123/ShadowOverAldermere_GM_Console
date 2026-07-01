@@ -57,25 +57,27 @@ function clampNum(v, lo, hi, dflt) {
   return n < lo ? lo : n > hi ? hi : n;
 }
 
-// Keep only the known, well-typed fields, so a hand-edited or stale file can
-// never inject junk onto a CAST entry.
+// The on-map display settings are GLOBAL (one set for every token), stored under
+// a reserved key -- not per character. Keep only the known, well-typed fields so
+// a hand-edited or stale file can never inject junk.
 function cleanDisplay(d) {
   if (!d || typeof d !== 'object') return null;
   const out = {};
   if (d.nameSize != null) out.nameSize = clampNum(d.nameSize, 0.6, 1.6, 1);
   if (d.condSize != null) out.condSize = clampNum(d.condSize, 0.6, 1.8, 1);
   if (d.condPos === 'above' || d.condPos === 'below') out.condPos = d.condPos;
+  if (d.condAngle != null) out.condAngle = clampNum(d.condAngle, -180, 180, 0);   // word-wrap rotation
   if (d.hpPos === 'above' || d.hpPos === 'below') out.hpPos = d.hpPos;
   return Object.keys(out).length ? out : null;
 }
+// A per-character override is now ONLY the token identity: face crop, ring color,
+// token art. (Display settings moved to the global entry above.)
 function cleanOverride(o) {
   if (!o || typeof o !== 'object') return null;
   const out = {};
   if (typeof o.face === 'string' && o.face.trim()) out.face = o.face.trim();
   if (typeof o.ringColor === 'string' && o.ringColor.trim()) out.ringColor = o.ringColor.trim();
   if (typeof o.tokenImage === 'string' && o.tokenImage.trim()) out.tokenImage = o.tokenImage.trim();
-  const disp = cleanDisplay(o.display);
-  if (disp) out.display = disp;
   return Object.keys(out).length ? out : null;
 }
 
@@ -92,10 +94,27 @@ function applyToCast() {
       c.face = o.face != null ? o.face : base.face;
       c.ringColor = o.ringColor || base.ringColor;
       c.tokenImage = o.tokenImage || base.tokenImage;
-      const disp = { ...(base.display || {}), ...(o.display || {}) };
-      c.display = Object.keys(disp).length ? disp : undefined;
     }
   }
+}
+
+// The GLOBAL on-map display settings (name/condition size, condition position +
+// angle, HP-bar position), applied to every token. Stored under a reserved key
+// that applyToCast ignores (no character has this id). Read by stageView.
+const GLOBAL_KEY = '_global';
+export function globalDisplay() {
+  return cleanDisplay(cache[GLOBAL_KEY]) || {};
+}
+export async function saveGlobalDisplay(patch) {
+  const merged = { ...(cache[GLOBAL_KEY] || {}), ...(patch || {}) };
+  const clean = cleanDisplay(merged);
+  if (clean) cache[GLOBAL_KEY] = clean; else delete cache[GLOBAL_KEY];
+  return post();
+}
+// Apply the global settings live in THIS window (the Player, off a broadcast).
+export function applyGlobalDisplay(display) {
+  const clean = cleanDisplay(display);
+  if (clean) cache[GLOBAL_KEY] = clean; else delete cache[GLOBAL_KEY];
 }
 
 // Read the disk tier once at startup and merge it over CAST. Swallows every

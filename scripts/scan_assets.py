@@ -79,12 +79,25 @@ def scan():
         items.sort(key=lambda e: e["src"])
         return items
 
+    # Token art the builder can assign to a token: the hand-vendored token images
+    # plus NPC portraits plus anything uploaded through the editor. Each is tagged
+    # with a category so the picker can group them.
+    tokenart = (
+        _list("tokens/heroes", IMAGE_EXTS, skip_hidden=True, category="hero")
+        + _list("tokens/enemies", IMAGE_EXTS, skip_hidden=True, category="enemy")
+        + _list("tokens/npcs", IMAGE_EXTS, skip_hidden=True, category="npc")
+        + _list("tokens/uploads", IMAGE_EXTS, skip_hidden=True, category="upload")
+        + _list("portraits", IMAGE_EXTS, skip_hidden=True, category="npc")
+    )
+    tokenart.sort(key=lambda e: e["src"])
+
     return {
         "backgrounds": backgrounds,
         "characters": characters,
         "music": audio("music"),
         "ambience": audio("ambience"),
         "sfx": audio("sfx"),
+        "tokenart": tokenart,
     }
 
 
@@ -136,6 +149,10 @@ def write_manifest():
         "export const SFX = [\n"
         + _emit(data["sfx"])
         + ("\n" if data["sfx"] else "")
+        + "];\n\n"
+        "export const TOKENART = [\n"
+        + _emit(data["tokenart"])
+        + ("\n" if data["tokenart"] else "")
         + "];\n"
     )
     out_path = os.path.join(ROOT, "data", "manifest.js")
@@ -148,8 +165,9 @@ if __name__ == "__main__":
     result = write_manifest()
     print(
         "Wrote data/manifest.js: {0} backgrounds, {1} characters, "
-        "{2} music, {3} ambience, {4} sfx".format(
+        "{2} music, {3} ambience, {4} sfx, {5} tokenart".format(
             len(result["backgrounds"]), len(result["characters"]),
-            len(result["music"]), len(result["ambience"]), len(result["sfx"])
+            len(result["music"]), len(result["ambience"]), len(result["sfx"]),
+            len(result["tokenart"])
         )
     )

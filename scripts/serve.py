@@ -21,8 +21,10 @@ Usage:
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
+import re
 import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -87,6 +89,34 @@ class Handler(SimpleHTTPRequestHandler):
                     json.dump(overrides, handle, indent=2)
                 os.replace(tmp, out)  # atomic swap, so a concurrent read never tears
                 self._json(200, {"ok": True, "count": len(overrides)})
+            except Exception as err:  # noqa: BLE001 -- report any failure to the UI
+                self._json(500, {"ok": False, "error": str(err)})
+            return
+        if self.path.rstrip("/") == "/upload-token-image":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                data_url = str(payload.get("dataUrl", ""))
+                # Accept only a base64 image data URL, so the endpoint can only ever
+                # write an image the editor produced (never an arbitrary path/body).
+                m = re.match(r"^data:image/(png|jpeg|jpg|webp|gif);base64,(.+)$", data_url, re.DOTALL)
+                if not m:
+                    self._json(400, {"ok": False, "error": "expected a base64 image data URL"})
+                    return
+                ext = ".jpg" if m.group(1) == "jpeg" else "." + m.group(1)
+                raw = base64.b64decode(m.group(2))
+                if len(raw) > 8 * 1024 * 1024:
+                    self._json(400, {"ok": False, "error": "image too large (max 8 MB)"})
+                    return
+                stem = re.sub(r"[^a-zA-Z0-9_-]+", "-", os.path.splitext(str(payload.get("name", "")))[0]).strip("-").lower() or "token"
+                folder = os.path.join(ROOT, "assets", "tokens", "uploads")
+                os.makedirs(folder, exist_ok=True)
+                fn, i = stem + ext, 1
+                while os.path.exists(os.path.join(folder, fn)):  # never clobber an existing upload
+                    fn, i = f"{stem}-{i}{ext}", i + 1
+                with open(os.path.join(folder, fn), "wb") as handle:
+                    handle.write(raw)
+                self._json(200, {"ok": True, "src": f"assets/tokens/uploads/{fn}"})
             except Exception as err:  # noqa: BLE001 -- report any failure to the UI
                 self._json(500, {"ok": False, "error": str(err)})
             return

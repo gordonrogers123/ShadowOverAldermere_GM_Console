@@ -21,6 +21,7 @@
 
 import { DEFAULT_ENTER } from './transitions.js';
 import { CAST } from '../data/cast.js';
+import { globalDisplay } from './tokenOverrides.js';
 
 // Resolve a token's castId to its cast entry (ring color, portrait, name).
 // ids are unique across heroes and enemies, so a flat map is enough; the
@@ -510,13 +511,21 @@ export function createStageView(root) {
       // its portrait); swap the src only when it actually differs.
       if (cast.tokenImage && img.getAttribute('src') !== cast.tokenImage) img.src = cast.tokenImage;
     }
-    const d = cast.display || {};
+    // On-map display settings are GLOBAL (one set for every token): name/condition
+    // size, condition side + word-wrap angle, HP-bar side.
+    const d = globalDisplay();
     el.style.setProperty('--token-name-scale', d.nameSize || 1);
     el.style.setProperty('--token-cond-scale', d.condSize || 1);
     el.classList.toggle('hp-above', d.hpPos === 'above');
     el.classList.toggle('cond-below', d.condPos === 'below');
-    const arc = el.querySelector('.token-cond path');
-    if (arc) arc.setAttribute('d', d.condPos === 'below' ? COND_ARC_BELOW : COND_ARC_ABOVE);
+    const cond = el.querySelector('.token-cond');
+    if (cond) {
+      const arc = cond.querySelector('path');
+      if (arc) arc.setAttribute('d', d.condPos === 'below' ? COND_ARC_BELOW : COND_ARC_ABOVE);
+      // Word-wrap angle: rotate the curved word around the token center.
+      cond.style.transformOrigin = '50% 50%';
+      cond.style.transform = d.condAngle ? `rotate(${d.condAngle}deg)` : '';
+    }
   }
 
   function buildTokenEl(inst) {
