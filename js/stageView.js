@@ -437,11 +437,11 @@ export function createStageView(root) {
 
   // Draw the map grid (PR 6A) as evenly spaced SVG lines over the displayed map
   // rect, in the SAME contain-space as the tokens, so it lands identically on the
-  // GM board and the Player TV. Cells are square in displayed px -- cell size and
-  // the X/Y offsets are all fractions of the map WIDTH, so they scale uniformly.
-  // Hidden unless a scene grid exists, gridVisible is on, a map is up, and tokens
-  // show (map mode). Lines are clipped to the map rect so none spill onto the
-  // letterbox bars.
+  // GM board and the Player TV. Cells are square in displayed px (cellSize is a
+  // fraction of the map WIDTH); the X/Y offsets are fractions of a CELL, so ±0.5
+  // spans exactly one cell of alignment at any density. Hidden unless the current
+  // map's grid exists + is enabled, a map is up, and tokens show (map mode). Lines
+  // are clipped to the map rect so none spill onto the letterbox bars.
   // The live grid for the CURRENT map variant. Grids are keyed by map-variant key
   // (state.mapState), so the overlay follows the active map on both screens without
   // any re-seed plumbing -- state.mapState already rides the broadcast.
@@ -460,7 +460,7 @@ export function createStageView(root) {
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
     const cell = (Number(grid.cellSize) || 0.08) * cr.w;   // square cell edge, in px
     if (!(cell >= 3)) { gridOverlay.style.display = 'none'; return; }   // too fine to draw
-    const phase = (v) => (((v * cr.w) % cell) + cell) % cell;   // gridline offset within a cell
+    const phase = (v) => (((v * cell) % cell) + cell) % cell;   // offset is a fraction of a CELL
     const x0 = cr.left, y0 = cr.top, x1 = cr.left + cr.w, y1 = cr.top + cr.h;
     let d = '';
     for (let x = x0 + phase(Number(grid.offsetX) || 0); x <= x1 + 0.5; x += cell) d += 'M' + x.toFixed(1) + ' ' + y0.toFixed(1) + 'V' + y1.toFixed(1);
@@ -488,7 +488,7 @@ export function createStageView(root) {
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
     const cell = (Number(grid.cellSize) || 0.08) * cr.w;
     if (!(cell > 0)) return frac;
-    const phase = (v) => (((v * cr.w) % cell) + cell) % cell;
+    const phase = (v) => (((v * cell) % cell) + cell) % cell;   // offset is a fraction of a CELL
     const px = phase(Number(grid.offsetX) || 0), py = phase(Number(grid.offsetY) || 0);
     // Cell centers sit at phase + (k + 0.5)*cell in map-relative px.
     const nearest = (p, ph) => { const k = Math.round((p - ph - cell / 2) / cell); return ph + (k + 0.5) * cell; };

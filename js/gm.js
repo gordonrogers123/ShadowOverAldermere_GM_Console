@@ -486,7 +486,14 @@ export function mountGm(root) {
   gridPanelTitle.className = 'mm-grid-panel-title';
   els.gridPanel.append(gridPanelTitle);
   gridControls.push({ title: gridPanelTitle });   // shows which map variant is being aligned
-  const gridSlider = (label, min, max, step, get, set, fmt) => {
+  // Controls are grouped into labeled sections (Size / Position / Style) so the
+  // growing panel reads clearly.
+  const gridGroup = (name) => {
+    const g = document.createElement('div'); g.className = 'mm-grid-group';
+    const h = document.createElement('div'); h.className = 'mm-grid-group-h'; h.textContent = name;
+    g.append(h); els.gridPanel.append(g); return g;
+  };
+  const gridSlider = (group, label, min, max, step, get, set, fmt) => {
     const lab = document.createElement('label'); lab.className = 'mm-grid-set';
     const key = document.createElement('span'); key.className = 'mm-grid-label';
     const txt = document.createElement('span'); txt.textContent = label;
@@ -497,32 +504,37 @@ export function mountGm(root) {
     inp.addEventListener('input', () => { set(ensureLiveGrid(), +inp.value); out.textContent = fmt(+inp.value); gridLiveUpdate(); });
     lab.append(key, inp);
     gridControls.push({ inp, out, get, fmt });
-    els.gridPanel.append(lab);
+    group.append(lab);
   };
-  // "Cells across" maps to cellSize = 1/N (a fraction of the map width); offsets are
-  // a percentage of the width.
-  gridSlider('Cells', 4, 40, 1, (g) => Math.round(1 / (g.cellSize || 1 / 16)), (g, v) => { g.cellSize = 1 / v; }, (v) => String(v));
-  gridSlider('Offset X', -10, 10, 0.5, (g) => Math.round((g.offsetX || 0) * 1000) / 10, (g, v) => { g.offsetX = v / 100; }, (v) => v + '%');
-  gridSlider('Offset Y', -10, 10, 0.5, (g) => Math.round((g.offsetY || 0) * 1000) / 10, (g, v) => { g.offsetY = v / 100; }, (v) => v + '%');
-  // Feet/cell: a dropdown of the standard scales (no in-between values).
+  // Size: cell count (cellSize = 1/N of the map width) + the real-world scale.
+  const gSize = gridGroup('Size');
+  gridSlider(gSize, 'Cells', 4, 50, 1, (g) => Math.round(1 / (g.cellSize || 1 / 16)), (g, v) => { g.cellSize = 1 / v; }, (v) => String(v));
   const feetLab = document.createElement('label'); feetLab.className = 'mm-grid-set';
   const feetKey = document.createElement('span'); feetKey.className = 'mm-grid-label';
   const feetTxt = document.createElement('span'); feetTxt.textContent = 'Feet/cell'; feetKey.append(feetTxt);
   const feetSel = document.createElement('select'); feetSel.className = 'mm-grid-select';
-  for (const ft of [5, 10, 20, 50]) { const o = document.createElement('option'); o.value = String(ft); o.textContent = ft + ' ft'; feetSel.append(o); }
+  for (const ft of [5, 10, 15, 20, 30, 50]) { const o = document.createElement('option'); o.value = String(ft); o.textContent = ft + ' ft'; feetSel.append(o); }
   feetSel.addEventListener('change', () => { ensureLiveGrid().feetPerCell = +feetSel.value; gridLiveUpdate(); });
   feetLab.append(feetKey, feetSel);
   gridControls.push({ inp: feetSel, select: true, get: (g) => String(g.feetPerCell || 5) });
-  els.gridPanel.append(feetLab);
-  gridSlider('Opacity', 15, 100, 5, (g) => Math.round((g.opacity == null ? 0.5 : g.opacity) * 100), (g, v) => { g.opacity = v / 100; }, (v) => v + '%');
-  gridSlider('Width', 0.5, 3, 0.25, (g) => g.lineWidth || 1, (g, v) => { g.lineWidth = v; }, (v) => v + 'px');
+  gSize.append(feetLab);
+  // Position: nudge the grid to register against the map's own lines. Offset is a
+  // fraction of a CELL, so ±50% always spans one full cell of alignment.
+  const gPos = gridGroup('Position');
+  gridSlider(gPos, 'Offset X', -50, 50, 2, (g) => Math.round((g.offsetX || 0) * 100), (g, v) => { g.offsetX = v / 100; }, (v) => v + '%');
+  gridSlider(gPos, 'Offset Y', -50, 50, 2, (g) => Math.round((g.offsetY || 0) * 100), (g, v) => { g.offsetY = v / 100; }, (v) => v + '%');
+  // Style: how the lines read against the art.
+  const gStyle = gridGroup('Style');
+  gridSlider(gStyle, 'Opacity', 15, 100, 5, (g) => Math.round((g.opacity == null ? 0.5 : g.opacity) * 100), (g, v) => { g.opacity = v / 100; }, (v) => v + '%');
+  gridSlider(gStyle, 'Width', 0.5, 3, 0.25, (g) => g.lineWidth || 1, (g, v) => { g.lineWidth = v; }, (v) => v + 'px');
   const colLab = document.createElement('label'); colLab.className = 'mm-grid-set mm-grid-colorset';
   const colKey = document.createElement('span'); colKey.className = 'mm-grid-label'; colKey.textContent = 'Color';
   const colInp = document.createElement('input'); colInp.type = 'color'; colInp.className = 'mm-grid-colorinp';
+  colInp.title = 'Grid line colour (opacity is separate)';
   colInp.addEventListener('input', () => { ensureLiveGrid().color = colInp.value; gridLiveUpdate(); });
   colLab.append(colKey, colInp);
   gridControls.push({ inp: colInp, color: true, get: (g) => g.color || '#ffffff' });
-  els.gridPanel.append(colLab);
+  gStyle.append(colLab);
   boardWrap.insertBefore(els.gridPanel, els.mapboard);
 
   // The GM can monitor audio locally (role 'gm', off by default); the first
