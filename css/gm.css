@@ -1037,6 +1037,24 @@ body.view-gm {
 .view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
 .view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
 .view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
+/* Attack Hit/Dmg roll controls + the roll result / targeting banner. */
+.view-gm .stat-atk-btns { display: flex; gap: 0.3rem; margin-top: 0.25rem; }
+.view-gm .stat-atk-btns .gm-button { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
+.view-gm .atk-dmg { background: var(--fill); color: var(--offense); border-color: var(--offense); }
+.view-gm .atk-target { background: var(--fill); color: var(--control); border-color: var(--control); }
+.view-gm .atk-target.is-armed { background: var(--control); color: var(--paper); }
+.view-gm .stat-atk-select { width: 100%; margin-bottom: 0.3rem; }
+.view-gm .stat-roll { margin-top: 0.45rem; padding: 0.3rem 0.5rem; border-radius: var(--radius-sm); background: var(--fill); border: 1px solid var(--rule); font-family: var(--font-display); font-size: var(--fs-100); }
+.view-gm .stat-roll.is-hit { border-color: var(--support); color: var(--support); background: #eef6ef; }
+.view-gm .stat-roll.is-miss { border-color: var(--offense); color: var(--offense); background: #f8ecec; }
+.view-gm .stat-target { margin-top: 0.45rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; display: flex; align-items: center; gap: 0.5rem; }
+.view-gm .stat-target.is-arming { background: #e7eef7; border-color: var(--control); }
+.view-gm .stat-target.is-arming .stat-target-txt { color: var(--control); }
+.view-gm .stat-target-txt { flex: 1 1 auto; font-size: var(--fs-100); font-weight: 700; color: #7a5312; }
+.view-gm .stat-target-cancel { flex: 0 0 auto; font-size: var(--fs-100); padding: 0.15rem 0.45rem; }
+/* Targeting mode: crosshair over board tokens, with a dashed outline on hover. */
+.view-gm .board-interactive.is-targeting .token { cursor: crosshair; }
+.view-gm .board-interactive.is-targeting .token:hover { outline: 2px dashed #b07d2b; outline-offset: 2px; }
 .view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0; }
 /* Condition chip (shared by the stat card + the roster) -- conditions read as afflictions. */
 .view-gm .cond-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; border-radius: 999px; padding: 0.06rem 0.5rem; background: #f0dada; color: #7a2626; border: 1px solid #d9b3b3; }

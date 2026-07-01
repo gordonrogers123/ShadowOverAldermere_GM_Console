@@ -1526,17 +1526,19 @@ export function mountGm(root) {
     if (!i.order.length) return;
     i.idx = (i.idx + delta + i.order.length) % i.order.length;
     syncActiveToken();
+    clearAttackState();   // a new turn drops any half-finished attack roll/target
     commit();
   }
   function setInitIdx(n) {
     const i = ensureInit();
     if (n < 0 || n >= i.order.length) return;
-    i.idx = n; syncActiveToken(); commit();
+    i.idx = n; syncActiveToken(); clearAttackState(); commit();
   }
   function clearInitiative() {
     const mods = (state.initiative && state.initiative.mods) || {};
     state.initiative = { mods, rolls: {}, order: [], idx: 0 };   // keep the type modifiers
     if (state.stage) state.stage.activeTokenId = null;
+    clearAttackState();
     commit();
   }
 
@@ -1904,6 +1906,73 @@ export function mountGm(root) {
     if (foe) { lastStatToken = foe.instId; return ctxFor(foe); }
     return null;
   }
+  // ---- Attack resolution: pick a TARGET on the board (a red targeting arrow +
+  //      glow show who's aimed at, on the GM board AND the TV), then roll to Hit
+  //      (auto-checked vs the target's AC) and Dmg (applied to the target). The
+  //      link rides state.stage.targetLink so it broadcasts. Future: AoE/cones. ----
+  let attackRoll = null;   // { instId, kind:'hit'|'dmg', ... } the last roll on the active card
+  let targeting = false;   // armed: the next board-token click sets the target
+  const rollN = (count, sides) => { let s = 0; for (let k = 0; k < count; k++) s += Math.floor(Math.random() * sides) + 1; return s; };
+  const parseHitMod = (toHit) => { const m = /^\s*([+-]?\d+)\s*$/.exec(String(toHit || '')); return m ? parseInt(m[1], 10) : null; };
+  const parseDamage = (dmg) => { const m = /(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i.exec(String(dmg || '')); if (!m) return null; return { count: +m[1], sides: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0, type: String(dmg).replace(m[0], '').trim() }; };
+  const sceneHasSfx = (id) => { const sc = sceneById(state.sceneId); return !!(sc && sc.audio && (sc.audio.sfx || []).some((s) => s.id === id)); };
+  function fireAttackSfx(id) { if (!id || !sceneHasSfx(id)) return; ensureAudio(); state.audio.sfxTrigger[id] = (state.audio.sfxTrigger[id] || 0) + 1; commitAudio(); }
+  function renderBoardTargeting() { if (boardView && boardView.el) boardView.el.classList.toggle('is-targeting', !!targeting); }
+  function currentTarget() {
+    const link = state.stage && state.stage.targetLink;
+    return (link && link.from === state.stage.activeTokenId) ? findToken(link.to) : null;
+  }
+  function armTargeting() { targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
+  function setTarget(toInstId) {
+    const from = state.stage && state.stage.activeTokenId;
+    targeting = false; renderBoardTargeting();
+    if (!from || from === toInstId) { renderStatSheet(); return; }   // no self-target
+    ensureTokens();
+    state.stage.targetLink = { from, to: toInstId };
+    attackRoll = null;
+    commit();   // broadcasts the arrow + target glow, re-renders the card
+  }
+  function clearTarget() { if (state.stage) state.stage.targetLink = null; attackRoll = null; targeting = false; renderBoardTargeting(); commit(); }
+  function clearAttackState() { attackRoll = null; targeting = false; if (state.stage) state.stage.targetLink = null; renderBoardTargeting(); }
+  function rollHit(token, atk) {
+    const target = currentTarget();
+    if (!target) { armTargeting(); return; }   // enforce: target first
+    const mod = parseHitMod(atk.toHit);
+    if (mod == null) { setStatus(atk.name + ' is a save (' + atk.toHit + '), not an attack roll', false); return; }
+    const d = Math.floor(Math.random() * 20) + 1;
+    const total = d + mod;
+    const tc = castEntry(target.castId, target.kind);
+    const ac = (tc && tc.stats && tc.stats.ac != null) ? +tc.stats.ac : null;
+    const outcome = d === 20 ? 'crit' : d === 1 ? 'miss' : (ac != null ? (total >= ac ? 'hit' : 'miss') : null);
+    attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, d, mod, total, ac, outcome, targetLabel: target.label };
+    if (atk.sfxId) fireAttackSfx(atk.sfxId);
+    renderStatSheet();
+  }
+  function rollDmg(token, atk) {
+    const target = currentTarget();
+    if (!target) { armTargeting(); return; }
+    const p = parseDamage(atk.damage); if (!p) return;
+    const total = Math.max(0, rollN(p.count, p.sides) + p.mod);
+    attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation: p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), dtype: p.type, targetLabel: target.label };
+    if (atk.sfxId) fireAttackSfx(atk.sfxId);
+    applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
+  }
+  // One attack line + its Target / Hit / Dmg buttons (+ ▶ if it carries SFX).
+  function attackRow(token, atk, compact) {
+    const a = document.createElement('div'); a.className = 'stat-attack';
+    if (!compact) { const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name; a.append(nm); }
+    const line = document.createElement('div'); line.className = 'stat-attack-line';
+    const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
+    line.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
+    a.append(line);
+    const btns = document.createElement('div'); btns.className = 'stat-atk-btns';
+    const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
+    if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
+    if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
+    if (atk.sfxId && sceneHasSfx(atk.sfxId)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'gm-button btn--quiet atk-sfx'; sb.textContent = '▶'; sb.title = 'Play attack SFX'; sb.addEventListener('click', () => fireAttackSfx(atk.sfxId)); btns.append(sb); }
+    a.append(btns);
+    return a;
+  }
   function renderStatSheet() {
     if (!els.statsheet) return;
     const host = els.statsheet; host.innerHTML = '';
@@ -1984,14 +2053,47 @@ export function mountGm(root) {
         }
         host.append(ab);
       }
-      // ---- Attacks (append " to hit" only to a numeric bonus, not a save/keyword) ----
-      for (const atk of (stats.attacks || [])) {
-        const a = document.createElement('div'); a.className = 'stat-attack';
-        const nm2 = document.createElement('div'); nm2.className = 'stat-attack-name'; nm2.textContent = atk.name;
-        const d = document.createElement('div'); d.className = 'stat-attack-line';
-        const hit = atk.toHit ? (/^[+-]?\d/.test(String(atk.toHit)) ? atk.toHit + ' to hit' : atk.toHit) : '';
-        d.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
-        a.append(nm2, d); host.append(a);
+      // ---- Target line: who this attacker is aimed at (or the "click a target" prompt). ----
+      const tgt = currentTarget();
+      if (tgt) {
+        const tl = document.createElement('div'); tl.className = 'stat-target';
+        const txt = document.createElement('span'); txt.className = 'stat-target-txt'; txt.textContent = '⌖ Targeting ' + tgt.label;
+        const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'gm-button btn--quiet stat-target-cancel'; clr.textContent = 'Clear'; clr.addEventListener('click', clearTarget);
+        tl.append(txt, clr); host.append(tl);
+      } else if (targeting) {
+        const tl = document.createElement('div'); tl.className = 'stat-target is-arming';
+        const txt = document.createElement('span'); txt.className = 'stat-target-txt'; txt.textContent = '⌖ Click the target token on the board…';
+        tl.append(txt); host.append(tl);
+      }
+      // ---- Attacks with Target / Hit / Dmg: inline for short lists, a picker
+      //      dropdown for long ones (spellcasters), so the card stays capped. ----
+      const attacks = stats.attacks || [];
+      if (attacks.length) {
+        const wrap = document.createElement('div'); wrap.className = 'stat-attacks';
+        if (attacks.length <= 4) {
+          for (const atk of attacks) wrap.append(attackRow(token, atk, false));
+        } else {
+          const sel = document.createElement('select'); sel.className = 'stat-atk-select';
+          attacks.forEach((atk, i) => { const o = document.createElement('option'); o.value = i; o.textContent = atk.name; sel.append(o); });
+          const detail = document.createElement('div'); detail.className = 'stat-atk-detail';
+          const draw = () => { detail.innerHTML = ''; detail.append(attackRow(token, attacks[+sel.value] || attacks[0], true)); };
+          sel.addEventListener('change', draw);
+          wrap.append(sel, detail); draw();
+        }
+        host.append(wrap);
+      }
+      // ---- Roll result: Hit is auto-checked vs the target's AC; Dmg names the target. ----
+      if (attackRoll && attackRoll.instId === token.instId) {
+        const oc = attackRoll.kind === 'hit' ? attackRoll.outcome : null;
+        const r = document.createElement('div'); r.className = 'stat-roll' + (oc === 'crit' || oc === 'hit' ? ' is-hit' : oc === 'miss' ? ' is-miss' : '');
+        if (attackRoll.kind === 'hit') {
+          const vs = attackRoll.ac != null ? ' vs AC ' + attackRoll.ac : '';
+          const verdict = oc === 'crit' ? ' → CRIT' : oc === 'hit' ? ' → HIT' : oc === 'miss' ? (attackRoll.d === 1 ? ' → MISS (nat 1)' : ' → MISS') : '';
+          r.textContent = attackRoll.name + ' — d20 (' + attackRoll.d + ') ' + (attackRoll.mod >= 0 ? '+' : '') + attackRoll.mod + ' = ' + attackRoll.total + vs + verdict;
+        } else {
+          r.textContent = attackRoll.name + ' — ' + attackRoll.notation + ' = ' + attackRoll.total + (attackRoll.dtype ? ' ' + attackRoll.dtype : '') + ' → ' + attackRoll.targetLabel;
+        }
+        host.append(r);
       }
     } else if (max == null) {
       const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p);
@@ -2045,6 +2147,7 @@ export function mountGm(root) {
     const instId = tokenEl.dataset.instId;
     const tokens = (state.stage && state.stage.tokens) || [];
     if (!tokens.some((t) => t.instId === instId)) return;
+    if (targeting) { setTarget(instId); e.preventDefault(); return; }   // targeting mode: aim the active attacker at this token
     drag = { instId, el: tokenEl };
     tokenEl.classList.add('dragging');
     if (tokenEl.setPointerCapture) { try { tokenEl.setPointerCapture(e.pointerId); } catch (_) {} }

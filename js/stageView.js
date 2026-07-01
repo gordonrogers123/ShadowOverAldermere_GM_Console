@@ -79,6 +79,7 @@ export function createStageView(root) {
       <div class="map-layer" data-layer="1"></div>
       <img class="char-layer char-left" alt="" data-side="left">
       <img class="char-layer char-right" alt="" data-side="right">
+      <svg class="target-fx" aria-hidden="true"><line class="target-line" x1="0" y1="0" x2="0" y2="0"></line><polygon class="target-arrowhead" points=""></polygon></svg>
       <div class="token-layer"></div>
       <div class="curtain"></div>
       <div class="idle"><div class="idle-title">The Shadow Over Aldermere</div></div>
@@ -94,6 +95,8 @@ export function createStageView(root) {
   const curtain = root.querySelector('.curtain');
   const idle = root.querySelector('.idle');
   const tokenLayer = root.querySelector('.token-layer');
+  const targetFx = root.querySelector('.target-fx');
+  let lastState = null;      // last painted state, so a resize can re-lay-out the target arrow
 
   let activeIndex = 0;       // which background layer is currently visible
   let currentBgKey = null;   // what background is on screen, to skip redundant work
@@ -395,7 +398,7 @@ export function createStageView(root) {
   // after a map image loads. No active map image -> hide the whole layer.
   function layoutTokens() {
     const img = activeMapImg();
-    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; return; }
+    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
@@ -410,6 +413,40 @@ export function createStageView(root) {
       el.style.height = size + 'px';
       el.style.fontSize = size + 'px';   // children scale in em
     });
+    updateTargetArrow(lastState);
+  }
+  // Draw the targeting arrow (attacker -> target) as an SVG line + arrowhead over
+  // the board, in the SAME contain-space as the tokens, so it lands identically on
+  // the GM board and the Player TV. Hidden when there's no link or no visible map.
+  function updateTargetArrow(state) {
+    if (!targetFx) return;
+    const link = state && state.stage && state.stage.targetLink;
+    const list = (state && state.stage && state.stage.tokens) || [];
+    const from = link && list.find((t) => t.instId === link.from);
+    const to = link && list.find((t) => t.instId === link.to);
+    const img = activeMapImg();
+    if (!link || !from || !to || !img || !tokensShown || from.visible === false || to.visible === false) { targetFx.style.display = 'none'; return; }
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) { targetFx.style.display = 'none'; return; }
+    const cr = computeContainRect(r.width, r.height, img.naturalWidth / img.naturalHeight);
+    const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
+    const ax = cr.left + from.x * cr.w, ay = cr.top + from.y * cr.h;
+    const bx = cr.left + to.x * cr.w, by = cr.top + to.y * cr.h;
+    const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len, rad = size * 0.55;
+    const sx = ax + ux * rad, sy = ay + uy * rad;   // start at the attacker's edge
+    const ex = bx - ux * rad, ey = by - uy * rad;   // tip at the target's edge
+    targetFx.style.display = '';
+    targetFx.setAttribute('width', r.width); targetFx.setAttribute('height', r.height);
+    targetFx.setAttribute('viewBox', '0 0 ' + r.width + ' ' + r.height);
+    const line = targetFx.querySelector('.target-line');
+    const head = targetFx.querySelector('.target-arrowhead');
+    line.setAttribute('x1', sx); line.setAttribute('y1', sy); line.setAttribute('x2', ex); line.setAttribute('y2', ey);
+    line.setAttribute('stroke-width', Math.max(3, size * 0.09));
+    const ah = Math.max(9, size * 0.34), px = -uy, py = ux;
+    const b1x = ex - ux * ah + px * ah * 0.55, b1y = ey - uy * ah + py * ah * 0.55;
+    const b2x = ex - ux * ah - px * ah * 0.55, b2y = ey - uy * ah - py * ah * 0.55;
+    head.setAttribute('points', ex + ',' + ey + ' ' + b1x + ',' + b1y + ' ' + b2x + ',' + b2y);
   }
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -492,6 +529,18 @@ export function createStageView(root) {
   // On-map combat overlays, driven by state.stage.hpOnMap / conditionsOnMap. Runs
   // on the GM board AND the Player TV (shared compositor). Enemy HP is never shown.
   function updateTokenOverlays(el, inst, state) {
+    // Damage flash: when a token's current HP drops, blink it (on both screens; the
+    // HP-bar width also animates via its CSS transition). Kind-agnostic so enemies
+    // flash when hit too, without revealing their HP. First sighting never blinks.
+    const curHp = (inst.hp && inst.hp.current != null) ? inst.hp.current : null;
+    if (el._hpPrev != null && curHp != null && curHp < el._hpPrev) {
+      el.classList.remove('is-hit'); void el.offsetWidth;   // restart the animation if mid-flash
+      el.classList.add('is-hit');
+      clearTimeout(el._hitTimer);
+      el._hitTimer = setTimeout(() => el.classList.remove('is-hit'), 650);
+    }
+    el._hpPrev = curHp;
+
     const hpOn = !!(state.stage && state.stage.hpOnMap);
     const condOn = !!(state.stage && state.stage.conditionsOnMap);
     const hpbar = el.querySelector('.token-hpbar');
@@ -530,6 +579,7 @@ export function createStageView(root) {
   // Diff the live token list against what is on stage: create new, drop gone,
   // update the label/position/hidden of survivors. Mirrors the character diff.
   function updateTokens(state, scene) {
+    lastState = state;
     const list = (state.stage && Array.isArray(state.stage.tokens)) ? state.stage.tokens : [];
     const haveMap = bgDescriptor(state, scene).kind === 'image';
 
@@ -539,6 +589,7 @@ export function createStageView(root) {
     // The token whose turn it is (initiative) wears a golden ring -- on the GM
     // board AND the Player TV, since activeTokenId rides the broadcast.
     const activeId = state.stage && state.stage.activeTokenId;
+    const link = state.stage && state.stage.targetLink;
     const seen = new Set();
     for (const inst of list) {
       seen.add(inst.instId);
@@ -549,6 +600,7 @@ export function createStageView(root) {
       el.dataset.y = inst.y;
       el.classList.toggle('is-hidden', inst.visible === false);
       el.classList.toggle('is-active', !!activeId && inst.instId === activeId);
+      el.classList.toggle('is-targeted', !!(link && inst.instId === link.to));
       updateTokenOverlays(el, inst, state);
     }
     existing.forEach((el, id) => { if (!seen.has(id)) el.remove(); });
@@ -559,7 +611,7 @@ export function createStageView(root) {
     // mode clears the table on the TV.
     const inMapMode = !!(state.stage && state.stage.mapMode);
     tokensShown = stage.classList.contains('board-interactive') || inMapMode;
-    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; return; }
+    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
     layoutTokens();
   }
 

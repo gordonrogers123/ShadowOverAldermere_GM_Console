@@ -20,12 +20,38 @@ extended display over HDMI) and shows the scene. Already shipped:
   (each with start/ramp). Opening cues fire on scene select. Per-cue preview.
 - **Characters** — per-side roster (multiple per side, one shown at a time),
   per-character transition + placement, exit-then-enter swaps, cue-driven reveals.
-- **Map mode** — tokens on a map image, initiative tracker, enemy stat sheets,
-  saved layouts, per-enemy art/ring fallback.
+- **Map mode / combat console** — hero / enemy / NPC tokens on a map; a sliding
+  initiative tracker; generalized stat blocks with condition rules text; per-token
+  HP + conditions with on-map HP bars, curved condition words, a damage flash, and
+  an active-token glow; and **target-first attack resolution** — pick a target (a
+  red targeting arrow + a glow on the target), roll to hit auto-checked vs the
+  target's AC, then roll and apply damage. Saved layouts, per-token art/ring fallback.
 - **Audio engine** (Web Audio) — music beds / ambience / SFX, per-bed fades with
   dip-to-silence looping, cross-cue crossfades, a sidebar mixer, TV/Laptop outputs.
 - **Helper server** (`scripts/serve.py`) — serves the static app, persists scenes
   to disk, runs asset scans.
+
+---
+
+## The map-mode combat pass (in flight)
+
+A focused pass turning map mode into a full combat surface. **Shipped:** the
+initiative window + stat-block polish; on-map hero/NPC **HP bars**, curved
+**condition words**, and **NPC tokens** (pale-blue ring), toggled per scene; a
+subtle active-token glow; a **damage flash** + animated HP drop; and **target-first
+attack resolution** — a red targeting arrow (attacker → target) + target glow, an
+auto-AC hit check, and damage applied to the target. **Queued next:**
+
+- **Floating audio menu** — master / music / SFX volume + mute in a dice-style
+  floating panel opposite the dice roller (+ the per-attack SFX hooks).
+- **"Show the dice roll to the room"** — push a roll to the Player TV (see Tier 1).
+- **Token builder** — drag to centre each token's face, pick its ring, and set
+  per-token display (name / condition text size + position, HP-bar position);
+  persisted via the helper server.
+- **Animated (video) maps** — `.mp4` maps under `assets/maps/animated/` (see Tier 1).
+- **AoE templates + a ruler**, then a **grid + distance/range checks** for attacks
+  (see Tier 2).
+- Later: a **richer HP-modifiers / effects system** beyond the quick damage/heal.
 
 ---
 
@@ -76,10 +102,17 @@ plumbing and the rest are nearly free.
 
 ## Tier 2 — Map & combat depth
 
+*Shipped in the map-mode pass:* on-map HP bars + condition words, NPC tokens, the
+active-token glow, damage flash, and target-first attack resolution (targeting
+arrow + auto-AC hit check). Still open:
+
 - **Fog of war / progressive reveal** — the GM uncovers the dungeon as players
   explore. Likely the highest-value *map* feature for in-person play.
-- **Token HP bars + condition/status icons** (poisoned, prone, concentrating).
-- **AoE templates + a ruler/measurement** (drop a 20-ft cone, measure movement).
+- **AoE templates + a ruler/measurement** (drop a 20-ft cone, measure movement) —
+  rides the **map-overlay layer** the targeting arrow introduced.
+- **Grid + distance/range checks for attacks** — a map grid with measured distances
+  so an attack validates its range along the targeting link (in/out of range) and
+  tokens can snap to cells. Extends the targeting overlay + the ruler.
 - **Large maps with a shared camera** — a transform layer (translate+scale map +
   tokens together), pan/zoom input on the GM, `state.stage.camera = {x,y,zoom}`
   broadcast so the TV follows, and a `camera` cue lane (pan room A→B over a ramp).
@@ -219,8 +252,8 @@ land alongside the companion-client work, since they share the relay.
 1. **Atmosphere tier** — weather + the zoom/shake/filter `fx` lane + cutscene
    video. Biggest immersion-per-hour; all ride the cue model; the first one builds
    the shared lane.
-2. **Map & combat depth** — fog of war + token HP/conditions, then the
-   camera/large-map system.
+2. **Map & combat depth** — HP/conditions + attack resolution shipped; next fog of
+   war and AoE/ruler + grid, then the camera/large-map system.
 3. **Room hardware** — spatial room audio (the interface + speakers are already in
    hand, so it's unblocked whenever you want it) and/or DMX lighting (the "whole
    room reacts" moment).
