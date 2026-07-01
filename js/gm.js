@@ -1906,40 +1906,58 @@ export function mountGm(root) {
     if (foe) { lastStatToken = foe.instId; return ctxFor(foe); }
     return null;
   }
-  // ---- Attack resolution: roll d20 to hit / the damage dice on the active card,
-  //      then click a target token to apply the damage (HP drop + hit flash). ----
-  let attackRoll = null;   // { instId, kind, ... } the last roll shown on the active card
-  let pendingHit = null;   // { instId, amount, name } armed damage awaiting a target click
+  // ---- Attack resolution: pick a TARGET on the board (a red targeting arrow +
+  //      glow show who's aimed at, on the GM board AND the TV), then roll to Hit
+  //      (auto-checked vs the target's AC) and Dmg (applied to the target). The
+  //      link rides state.stage.targetLink so it broadcasts. Future: AoE/cones. ----
+  let attackRoll = null;   // { instId, kind:'hit'|'dmg', ... } the last roll on the active card
+  let targeting = false;   // armed: the next board-token click sets the target
   const rollN = (count, sides) => { let s = 0; for (let k = 0; k < count; k++) s += Math.floor(Math.random() * sides) + 1; return s; };
   const parseHitMod = (toHit) => { const m = /^\s*([+-]?\d+)\s*$/.exec(String(toHit || '')); return m ? parseInt(m[1], 10) : null; };
   const parseDamage = (dmg) => { const m = /(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i.exec(String(dmg || '')); if (!m) return null; return { count: +m[1], sides: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0, type: String(dmg).replace(m[0], '').trim() }; };
   const sceneHasSfx = (id) => { const sc = sceneById(state.sceneId); return !!(sc && sc.audio && (sc.audio.sfx || []).some((s) => s.id === id)); };
   function fireAttackSfx(id) { if (!id || !sceneHasSfx(id)) return; ensureAudio(); state.audio.sfxTrigger[id] = (state.audio.sfxTrigger[id] || 0) + 1; commitAudio(); }
-  function renderBoardTargeting() { if (boardView && boardView.el) boardView.el.classList.toggle('is-targeting', !!pendingHit); }
-  function clearAttackState() { attackRoll = null; pendingHit = null; renderBoardTargeting(); }
+  function renderBoardTargeting() { if (boardView && boardView.el) boardView.el.classList.toggle('is-targeting', !!targeting); }
+  function currentTarget() {
+    const link = state.stage && state.stage.targetLink;
+    return (link && link.from === state.stage.activeTokenId) ? findToken(link.to) : null;
+  }
+  function armTargeting() { targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
+  function setTarget(toInstId) {
+    const from = state.stage && state.stage.activeTokenId;
+    targeting = false; renderBoardTargeting();
+    if (!from || from === toInstId) { renderStatSheet(); return; }   // no self-target
+    ensureTokens();
+    state.stage.targetLink = { from, to: toInstId };
+    attackRoll = null;
+    commit();   // broadcasts the arrow + target glow, re-renders the card
+  }
+  function clearTarget() { if (state.stage) state.stage.targetLink = null; attackRoll = null; targeting = false; renderBoardTargeting(); commit(); }
+  function clearAttackState() { attackRoll = null; targeting = false; if (state.stage) state.stage.targetLink = null; renderBoardTargeting(); }
   function rollHit(token, atk) {
-    const mod = parseHitMod(atk.toHit); if (mod == null) return;   // saves/keywords: no d20 to hit
+    const target = currentTarget();
+    if (!target) { armTargeting(); return; }   // enforce: target first
+    const mod = parseHitMod(atk.toHit);
+    if (mod == null) { setStatus(atk.name + ' is a save (' + atk.toHit + '), not an attack roll', false); return; }
     const d = Math.floor(Math.random() * 20) + 1;
-    attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, d, mod, total: d + mod, crit: d === 20 ? 'crit' : d === 1 ? 'fumble' : '' };
+    const total = d + mod;
+    const tc = castEntry(target.castId, target.kind);
+    const ac = (tc && tc.stats && tc.stats.ac != null) ? +tc.stats.ac : null;
+    const outcome = d === 20 ? 'crit' : d === 1 ? 'miss' : (ac != null ? (total >= ac ? 'hit' : 'miss') : null);
+    attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, d, mod, total, ac, outcome, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     renderStatSheet();
   }
   function rollDmg(token, atk) {
+    const target = currentTarget();
+    if (!target) { armTargeting(); return; }
     const p = parseDamage(atk.damage); if (!p) return;
     const total = Math.max(0, rollN(p.count, p.sides) + p.mod);
-    attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation: p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), dtype: p.type };
-    pendingHit = { instId: token.instId, amount: total, name: atk.name };   // arm: next token clicked takes it
+    attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation: p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), dtype: p.type, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
-    renderStatSheet(); renderBoardTargeting();
+    applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
   }
-  function applyPendingAttack(targetInstId) {
-    if (!pendingHit) return false;
-    const amt = pendingHit.amount; pendingHit = null; renderBoardTargeting();
-    if (amt > 0) applyHp(targetInstId, -amt);   // clamps + commits -> HP drop + hit flash + re-render
-    else renderStatSheet();
-    return true;
-  }
-  // One attack line + its roll buttons: Hit (d20+mod), Dmg (dice), and ▶ if it has SFX.
+  // One attack line + its Target / Hit / Dmg buttons (+ ▶ if it carries SFX).
   function attackRow(token, atk, compact) {
     const a = document.createElement('div'); a.className = 'stat-attack';
     if (!compact) { const nm = document.createElement('div'); nm.className = 'stat-attack-name'; nm.textContent = atk.name; a.append(nm); }
@@ -1948,10 +1966,11 @@ export function mountGm(root) {
     line.textContent = [hit, atk.range, atk.damage].filter(Boolean).join(' · ');
     a.append(line);
     const btns = document.createElement('div'); btns.className = 'stat-atk-btns';
-    if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' to hit'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
-    if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' damage, then click a target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
+    const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
+    if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
+    if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
     if (atk.sfxId && sceneHasSfx(atk.sfxId)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'gm-button btn--quiet atk-sfx'; sb.textContent = '▶'; sb.title = 'Play attack SFX'; sb.addEventListener('click', () => fireAttackSfx(atk.sfxId)); btns.append(sb); }
-    if (btns.children.length) a.append(btns);
+    a.append(btns);
     return a;
   }
   function renderStatSheet() {
@@ -2034,8 +2053,20 @@ export function mountGm(root) {
         }
         host.append(ab);
       }
-      // ---- Attacks with Hit/Dmg rolls: inline for short lists, a picker dropdown
-      //      for long ones (spellcasters), so the card stays within its height cap. ----
+      // ---- Target line: who this attacker is aimed at (or the "click a target" prompt). ----
+      const tgt = currentTarget();
+      if (tgt) {
+        const tl = document.createElement('div'); tl.className = 'stat-target';
+        const txt = document.createElement('span'); txt.className = 'stat-target-txt'; txt.textContent = '⌖ Targeting ' + tgt.label;
+        const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'gm-button btn--quiet stat-target-cancel'; clr.textContent = 'Clear'; clr.addEventListener('click', clearTarget);
+        tl.append(txt, clr); host.append(tl);
+      } else if (targeting) {
+        const tl = document.createElement('div'); tl.className = 'stat-target is-arming';
+        const txt = document.createElement('span'); txt.className = 'stat-target-txt'; txt.textContent = '⌖ Click the target token on the board…';
+        tl.append(txt); host.append(tl);
+      }
+      // ---- Attacks with Target / Hit / Dmg: inline for short lists, a picker
+      //      dropdown for long ones (spellcasters), so the card stays capped. ----
       const attacks = stats.attacks || [];
       if (attacks.length) {
         const wrap = document.createElement('div'); wrap.className = 'stat-attacks';
@@ -2051,20 +2082,18 @@ export function mountGm(root) {
         }
         host.append(wrap);
       }
-      // ---- Roll result + "click a target" banner, for the active combatant only ----
+      // ---- Roll result: Hit is auto-checked vs the target's AC; Dmg names the target. ----
       if (attackRoll && attackRoll.instId === token.instId) {
-        const r = document.createElement('div'); r.className = 'stat-roll' + (attackRoll.crit ? ' is-' + attackRoll.crit : '');
-        r.textContent = attackRoll.kind === 'hit'
-          ? attackRoll.name + ' — d20 (' + attackRoll.d + ') ' + (attackRoll.mod >= 0 ? '+' : '') + attackRoll.mod + ' = ' + attackRoll.total + ' to hit' + (attackRoll.crit === 'crit' ? '  ·  CRIT' : attackRoll.crit === 'fumble' ? '  ·  FUMBLE' : '')
-          : attackRoll.name + ' — ' + attackRoll.notation + ' = ' + attackRoll.total + (attackRoll.dtype ? ' ' + attackRoll.dtype : '') + ' damage';
+        const oc = attackRoll.kind === 'hit' ? attackRoll.outcome : null;
+        const r = document.createElement('div'); r.className = 'stat-roll' + (oc === 'crit' || oc === 'hit' ? ' is-hit' : oc === 'miss' ? ' is-miss' : '');
+        if (attackRoll.kind === 'hit') {
+          const vs = attackRoll.ac != null ? ' vs AC ' + attackRoll.ac : '';
+          const verdict = oc === 'crit' ? ' → CRIT' : oc === 'hit' ? ' → HIT' : oc === 'miss' ? (attackRoll.d === 1 ? ' → MISS (nat 1)' : ' → MISS') : '';
+          r.textContent = attackRoll.name + ' — d20 (' + attackRoll.d + ') ' + (attackRoll.mod >= 0 ? '+' : '') + attackRoll.mod + ' = ' + attackRoll.total + vs + verdict;
+        } else {
+          r.textContent = attackRoll.name + ' — ' + attackRoll.notation + ' = ' + attackRoll.total + (attackRoll.dtype ? ' ' + attackRoll.dtype : '') + ' → ' + attackRoll.targetLabel;
+        }
         host.append(r);
-      }
-      if (pendingHit && pendingHit.instId === token.instId) {
-        const banner = document.createElement('div'); banner.className = 'stat-target';
-        const txt = document.createElement('span'); txt.className = 'stat-target-txt'; txt.textContent = '⌖ Click a target on the board to apply ' + pendingHit.amount + ' damage';
-        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'gm-button btn--quiet stat-target-cancel'; cancel.textContent = 'Cancel';
-        cancel.addEventListener('click', () => { pendingHit = null; renderBoardTargeting(); renderStatSheet(); });
-        banner.append(txt, cancel); host.append(banner);
       }
     } else if (max == null) {
       const p = document.createElement('p'); p.className = 'stat-empty'; p.textContent = 'No stat block yet — add one in data/cast.js.'; host.append(p);
@@ -2118,7 +2147,7 @@ export function mountGm(root) {
     const instId = tokenEl.dataset.instId;
     const tokens = (state.stage && state.stage.tokens) || [];
     if (!tokens.some((t) => t.instId === instId)) return;
-    if (pendingHit) { applyPendingAttack(instId); e.preventDefault(); return; }   // targeting mode: land the pending hit on this token
+    if (targeting) { setTarget(instId); e.preventDefault(); return; }   // targeting mode: aim the active attacker at this token
     drag = { instId, el: tokenEl };
     tokenEl.classList.add('dragging');
     if (tokenEl.setPointerCapture) { try { tokenEl.setPointerCapture(e.pointerId); } catch (_) {} }

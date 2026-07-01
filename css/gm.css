@@ -1041,11 +1041,15 @@ body.view-gm {
 .view-gm .stat-atk-btns { display: flex; gap: 0.3rem; margin-top: 0.25rem; }
 .view-gm .stat-atk-btns .gm-button { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
 .view-gm .atk-dmg { background: var(--fill); color: var(--offense); border-color: var(--offense); }
+.view-gm .atk-target { background: var(--fill); color: var(--control); border-color: var(--control); }
+.view-gm .atk-target.is-armed { background: var(--control); color: var(--paper); }
 .view-gm .stat-atk-select { width: 100%; margin-bottom: 0.3rem; }
 .view-gm .stat-roll { margin-top: 0.45rem; padding: 0.3rem 0.5rem; border-radius: var(--radius-sm); background: var(--fill); border: 1px solid var(--rule); font-family: var(--font-display); font-size: var(--fs-100); }
-.view-gm .stat-roll.is-crit { border-color: var(--support); color: var(--support); background: #eef6ef; }
-.view-gm .stat-roll.is-fumble { border-color: var(--offense); color: var(--offense); background: #f8ecec; }
+.view-gm .stat-roll.is-hit { border-color: var(--support); color: var(--support); background: #eef6ef; }
+.view-gm .stat-roll.is-miss { border-color: var(--offense); color: var(--offense); background: #f8ecec; }
 .view-gm .stat-target { margin-top: 0.45rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; display: flex; align-items: center; gap: 0.5rem; }
+.view-gm .stat-target.is-arming { background: #e7eef7; border-color: var(--control); }
+.view-gm .stat-target.is-arming .stat-target-txt { color: var(--control); }
 .view-gm .stat-target-txt { flex: 1 1 auto; font-size: var(--fs-100); font-weight: 700; color: #7a5312; }
 .view-gm .stat-target-cancel { flex: 0 0 auto; font-size: var(--fs-100); padding: 0.15rem 0.45rem; }
 /* Targeting mode: crosshair over board tokens, with a dashed outline on hover. */

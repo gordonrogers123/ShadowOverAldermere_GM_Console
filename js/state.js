@@ -122,7 +122,11 @@ function normalizeStage(s) {
     // the tokens themselves, shown on the GM board AND the Player TV. Enemy HP is
     // never rendered (enforced in stageView). Optional/additive -> no VERSION bump.
     hpOnMap: !!s.hpOnMap,
-    conditionsOnMap: !!s.conditionsOnMap
+    conditionsOnMap: !!s.conditionsOnMap,
+    // A targeting link (attacker -> target) drawn as a red arrow + glow on both
+    // screens during an attack. Optional/additive; cleared on turn change.
+    targetLink: (s.targetLink && s.targetLink.from && s.targetLink.to)
+      ? { from: String(s.targetLink.from), to: String(s.targetLink.to) } : null
   };
 }
 
