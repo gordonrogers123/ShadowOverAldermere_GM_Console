@@ -1725,6 +1725,12 @@ export function mountGm(root) {
     const i = ensureInit();
     if (!i.order.length) return;
     i.idx = (i.idx + delta + i.order.length) % i.order.length;
+    // The Next button crossing the bottom of the order = a completed ROUND: every
+    // placed zone ages one round automatically (its chip's − stays for manual fixes;
+    // Prev, Apply, and a dying combatant's auto-removal never tick).
+    if (delta > 0 && i.idx === 0 && i.order.length > 1) {
+      for (const z of [...((state.stage && state.stage.zones) || [])]) tickZone(z);
+    }
     syncActiveToken();
     clearAttackState();   // a new turn drops any half-finished attack roll/target
     commit();
@@ -2577,7 +2583,8 @@ export function mountGm(root) {
     const hint = (txt) => { const h = document.createElement('div'); h.className = 'stat-aoe-hint'; h.textContent = txt; return h; };
     const clearBtn = (label) => { const c = document.createElement('button'); c.type = 'button'; c.className = 'gm-button btn--quiet stat-aoe-cancel'; c.textContent = label; c.addEventListener('click', clearAoe); return c; };
     if (!pl.committed) {
-      box.append(hint('◎ ' + (pl.shape === 'cone' ? 'aim the cone, then click the board to place' : 'position the area, then click to place')), clearBtn('Cancel'));
+      // While aiming, the status bar carries the how-to -- the row just offers the out.
+      box.append(clearBtn('Cancel'));
     } else if (!pl.results) {
       const names = pl.hits.map((id) => (findToken(id) || {}).label).filter(Boolean);
       box.append(hint('◎ ' + pl.hits.length + ' in the area' + (names.length ? ': ' + names.join(', ') : '')));
@@ -2586,8 +2593,18 @@ export function mountGm(root) {
       row.append(clearBtn('Clear')); box.append(row);
     } else {
       const spike = pl.zone && !pl.atk.save;
-      box.append(hint('◎ ' + (pl.ps ? pl.ps.ability + ' save vs ' + pl.ps.dc : spike ? 'damages creatures that move through it' : pl.atk.name) + (pl.fullDmg ? ' · ' + pl.fullDmg + (pl.dtype ? ' ' + pl.dtype : '') + ' on a fail' : '')));
+      // ONE summary line carries the DC, the saved/failed tally, and the damage-on-fail;
+      // only FAILED creatures keep a detail row (who saved collapses into the count).
+      // Manual ✓/✗ verdicts stay interactive until answered.
+      const nFail = pl.results.filter((r) => r.mode !== 'pending' && r.outcome === 'fail').length;
+      const nSave = pl.results.filter((r) => r.mode !== 'pending' && r.outcome === 'save').length;
+      const sum = document.createElement('div'); sum.className = 'stat-aoe-sum';
+      sum.textContent = '◎ ' + (pl.ps ? pl.ps.ability + ' save vs ' + pl.ps.dc : spike ? 'damages creatures that move through it' : pl.atk.name)
+        + (pl.results.length ? ' · ' + nFail + ' failed / ' + nSave + ' saved' : '')
+        + (pl.fullDmg ? ' · ' + pl.fullDmg + (pl.dtype ? ' ' + pl.dtype : '') + ' on a fail' : '');
+      box.append(sum);
       for (const res of pl.results) {
+        if (res.mode !== 'pending' && res.outcome !== 'fail') continue;   // saved -> summary only
         const lineEl = document.createElement('div'); lineEl.className = 'stat-aoe-res';
         if (res.mode === 'pending') {
           const q = document.createElement('span'); q.className = 'stat-aoe-name'; q.textContent = res.label + ' — save?';
@@ -3134,6 +3151,12 @@ export function mountGm(root) {
     tvRoll(sp.label + ' moved through ' + sp.zone, total + ' dmg', 'bad', { detail: diceMath(p.sides, faces, p.mod * sp.times) });
     applyHp(sp.instId, -total);        // commits + re-renders (the queue re-renders too)
   }
+  // Age a zone one round; at 0 the zone (and its chip) is gone. Shared by the chip's −
+  // and the automatic end-of-round tick in initStep.
+  function tickZone(z) {
+    z.rounds = Math.max(0, (z.rounds || 0) - 1);
+    if (z.rounds === 0) state.stage.zones = ((state.stage && state.stage.zones) || []).filter((x) => x !== z);
+  }
   // PR 6E: the zone chip's controls -- − ticks a round off (0 ends it), ✕ ends it now.
   function onZoneChipPress(e) {
     const chip = e.target.closest('.zone-chip');
@@ -3142,7 +3165,7 @@ export function mountGm(root) {
     if (!z) return;
     e.preventDefault(); e.stopPropagation();
     if (e.target.closest('.zone-clear')) state.stage.zones = zones.filter((x) => x !== z);
-    else if (e.target.closest('.zone-tick')) { z.rounds = Math.max(0, (z.rounds || 0) - 1); if (z.rounds === 0) state.stage.zones = zones.filter((x) => x !== z); }
+    else if (e.target.closest('.zone-tick')) tickZone(z);
     else return;
     commit();
   }

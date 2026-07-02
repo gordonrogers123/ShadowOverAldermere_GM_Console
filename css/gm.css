@@ -1125,6 +1125,8 @@ body.view-gm {
 .view-gm .board-interactive.is-placing-aoe, .view-gm .board-interactive.is-placing-aoe .token { cursor: crosshair; }
 .view-gm .stat-aoe { margin-top: 0.3rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; max-height: 9rem; overflow-y: auto; }
 .view-gm .stat-aoe-hint { font-size: var(--fs-100); font-weight: 700; color: #7a5312; margin-bottom: 0.35rem; }
+/* The one-line resolve summary (DC + failed/saved tally + damage-on-fail). */
+.view-gm .stat-aoe-sum { font-size: var(--fs-100); font-weight: 700; color: #7a5312; margin-bottom: 0.2rem; }
 .view-gm .stat-aoe-btns { display: flex; gap: 0.3rem; }
 .view-gm .stat-aoe-btns .gm-button, .view-gm .stat-aoe-cancel { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
 .view-gm .stat-aoe-res { display: flex; align-items: center; gap: 0.3rem; font-size: var(--fs-100); padding: 0.16rem 0.3rem; border-top: 1px solid rgba(176, 125, 43, 0.3); }
