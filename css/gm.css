@@ -1096,6 +1096,19 @@ body.view-gm {
 /* Targeting mode: crosshair over board tokens, with a dashed outline on hover. */
 .view-gm .board-interactive.is-targeting .token { cursor: crosshair; }
 .view-gm .board-interactive.is-targeting .token:hover { outline: 2px dashed #b07d2b; outline-offset: 2px; }
+/* PR 6D: instant AoE. [Area] places a template; while aiming the whole board is a crosshair;
+   the panel lists who's caught and resolves each creature's save (green = saved, red = failed). */
+.view-gm .atk-area { background: var(--fill); color: var(--offense); border-color: var(--offense); }
+.view-gm .atk-area.is-armed { background: var(--offense); color: var(--paper); }
+.view-gm .board-interactive.is-placing-aoe, .view-gm .board-interactive.is-placing-aoe .token { cursor: crosshair; }
+.view-gm .stat-aoe { margin-top: 0.45rem; padding: 0.4rem 0.55rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; }
+.view-gm .stat-aoe-hint { font-size: var(--fs-100); font-weight: 700; color: #7a5312; margin-bottom: 0.35rem; }
+.view-gm .stat-aoe-btns { display: flex; gap: 0.3rem; }
+.view-gm .stat-aoe-btns .gm-button, .view-gm .stat-aoe-cancel { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
+.view-gm .stat-aoe-res { display: flex; align-items: center; gap: 0.3rem; font-size: var(--fs-100); padding: 0.16rem 0.3rem; border-top: 1px solid rgba(176, 125, 43, 0.3); }
+.view-gm .stat-aoe-res.is-fail { color: #b3352f; font-weight: 700; }
+.view-gm .stat-aoe-res.is-save { color: #3f8f4f; }
+.view-gm .stat-aoe-name { flex: 1 1 auto; color: var(--ink); }
 .view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0; }
 /* Condition chip (shared by the stat card + the roster) -- conditions read as afflictions. */
 .view-gm .cond-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; border-radius: 999px; padding: 0.06rem 0.5rem; background: #f0dada; color: #7a2626; border: 1px solid #d9b3b3; }

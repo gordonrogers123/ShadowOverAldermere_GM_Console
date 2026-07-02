@@ -2021,9 +2021,10 @@ export function mountGm(root) {
   //      link rides state.stage.targetLink so it broadcasts. Future: AoE/cones. ----
   let attackRoll = null;   // { instId, kind:'hit'|'dmg', ... } the last roll on the active card
   let targeting = false;   // armed: the next board-token click sets the target
+  let aoePlacing = null;   // PR 6D: { token, atk, shape, committed, hits[], results } while aiming/resolving an area
   const rollN = (count, sides) => { let s = 0; for (let k = 0; k < count; k++) s += Math.floor(Math.random() * sides) + 1; return s; };
   const parseHitMod = (toHit) => { const m = /^\s*([+-]?\d+)\s*$/.exec(String(toHit || '')); return m ? parseInt(m[1], 10) : null; };
-  const parseDamage = (dmg) => { const m = /(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i.exec(String(dmg || '')); if (!m) return null; return { count: +m[1], sides: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0, type: String(dmg).replace(m[0], '').trim() }; };
+  const parseDamage = (dmg) => { const m = /(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i.exec(String(dmg || '')); if (!m) return null; return { count: +m[1], sides: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0, type: String(dmg).replace(m[0], '').replace(/\(.*?\)/g, '').trim() }; };   // strip a "(1/rest)"-style note from the damage TYPE (it stays on the card's attack line)
   // PR 6C: an attack whose toHit reads "DEX save 13" is a saving throw, not an attack
   // roll. Parse the ability + DC so we can auto-roll the target's save when its stats
   // are known (else fall back to a manual verdict).
@@ -2081,7 +2082,7 @@ export function mountGm(root) {
     }
     if (best) link.status = best; else delete link.status;
   }
-  function armTargeting() { targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
+  function armTargeting() { if (aoePlacing) { aoePlacing = null; if (state.stage) state.stage.aoeTemplate = null; renderBoardAoe(); } targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
   function setTarget(toInstId) {
     const from = state.stage && state.stage.activeTokenId;
     targeting = false; renderBoardTargeting();
@@ -2093,7 +2094,7 @@ export function mountGm(root) {
     commit();   // broadcasts the arrow + target glow, re-renders the card
   }
   function clearTarget() { if (state.stage) state.stage.targetLink = null; attackRoll = null; targeting = false; renderBoardTargeting(); commit(); }
-  function clearAttackState() { attackRoll = null; targeting = false; if (state.stage) state.stage.targetLink = null; renderBoardTargeting(); }
+  function clearAttackState() { attackRoll = null; targeting = false; aoePlacing = null; if (state.stage) { state.stage.targetLink = null; state.stage.aoeTemplate = null; } renderBoardTargeting(); renderBoardAoe(); }
   // ---- PR 6C.1: mirror a resolved card roll onto the Player TV when "Rolls on TV" is
   //      on, as a labelled, verdict-tagged pop-up. Rides state.stage.roomDice (the same
   //      channel the dice tray uses); bump n so a repeat re-triggers it. `flat` carries
@@ -2233,6 +2234,102 @@ export function mountGm(root) {
     tvRoll(target.label + ' · ' + atk.name + ' — Heal', '+' + total + ' HP', 'heal', { total, notation });
     applyHp(target.instId, +total);
   }
+  // ---- PR 6D: instant AoE templates (Breath Weapon cone, Turn Undead radius). [Area] enters
+  //      placement: the template follows the pointer on the board (a cone aims from the caster's
+  //      cell; a circle centres on the cursor, grid-snapped), a click LOCKS it, then Resolve runs
+  //      the 6C save engine over everyone caught inside. All geometry + hit-testing lives in
+  //      stageView (shared by both screens); gm.js just drives placement + resolution. ----
+  let aoeRAF = 0, aoePending = false;
+  function flushAoeBroadcast() { aoePending = false; aoeRAF = 0; broadcast(); }
+  function scheduleAoeBroadcast() { if (aoePending) return; aoePending = true; aoeRAF = requestAnimationFrame(flushAoeBroadcast); }
+  function renderBoardAoe() { if (boardView && boardView.el) boardView.el.classList.toggle('is-placing-aoe', !!(aoePlacing && !aoePlacing.committed)); }
+  // Template tint: a heal is green, a control-only save (Turn Undead) violet, damage red.
+  function aoeColorFor(atk) { return atk.heal ? '#4c9f70' : (atk.condition && !parseDamage(atk.damage) ? '#7d5bd0' : '#e5533a'); }
+  function beginAoe(token, atk) {
+    if (!atk.aoe) return;
+    clearAttackState();                                  // drop any in-progress target / roll / area
+    ensureTokens();
+    const shape = atk.aoe.shape === 'cone' ? 'cone' : 'circle';
+    aoePlacing = { token, atk, shape, committed: false, hits: [], results: null };
+    state.stage.aoeTemplate = { shape, originX: token.x, originY: token.y, angleDeg: 0, sizeFeet: atk.aoe.sizeFeet, color: aoeColorFor(atk), committed: false, casterId: token.instId };
+    renderBoardAoe();
+    setStatus(shape === 'cone' ? 'Aim the cone from ' + token.label + ' — move over the board, click to place' : 'Move the ' + atk.aoe.sizeFeet + '-ft area — click the board to place', false);
+    commit();
+  }
+  function updateAoeFromPointer(e) {
+    const t = state.stage && state.stage.aoeTemplate;
+    if (!aoePlacing || aoePlacing.committed || !t) return;
+    if (t.shape === 'cone') {
+      t.angleDeg = boardView.aoePointerAngle({ x: t.originX, y: t.originY }, e.clientX, e.clientY);
+    } else {
+      let frac = boardView.pointToFraction(e.clientX, e.clientY); if (!frac) return;
+      if (!e.altKey) frac = boardView.snapFractionToCell(frac);   // centre on a cell; hold Alt = free
+      t.originX = frac.x; t.originY = frac.y;
+    }
+    boardView.layoutTokens();          // live local redraw (smooth on the GM board)
+    scheduleAoeBroadcast();            // throttled mirror to the Player TV
+  }
+  function commitAoePlacement() {
+    if (!aoePlacing || aoePlacing.committed) return;
+    aoePlacing.committed = true;
+    if (state.stage.aoeTemplate) state.stage.aoeTemplate.committed = true;
+    aoePlacing.hits = (boardView.aoeHits() || []).filter((id) => id !== aoePlacing.token.instId);   // the caster isn't in its own blast
+    if (aoeRAF) { cancelAnimationFrame(aoeRAF); aoeRAF = 0; aoePending = false; }
+    renderBoardAoe();
+    setStatus(aoePlacing.hits.length + ' caught in the area — Resolve to roll their saves', false);
+    commit();
+  }
+  // Apply one creature's save outcome: 5e rolls the area's damage ONCE (fullDmg) and each
+  // creature takes full on a fail, half on a save (save.half), or none; a failed save also
+  // takes the condition (Turn Undead -> frightened). Reuses applyHp / addCondition.
+  function applyAoeOutcome(atk, target, outcome, fullDmg) {
+    let dmg = 0;
+    if (fullDmg != null) dmg = outcome === 'fail' ? fullDmg : ((atk.save && atk.save.half) ? Math.floor(fullDmg / 2) : 0);
+    const cond = (outcome === 'fail' && atk.condition) ? atk.condition : null;
+    if (cond) addCondition(target.instId, cond);
+    if (dmg > 0) applyHp(target.instId, -dmg);
+    return { dmg, cond };
+  }
+  function resolveAoe() {
+    const pl = aoePlacing; if (!pl || !pl.committed) return;
+    const { token, atk } = pl;
+    const ps = parseSave(atk.toHit);
+    const p = parseDamage(atk.damage);
+    const fullDmg = p ? Math.max(0, rollN(p.count, p.sides) + p.mod) : null;   // one damage roll for the whole area
+    pl.dtype = p ? p.type : ''; pl.fullDmg = fullDmg; pl.ps = ps; pl.results = [];
+    for (const id of pl.hits) {
+      const target = findToken(id); if (!target) continue;
+      const mod = ps ? abilityMod(target, ps.ability) : null;
+      if (ps && mod != null && !target.manual) {          // auto-roll a known-stats creature
+        const d = d20(), total = d + mod, outcome = total >= ps.dc ? 'save' : 'fail';
+        pl.results.push(Object.assign({ instId: id, label: target.label, outcome, roll: total, mode: 'auto' }, applyAoeOutcome(atk, target, outcome, fullDmg)));
+      } else if (!ps) {                                    // no save (defensive) -> just apply
+        pl.results.push(Object.assign({ instId: id, label: target.label, outcome: 'fail', mode: 'auto' }, applyAoeOutcome(atk, target, 'fail', fullDmg)));
+      } else {                                             // statless / manual -> per-creature ✓/✗
+        pl.results.push({ instId: id, label: target.label, mode: 'pending' });
+      }
+    }
+    const nFail = pl.results.filter((r) => r.outcome === 'fail').length;
+    const nSave = pl.results.filter((r) => r.outcome === 'save').length;
+    tvRoll(token.label + ' · ' + atk.name + ' — Area', pl.hits.length + ' caught · ' + nFail + ' failed / ' + nSave + ' saved', 'bad', {});
+    renderStatSheet();
+    commit();
+  }
+  function resolveAoeCreature(instId, outcome) {   // the ✓/✗ for a statless creature in the blast
+    const pl = aoePlacing; if (!pl || !pl.results) return;
+    const target = findToken(instId); if (!target) return;
+    const applied = applyAoeOutcome(pl.atk, target, outcome, pl.fullDmg);
+    const row = pl.results.find((r) => r.instId === instId);
+    if (row) { row.mode = 'auto'; row.outcome = outcome; Object.assign(row, applied); }
+    renderStatSheet();
+  }
+  function clearAoe() {
+    aoePlacing = null;
+    if (aoeRAF) { cancelAnimationFrame(aoeRAF); aoeRAF = 0; aoePending = false; }
+    if (state.stage) state.stage.aoeTemplate = null;
+    renderBoardAoe();
+    commit();
+  }
   // One attack line + its Target / Hit / Dmg buttons (+ ▶ if it carries SFX).
   function attackRow(token, atk, compact, dist) {
     const a = document.createElement('div'); a.className = 'stat-attack';
@@ -2255,21 +2352,27 @@ export function mountGm(root) {
       }
     }
     const btns = document.createElement('div'); btns.className = 'stat-atk-btns';
-    const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
-    // Buttons depend on the action's shape: a heal gets Heal; a save gets Save (which
-    // fully resolves — roll or manual, then damage + condition); everything else keeps
-    // the attack-roll Hit + Dmg. AoE/zone placement ([Area]) arrives in 6D/6E.
-    if (atk.heal) {
-      const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button atk-heal'; hb.textContent = 'Heal';
-      hb.title = atk.target === 'self' ? 'Heal the caster (' + String(atk.damage).replace(/^\s*heal\s+/i, '') + ')' : 'Heal the targeted ally';
-      hb.addEventListener('click', () => rollHeal(token, atk)); btns.append(hb);
-    } else if (atk.save) {
-      const ps = parseSave(atk.toHit); const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'gm-button atk-save'; sv.textContent = 'Save';
-      sv.title = 'Resolve the ' + (ps ? ps.ability + ' save vs ' + ps.dc : 'saving throw') + ' on the target';
-      sv.addEventListener('click', () => rollSave(token, atk)); btns.append(sv);
+    // Buttons depend on the action's shape: an AoE (cone/radius) provides its OWN targeting via
+    // an [Area] placement; otherwise arm Target, then Heal / Save (resolves roll-or-manual +
+    // damage + condition) / the attack-roll Hit + Dmg. (Placed zones' [Area] arrives in 6E.)
+    if (atk.aoe) {
+      const ab = document.createElement('button'); ab.type = 'button'; ab.className = 'gm-button atk-area' + (aoePlacing && aoePlacing.atk === atk ? ' is-armed' : '');
+      ab.textContent = 'Area'; ab.title = 'Place the ' + atk.aoe.sizeFeet + '-ft ' + atk.aoe.shape + ' on the board, then resolve saves for everyone inside';
+      ab.addEventListener('click', () => beginAoe(token, atk)); btns.append(ab);
     } else {
-      if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
-      if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
+      const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
+      if (atk.heal) {
+        const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button atk-heal'; hb.textContent = 'Heal';
+        hb.title = atk.target === 'self' ? 'Heal the caster (' + String(atk.damage).replace(/^\s*heal\s+/i, '') + ')' : 'Heal the targeted ally';
+        hb.addEventListener('click', () => rollHeal(token, atk)); btns.append(hb);
+      } else if (atk.save) {
+        const ps = parseSave(atk.toHit); const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'gm-button atk-save'; sv.textContent = 'Save';
+        sv.title = 'Resolve the ' + (ps ? ps.ability + ' save vs ' + ps.dc : 'saving throw') + ' on the target';
+        sv.addEventListener('click', () => rollSave(token, atk)); btns.append(sv);
+      } else {
+        if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(hb); }
+        if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(db); }
+      }
     }
     if (atk.sfxId && sceneHasSfx(atk.sfxId)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'gm-button btn--quiet atk-sfx'; sb.textContent = '▶'; sb.title = 'Play attack SFX'; sb.addEventListener('click', () => fireAttackSfx(atk.sfxId)); btns.append(sb); }
     a.append(btns);
@@ -2390,6 +2493,45 @@ export function mountGm(root) {
           wrap.append(sel, detail); draw();
         }
         host.append(wrap);
+      }
+      // ---- PR 6D: AoE placement / resolution panel (shown while THIS caster is aiming or has an
+      //      area down). Aiming -> a hint + Cancel; placed -> who's inside + Resolve; resolved ->
+      //      per-creature verdicts (auto rows, or ✓/✗ for statless creatures) + Clear. ----
+      if (aoePlacing && aoePlacing.token.instId === token.instId) {
+        const pl = aoePlacing;
+        const box = document.createElement('div'); box.className = 'stat-aoe';
+        const hint = (txt) => { const h = document.createElement('div'); h.className = 'stat-aoe-hint'; h.textContent = txt; return h; };
+        const clearBtn = (label) => { const c = document.createElement('button'); c.type = 'button'; c.className = 'gm-button btn--quiet stat-aoe-cancel'; c.textContent = label; c.addEventListener('click', clearAoe); return c; };
+        if (!pl.committed) {
+          box.append(hint('◎ ' + pl.atk.name + ' — ' + (pl.shape === 'cone' ? 'aim the cone, then click the board to place' : 'position the area, then click to place')), clearBtn('Cancel'));
+        } else if (!pl.results) {
+          const names = pl.hits.map((id) => (findToken(id) || {}).label).filter(Boolean);
+          box.append(hint('◎ ' + pl.atk.name + ' — ' + pl.hits.length + ' in the area' + (names.length ? ': ' + names.join(', ') : '')));
+          const row = document.createElement('div'); row.className = 'stat-aoe-btns';
+          if (pl.hits.length) { const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'gm-button atk-save'; rb.textContent = 'Resolve'; rb.title = 'Roll each caught creature’s save and apply it'; rb.addEventListener('click', resolveAoe); row.append(rb); }
+          row.append(clearBtn('Clear')); box.append(row);
+        } else {
+          box.append(hint('◎ ' + pl.atk.name + (pl.ps ? ' — ' + pl.ps.ability + ' save vs ' + pl.ps.dc : '') + (pl.fullDmg ? ' · ' + pl.fullDmg + (pl.dtype ? ' ' + pl.dtype : '') + ' on a fail' : '')));
+          for (const res of pl.results) {
+            const lineEl = document.createElement('div'); lineEl.className = 'stat-aoe-res';
+            if (res.mode === 'pending') {
+              const q = document.createElement('span'); q.className = 'stat-aoe-name'; q.textContent = res.label + ' — save?';
+              const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'gm-button btn--quiet atk-save-yes'; yes.textContent = '✓'; yes.title = 'Saved'; yes.addEventListener('click', () => resolveAoeCreature(res.instId, 'save'));
+              const no = document.createElement('button'); no.type = 'button'; no.className = 'gm-button atk-save-no'; no.textContent = '✗'; no.title = 'Failed'; no.addEventListener('click', () => resolveAoeCreature(res.instId, 'fail'));
+              lineEl.append(q, yes, no);
+            } else {
+              const failed = res.outcome === 'fail';
+              lineEl.classList.add(failed ? 'is-fail' : 'is-save');
+              const bits = [res.label, (failed ? 'FAILED' : 'SAVED') + (res.roll != null ? ' (' + res.roll + ')' : '')];
+              if (res.dmg > 0) bits.push('−' + res.dmg + (pl.dtype ? ' ' + pl.dtype : ''));
+              if (res.cond) bits.push(res.cond);
+              lineEl.textContent = bits.join(' · ');
+            }
+            box.append(lineEl);
+          }
+          box.append(clearBtn('Clear area'));
+        }
+        host.append(box);
       }
       // ---- Roll result: Hit auto-checks vs AC; Dmg names the target; Save shows the
       //      d20 vs DC (or a manual ✓/✗ for statless targets) and what it applied; Heal
@@ -2520,6 +2662,8 @@ export function mountGm(root) {
     return bestEl;
   }
   function onBoardPointerDown(e) {
+    // PR 6D: while aiming an area, a board click LOCKS it at the pointer (empty map or token alike).
+    if (aoePlacing && !aoePlacing.committed) { updateAoeFromPointer(e); commitAoePlacement(); e.preventDefault(); return; }
     let tokenEl = e.target.closest && e.target.closest('.token');
     if (!tokenEl || !boardView.el.contains(tokenEl)) return;
     tokenEl = tokenElAtPoint(e.clientX, e.clientY) || tokenEl;   // prefer the circle under the pointer
@@ -2533,6 +2677,7 @@ export function mountGm(root) {
     e.preventDefault();
   }
   function onBoardPointerMove(e) {
+    if (aoePlacing && !aoePlacing.committed) { updateAoeFromPointer(e); return; }   // PR 6D: aim/position the area
     if (!drag) return;
     let frac = boardView.pointToFraction(e.clientX, e.clientY);
     if (!frac) return;

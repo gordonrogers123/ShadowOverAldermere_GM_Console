@@ -142,6 +142,28 @@ function normGrids(g) {
   for (const k of Object.keys(g)) { const v = normGrid(g[k]); if (v) out[k] = v; }
   return Object.keys(out).length ? out : null;
 }
+// An INSTANT area template (PR 6D): a Breath Weapon cone or a Turn Undead radius the GM
+// aims on the board, drawn on BOTH screens in the shared .aoe-fx layer and used to auto-
+// collect who's inside. Geometry is map-relative (origin as a fraction + size in FEET,
+// scaled by the current grid), a cone also carries an aim angle (deg). Transient/broadcast-
+// only like targetLink; absent -> the Player draws nothing (no migration). `committed` flips
+// false→true when the GM clicks to lock it (a dashed preview becomes a solid template).
+function normAoe(a) {
+  if (!a || typeof a !== 'object') return null;
+  const shape = /^(cone|circle)$/.test(a.shape) ? a.shape : null;
+  if (!shape) return null;
+  const num = (v, d, lo, hi) => { v = +v; if (!isFinite(v)) return d; return v < lo ? lo : v > hi ? hi : v; };
+  return {
+    shape,
+    originX: num(a.originX, 0.5, -1, 2),
+    originY: num(a.originY, 0.5, -1, 2),
+    angleDeg: num(a.angleDeg, 0, -3600, 3600),
+    sizeFeet: num(a.sizeFeet, 15, 1, 1000),
+    color: /^#[0-9a-fA-F]{6}$/.test(a.color) ? a.color : '#e5533a',
+    committed: !!a.committed,
+    casterId: a.casterId != null ? String(a.casterId) : null   // excluded from the caught set (no self-blast)
+  };
+}
 function normalizeStage(s) {
   s = s || {};
   const side = (x) => ({
@@ -187,7 +209,10 @@ function normalizeStage(s) {
       : null,
     // A dice roll pushed to the Player TV ("show the room"): { flat:[{d,r}], total,
     // notation, n }; n is a bump counter so a repeat roll re-triggers the display.
-    roomDice: normRoomDice(s.roomDice)
+    roomDice: normRoomDice(s.roomDice),
+    // The live INSTANT area template (PR 6D) — a cone/radius the GM is aiming or has placed,
+    // drawn on both screens. Rides the broadcast like targetLink; cleared on turn change.
+    aoeTemplate: normAoe(s.aoeTemplate)
   };
 }
 
