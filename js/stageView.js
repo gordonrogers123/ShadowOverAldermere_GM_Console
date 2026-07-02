@@ -518,6 +518,17 @@ export function createStageView(root) {
     return { cells, feet: cells * (Number(grid.feetPerCell) || 5) };
   }
 
+  // Token diameter in displayed px: ONE GRID CELL when a grid is enabled (so a token
+  // occupies its square, like minis on a battle mat), else the classic fraction of the
+  // map. Tiny-cell guard so an ultra-fine grid can't shrink tokens into unreadability.
+  function tokenSizePx(cr) {
+    const grid = currentGrid();
+    if (grid && grid.enabled) {
+      const cell = (Number(grid.cellSize) || 0) * cr.w;
+      if (cell >= 12) return cell;
+    }
+    return TOKEN_FRAC * Math.min(cr.w, cr.h);
+  }
   // Position and size every token element from its stored x/y fraction and the
   // current displayed-image rect. Cheap; called on render, on resize, and
   // after a map image loads. No active map image -> hide the whole layer.
@@ -529,7 +540,7 @@ export function createStageView(root) {
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
-    const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
+    const size = tokenSizePx(cr);
     tokenLayer.querySelectorAll('.token').forEach((el) => {
       const x = parseFloat(el.dataset.x) || 0;
       const y = parseFloat(el.dataset.y) || 0;
@@ -556,7 +567,7 @@ export function createStageView(root) {
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) { targetFx.style.display = 'none'; return; }
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
-    const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
+    const size = tokenSizePx(cr);   // arrow endpoints hug the (possibly grid-sized) token edge
     const ax = cr.left + from.x * cr.w, ay = cr.top + from.y * cr.h;
     const bx = cr.left + to.x * cr.w, by = cr.top + to.y * cr.h;
     const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
@@ -658,8 +669,18 @@ export function createStageView(root) {
     const g = stageGeom();
     const t = lastState && lastState.stage && lastState.stage.aoeTemplate;
     const zones = (lastState && lastState.stage && lastState.stage.zones) || [];
-    if (!g || (!t && !zones.length)) {
+    // Movement range (turn engine): a Chebyshev square around the active token. The GM
+    // board draws it for ANY mover; the Player TV only for heroes (the table sees their
+    // own options, not the monsters'). Half-side = feet + half a cell so the outline
+    // lands on cell borders and covers every reachable cell.
+    const list = (lastState && lastState.stage && lastState.stage.tokens) || [];
+    const mrRaw = lastState && lastState.stage && lastState.stage.moveRange;
+    const mover = mrRaw && list.find((tok) => tok.instId === mrRaw.instId);
+    const mr = (mrRaw && mover && mover.visible !== false &&
+                (stage.classList.contains('board-interactive') || mover.kind === 'hero')) ? mrRaw : null;
+    if (!g || (!t && !zones.length && !mr)) {
       aoeFx.style.display = 'none';
+      aoeFx.innerHTML = '';
       if (chipsLayer) chipsLayer.innerHTML = '';
       tokenLayer.querySelectorAll('.is-aoe-hit').forEach((el) => el.classList.remove('is-aoe-hit'));
       return;
@@ -668,6 +689,12 @@ export function createStageView(root) {
     aoeFx.setAttribute('width', g.r.width); aoeFx.setAttribute('height', g.r.height);
     aoeFx.setAttribute('viewBox', '0 0 ' + g.r.width + ' ' + g.r.height);
     let html = '';
+    if (mr) {
+      const grid = currentGrid();
+      const fpc = (grid && grid.enabled ? Number(grid.feetPerCell) : 5) || 5;
+      const sq = { shape: 'square', originX: mr.originX, originY: mr.originY, sizeFeet: mr.feet * 2 + fpc };
+      html += '<path class="aoe-shape move-range" d="' + shapePath(sq, shapeGeom(g, sq)) + '"></path>';
+    }
     for (const z of zones) html += '<path class="aoe-shape is-zone" style="--aoe-color:' + z.color + '" d="' + shapePath(z, shapeGeom(g, z)) + '"></path>';
     if (t) {
       stage.style.setProperty('--aoe-color', t.color || '#e5533a');   // caught tokens inherit the template colour
@@ -956,6 +983,11 @@ export function createStageView(root) {
       el.dataset.y = inst.y;
       el.classList.toggle('is-hidden', inst.visible === false);
       el.classList.toggle('is-active', !!activeId && inst.instId === activeId);
+      // 0 HP (both screens, derived -- no extra state): a hero/NPC is DOWN (death saves),
+      // an enemy is DEFEATED (translucent + red X).
+      const downHp = !!(inst.hp && inst.hp.max != null && inst.hp.current === 0);
+      el.classList.toggle('is-down', downHp && inst.kind !== 'enemy');
+      el.classList.toggle('is-defeated', downHp && inst.kind === 'enemy');
       el.classList.toggle('is-targeted', !!(link && inst.instId === link.to));
       updateTokenOverlays(el, inst, state);
     }
