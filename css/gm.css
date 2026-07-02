@@ -1028,7 +1028,10 @@ body.view-gm {
 .view-gm .stat-head { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: 0.5rem; }
 .view-gm .stat-pic { width: 3.4rem; height: 3.4rem; flex: 0 0 auto; border-radius: 8px; border: 1px solid var(--rule); object-fit: cover; object-position: 50% 18%; }
 .view-gm .stat-id { min-width: 0; }
-.view-gm .stat-name-row { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+.view-gm .stat-name-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap; min-width: 0; }
+.view-gm .stat-name-row .stat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-gm .stat-name-row .stat-tag { margin-left: auto; flex: 0 0 auto; }   /* Active tag right-aligns */
+.view-gm .stat-name-row .roster-manual { flex: 0 0 auto; }                 /* icon-only Auto/Manual, far right */
 .view-gm .gm-statsheet .stat-name { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
 .view-gm .stat-tag { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--paper); border-radius: 999px; padding: 0.1rem 0.45rem; }
 .view-gm .stat-tag.is-enemy { background: var(--offense); }
@@ -1039,6 +1042,10 @@ body.view-gm {
 .view-gm .stat-cond-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--neutral); }
 .view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
 .view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }
+/* Speed row = two columns: the stat on the left, the per-turn movement controls on the right. */
+.view-gm .stat-line.stat-speed { justify-content: flex-start; align-items: center; }
+.view-gm .stat-speed .stat-v { margin-left: 0.45rem; }
+.view-gm .stat-speed .turn-move { margin-left: auto; display: flex; align-items: center; gap: 0.3rem; }
 .view-gm .stat-line .stat-k { color: var(--neutral); }
 .view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
 .view-gm .stat-hpbar { height: 6px; border-radius: 3px; background: #e7ddc7; overflow: hidden; margin: 0.15rem 0 0.3rem; }
@@ -1052,8 +1059,9 @@ body.view-gm {
 .view-gm .stat-abil-k { font-size: 0.52rem; letter-spacing: 0.02em; color: var(--neutral); }
 .view-gm .stat-abil-v { font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; }
 .view-gm .stat-attack { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--rule); }
-.view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); }
-.view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); }
+.view-gm .stat-attack-name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-200); display: flex; align-items: center; gap: 0.4rem; }
+.view-gm .stat-attack-name .atk-range, .view-gm .stat-attack-line .atk-range { margin-left: auto; margin-top: 0; flex: 0 0 auto; font-weight: 700; }
+.view-gm .stat-attack-line { font-size: var(--fs-100); color: var(--neutral); display: flex; align-items: center; gap: 0.4rem; }
 /* Per-attack range verdict at the measured grid distance (PR 6B): green in range,
    amber at long/disadvantage, red out of range. Only shown while a target is set. */
 .view-gm .atk-range { display: inline-block; margin-top: 0.2rem; padding: 0.05rem 0.4rem; border-radius: 999px; font-size: var(--fs-100); font-weight: 700; border: 1px solid transparent; }
@@ -1087,8 +1095,11 @@ body.view-gm {
 .view-gm .atk-apply { background: var(--fill); color: var(--offense); border-color: var(--offense); }
 .view-gm .roster-manual { padding: 0.02rem 0.3rem; font-size: var(--fs-100); line-height: 1.25; margin-left: auto; flex: 0 0 auto; }
 .view-gm .roster-manual.is-manual { background: #f4ecd7; color: #8a5a12; border-color: #b07d2b; }
-.view-gm .stat-id .roster-manual { margin-left: 0; margin-top: 0.3rem; }
 .view-gm .stat-target { margin-top: 0.45rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; display: flex; align-items: center; gap: 0.5rem; }
+.view-gm .stat-target.is-idle { background: var(--fill); border-color: var(--rule); }
+.view-gm .stat-target.is-idle .stat-target-txt { color: var(--neutral); font-weight: 400; }
+.view-gm .target-arm { flex: 0 0 auto; font-size: var(--fs-100); padding: 0.15rem 0.5rem; color: var(--control); border-color: var(--control); }
+.view-gm .target-arm.is-armed { background: var(--control); color: var(--paper); }
 .view-gm .stat-target.is-arming { background: #e7eef7; border-color: var(--control); }
 .view-gm .stat-target.is-arming .stat-target-txt { color: var(--control); }
 .view-gm .stat-target-txt { flex: 1 1 auto; font-size: var(--fs-100); font-weight: 700; color: #7a5312; }
@@ -1101,7 +1112,7 @@ body.view-gm {
 .view-gm .atk-area { background: var(--fill); color: var(--offense); border-color: var(--offense); }
 .view-gm .atk-area.is-armed { background: var(--offense); color: var(--paper); }
 .view-gm .board-interactive.is-placing-aoe, .view-gm .board-interactive.is-placing-aoe .token { cursor: crosshair; }
-.view-gm .stat-aoe { margin-top: 0.45rem; padding: 0.4rem 0.55rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; }
+.view-gm .stat-aoe { margin-top: 0.3rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; max-height: 9rem; overflow-y: auto; }
 .view-gm .stat-aoe-hint { font-size: var(--fs-100); font-weight: 700; color: #7a5312; margin-bottom: 0.35rem; }
 .view-gm .stat-aoe-btns { display: flex; gap: 0.3rem; }
 .view-gm .stat-aoe-btns .gm-button, .view-gm .stat-aoe-cancel { font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
@@ -1487,3 +1498,13 @@ body.view-gm {
   .view-gm .tb-picker { border-right: none; border-bottom: 1px solid var(--rule); padding-right: 0; padding-bottom: var(--space-3); }
   .view-gm .tb-edit { grid-template-columns: 1fr; }
 }
+
+/* A gated roll button (out of range now; action economy next): visibly dead, with a why. */
+.view-gm .gm-button.is-blocked { opacity: 0.4; cursor: not-allowed; }
+/* Interactive combat notices: a fixed bottom-right stack for prompts that carry buttons
+   (Spike-Growth movement damage, concentration checks) -- OUTSIDE the stat card so the
+   card never changes shape. Distinct from the bottom-center text toast (.rescan-status). */
+.view-gm .gm-notices { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 320; display: flex; flex-direction: column; gap: 0.5rem; max-width: 26rem; }
+.view-gm .gm-notice { display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); font-size: var(--fs-100); }
+.view-gm .gm-notice-txt { flex: 1 1 auto; font-weight: 700; color: #7a5312; }
+.view-gm .gm-notice .gm-button { flex: 0 0 auto; font-size: var(--fs-100); padding: 0.18rem 0.5rem; }

@@ -518,6 +518,17 @@ export function createStageView(root) {
     return { cells, feet: cells * (Number(grid.feetPerCell) || 5) };
   }
 
+  // Token diameter in displayed px: ONE GRID CELL when a grid is enabled (so a token
+  // occupies its square, like minis on a battle mat), else the classic fraction of the
+  // map. Tiny-cell guard so an ultra-fine grid can't shrink tokens into unreadability.
+  function tokenSizePx(cr) {
+    const grid = currentGrid();
+    if (grid && grid.enabled) {
+      const cell = (Number(grid.cellSize) || 0) * cr.w;
+      if (cell >= 12) return cell;
+    }
+    return TOKEN_FRAC * Math.min(cr.w, cr.h);
+  }
   // Position and size every token element from its stored x/y fraction and the
   // current displayed-image rect. Cheap; called on render, on resize, and
   // after a map image loads. No active map image -> hide the whole layer.
@@ -529,7 +540,7 @@ export function createStageView(root) {
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
-    const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
+    const size = tokenSizePx(cr);
     tokenLayer.querySelectorAll('.token').forEach((el) => {
       const x = parseFloat(el.dataset.x) || 0;
       const y = parseFloat(el.dataset.y) || 0;
@@ -556,7 +567,7 @@ export function createStageView(root) {
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) { targetFx.style.display = 'none'; return; }
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
-    const size = TOKEN_FRAC * Math.min(cr.w, cr.h);
+    const size = tokenSizePx(cr);   // arrow endpoints hug the (possibly grid-sized) token edge
     const ax = cr.left + from.x * cr.w, ay = cr.top + from.y * cr.h;
     const bx = cr.left + to.x * cr.w, by = cr.top + to.y * cr.h;
     const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
