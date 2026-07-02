@@ -96,6 +96,7 @@ export function createStageView(root) {
       <img class="char-layer char-left" alt="" data-side="left">
       <img class="char-layer char-right" alt="" data-side="right">
       <svg class="grid-overlay" aria-hidden="true"></svg>
+      <svg class="aoe-fx" aria-hidden="true"></svg>
       <svg class="target-fx" aria-hidden="true"><line class="target-line" x1="0" y1="0" x2="0" y2="0"></line><polygon class="target-arrowhead" points=""></polygon><text class="target-dist" text-anchor="middle" dominant-baseline="middle"></text></svg>
       <div class="token-layer"></div>
       <div class="curtain"></div>
@@ -113,6 +114,7 @@ export function createStageView(root) {
   const idle = root.querySelector('.idle');
   const tokenLayer = root.querySelector('.token-layer');
   const targetFx = root.querySelector('.target-fx');
+  const aoeFx = root.querySelector('.aoe-fx');
   const gridOverlay = root.querySelector('.grid-overlay');
   let lastState = null;      // last painted state, so a resize can re-lay-out the arrow + grid
 
@@ -520,7 +522,7 @@ export function createStageView(root) {
   function layoutTokens() {
     layoutGrid();   // self-manages its own visibility; shares the resize/render triggers
     const img = activeMapImg();
-    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
+    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; if (aoeFx) aoeFx.style.display = 'none'; return; }
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
@@ -536,6 +538,7 @@ export function createStageView(root) {
       el.style.fontSize = size + 'px';   // children scale in em
     });
     updateTargetArrow(lastState);
+    drawAoe();                           // instant AoE template, re-pinned on every layout/resize
   }
   // Draw the targeting arrow (attacker -> target) as an SVG line + arrowhead over
   // the board, in the SAME contain-space as the tokens, so it lands identically on
@@ -586,6 +589,83 @@ export function createStageView(root) {
     }
     const st = link.status;
     targetFx.dataset.range = (st === 'in' || st === 'disadv' || st === 'out') ? st : '';
+  }
+
+  // ---- Instant AoE template (PR 6D): a cone / radius the GM aims on the board, drawn in the
+  //      shared .aoe-fx layer so it lands identically on the GM board + Player TV. All geometry
+  //      is in DISPLAYED PIXELS (cells are square there) off the same contain rect the tokens
+  //      use. Size is FEET -> cells via the current grid (falls back to a 16-cell / 5-ft default
+  //      when no grid, so it still draws). Half-angle 26.565° makes a 5e cone as wide as long. ----
+  const AOE_HALF_ANGLE = 26.565;
+  function aoeGeom() {
+    const t = lastState && lastState.stage && lastState.stage.aoeTemplate;
+    const img = activeMapImg();
+    if (!t || !img || !tokensShown) return null;
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
+    const grid = currentGrid();
+    const cellFrac = (grid && grid.enabled ? Number(grid.cellSize) : (1 / 16)) || (1 / 16);
+    const feetPerCell = (grid && grid.enabled ? Number(grid.feetPerCell) : 5) || 5;
+    const radiusPx = (Number(t.sizeFeet) / feetPerCell) * cellFrac * cr.w;
+    return { t, cr, r, ox: cr.left + t.originX * cr.w, oy: cr.top + t.originY * cr.h, radiusPx };
+  }
+  function aoeContainsPx(g, px, py) {
+    const dx = px - g.ox, dy = py - g.oy, dist = Math.hypot(dx, dy);
+    if (dist > g.radiusPx) return false;
+    if (g.t.shape !== 'cone') return true;                     // circle: anything inside the radius
+    if (dist < 1e-6) return true;                              // the cone's own origin cell
+    const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    const diff = Math.abs(((ang - g.t.angleDeg + 540) % 360) - 180);
+    return diff <= AOE_HALF_ANGLE;
+  }
+  function drawAoe() {
+    if (!aoeFx) return;
+    const g = aoeGeom();
+    if (!g) { aoeFx.style.display = 'none'; tokenLayer.querySelectorAll('.is-aoe-hit').forEach((el) => el.classList.remove('is-aoe-hit')); return; }
+    aoeFx.style.display = '';
+    aoeFx.setAttribute('width', g.r.width); aoeFx.setAttribute('height', g.r.height);
+    aoeFx.setAttribute('viewBox', '0 0 ' + g.r.width + ' ' + g.r.height);
+    stage.style.setProperty('--aoe-color', g.t.color || '#e5533a');   // on the stage so caught tokens inherit it too
+    aoeFx.classList.toggle('is-committed', !!g.t.committed);
+    let d;
+    if (g.t.shape === 'cone') {
+      const dir = g.t.angleDeg * Math.PI / 180, ha = AOE_HALF_ANGLE * Math.PI / 180;
+      const a1 = dir - ha, a2 = dir + ha;
+      const p1x = g.ox + Math.cos(a1) * g.radiusPx, p1y = g.oy + Math.sin(a1) * g.radiusPx;
+      const p2x = g.ox + Math.cos(a2) * g.radiusPx, p2y = g.oy + Math.sin(a2) * g.radiusPx;
+      d = 'M' + g.ox.toFixed(1) + ' ' + g.oy.toFixed(1) + ' L' + p1x.toFixed(1) + ' ' + p1y.toFixed(1) +
+          ' A' + g.radiusPx.toFixed(1) + ' ' + g.radiusPx.toFixed(1) + ' 0 0 1 ' + p2x.toFixed(1) + ' ' + p2y.toFixed(1) + ' Z';
+    } else {                                                   // circle drawn as two half-arcs
+      const R = g.radiusPx.toFixed(1);
+      d = 'M' + (g.ox - g.radiusPx).toFixed(1) + ' ' + g.oy.toFixed(1) +
+          ' a' + R + ' ' + R + ' 0 1 0 ' + (g.radiusPx * 2).toFixed(1) + ' 0' +
+          ' a' + R + ' ' + R + ' 0 1 0 ' + (-g.radiusPx * 2).toFixed(1) + ' 0 Z';
+    }
+    aoeFx.innerHTML = '<path class="aoe-shape" d="' + d + '"></path>';
+    tokenLayer.querySelectorAll('.token').forEach((el) => {
+      const px = g.cr.left + (parseFloat(el.dataset.x) || 0) * g.cr.w;
+      const py = g.cr.top + (parseFloat(el.dataset.y) || 0) * g.cr.h;
+      el.classList.toggle('is-aoe-hit', el.dataset.instId !== g.t.casterId && aoeContainsPx(g, px, py));
+    });
+  }
+  // Who's inside the current template (instIds) -- for gm.js resolve-all. Skips the caster
+  // (no self-blast) and hidden tokens.
+  function aoeHits() {
+    const g = aoeGeom(); if (!g) return [];
+    const list = (lastState && lastState.stage && lastState.stage.tokens) || [];
+    return list.filter((t) => t.visible !== false && t.instId !== g.t.casterId &&
+      aoeContainsPx(g, g.cr.left + t.x * g.cr.w, g.cr.top + t.y * g.cr.h)).map((t) => t.instId);
+  }
+  // Pointer angle (deg) from a map-fraction origin to a client point, in DISPLAYED px space so
+  // the cone aims where the GM's cursor visually is, undistorted by the map's aspect ratio.
+  function aoePointerAngle(origin, clientX, clientY) {
+    const img = activeMapImg(); if (!img) return 0;
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return 0;
+    const cr = computeContainRect(r.width, r.height, mediaAspect(img));
+    const ox = cr.left + origin.x * cr.w, oy = cr.top + origin.y * cr.h;
+    return Math.atan2((clientY - r.top) - oy, (clientX - r.left) - ox) * 180 / Math.PI;
   }
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -640,6 +720,11 @@ export function createStageView(root) {
       // The face crop centers the round token on the character's face (same
       // object-position the stat card uses); default to centered.
       img.style.objectPosition = cast.face || '50% 50%';
+      // Zoom the token art (token-builder faceZoom, 1..3), pivoting on the face so it
+      // stays put as it magnifies. The .token-crop wrapper clips the overflow to the ring.
+      const z = (cast.faceZoom != null && isFinite(+cast.faceZoom)) ? +cast.faceZoom : 1;
+      img.style.transformOrigin = cast.face || '50% 50%';
+      img.style.transform = z !== 1 ? 'scale(' + z + ')' : '';
       // Token art can be assigned/changed by the builder (e.g. an NPC borrowing
       // its portrait); swap the src only when it actually differs.
       if (cast.tokenImage && img.getAttribute('src') !== cast.tokenImage) img.src = cast.tokenImage;
@@ -693,7 +778,12 @@ export function createStageView(root) {
     hpbar.append(document.createElement('i'));
     const cond = buildCondOverlay(inst.instId);
 
-    el.append(fallback, img, label, hpbar, cond);
+    // The portrait + initials live in a round clip so a zoomed image (faceZoom) stays
+    // inside the ring; the condition arc stays a direct child of the token (which is
+    // overflow:visible) so its text can ride above the ring.
+    const crop = document.createElement('div'); crop.className = 'token-crop';
+    crop.append(fallback, img);
+    el.append(crop, label, hpbar, cond);
     applyTokenStyling(el, inst);   // ring, face crop, name/cond scale, hp/cond position
     if (cast.tokenImage && img.complete && img.naturalWidth > 0) { img.style.display = ''; fallback.style.display = 'none'; }
     return el;
@@ -735,8 +825,18 @@ export function createStageView(root) {
       const list = (condOn && Array.isArray(inst.conditions)) ? inst.conditions.slice(0, 3) : [];
       cond.style.display = list.length ? '' : 'none';
       const tp = cond.querySelector('textPath');
-      const txt = list.join(' · ');
-      if (tp && tp.textContent !== txt) tp.textContent = txt;
+      if (tp) {
+        const txt = list.join(' · ');
+        if (tp.textContent !== txt) tp.textContent = txt;
+        // Fit long conditions to the arc so SVG doesn't drop the end characters: a word
+        // whose advance exceeds the arc PATH length rides off it and loses the ends
+        // ("unconscious" -> "nconsciou"), worse the larger the text. Scale the font by
+        // CHARACTER COUNT (deterministic -- getComputedTextLength is unreliable mid-render)
+        // so anything past what the arc comfortably holds (~MAX_CHARS) shrinks to fit.
+        // Drives --token-cond-fit in CSS.
+        const MAX_CHARS = 8;
+        el.style.setProperty('--token-cond-fit', (txt.length > MAX_CHARS ? MAX_CHARS / txt.length : 1).toFixed(3));
+      }
     }
   }
 
@@ -785,7 +885,10 @@ export function createStageView(root) {
     // mode clears the table on the TV.
     const inMapMode = !!(state.stage && state.stage.mapMode);
     tokensShown = stage.classList.contains('board-interactive') || inMapMode;
-    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; return; }
+    // Leaving map mode (or showing a non-map scene) must clear the grid too, not just the
+    // tokens -- otherwise a grid drawn in map mode lingers over the next scene. layoutTokens
+    // (which calls layoutGrid) is skipped on this early return, so hide the overlay here.
+    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; gridOverlay.style.display = 'none'; if (aoeFx) aoeFx.style.display = 'none'; return; }
     layoutTokens();
   }
 
@@ -850,5 +953,5 @@ export function createStageView(root) {
     }
   }
 
-  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell, gridDistance };
+  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell, gridDistance, aoeHits, aoePointerAngle };
 }

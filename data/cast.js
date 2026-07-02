@@ -23,10 +23,21 @@
 //  `stats` (heroes + enemies, optional) is the stat block shown in map mode for
 //  whichever combatant is up in the initiative tracker. Shape:
 //    stats: { name, subtitle?, ac, hp, speed, abilities:{str,dex,con,int,wis,cha},
-//             attacks:[{ name, toHit, range?, damage }] }   // ability scores are modifiers
-//  toHit may be a "+N" bonus or a save/keyword ("DEX save 13", "auto"); the card
-//  only appends "to hit" to a numeric bonus. A combatant without `stats` shows a
-//  compact card (name + HP + conditions) instead.
+//             attacks:[{ name, toHit, range?, damage,
+//                        save?, condition?, heal?, target?, aoe?, zone?, multi? }] }
+//  ability scores are modifiers. toHit may be a "+N" bonus or a save/keyword
+//  ("DEX save 13", "auto"); the card only appends "to hit" to a numeric bonus. The
+//  optional fields drive attack resolution (Phase 6C+), reconciled from the
+//  authoritative character sheets in the sibling site repo (ShadowOverAldermere):
+//    save:  { half } .......... a saving-throw action; ability + DC parse from toHit;
+//                               half:true = save-for-half damage, false = save negates
+//    condition: "restrained" .. condition applied to each creature that FAILS the save
+//    heal:  true + target:"self"|"ally" .. damage holds "heal NdM+K"; applied as healing
+//    aoe:   { shape:"cone"|"circle", sizeFeet } ...... instant template (6D)
+//    zone:  { shape:"square"|"cube"|"circle", sizeFeet, concentration?,
+//             onMove?:{dice,per} } ................... persistent placed zone (6E)
+//    multi: { darts } ......... roll `damage` this many times (Magic Missile = 3)
+//  A combatant without `stats` shows a compact card (name + HP + conditions) instead.
 //
 //  `face` (optional, e.g. "50% 18%") is the CSS object-position focus point for
 //  the token art -- it centers the board token AND the stat-card profile picture
@@ -42,17 +53,22 @@ export const CAST = {
       stats: { name: "Lysander", subtitle: "Halfling Cleric", ac: 17, hp: 24, speed: "25 ft",
         abilities: { str: -1, dex: 1, con: 2, int: 0, wis: 3, cha: 1 },
         attacks: [
-          { name: "Sacred Flame", toHit: "DEX save 13", damage: "1d8 radiant" },
-          { name: "Guiding Bolt", toHit: "+5", damage: "4d6 radiant" },
-          { name: "Mace", toHit: "+1", damage: "1d6 bludgeoning" }
+          { name: "Sacred Flame", toHit: "DEX save 13", range: "range 60 ft", damage: "1d8 radiant", save: { half: false } },
+          { name: "Guiding Bolt", toHit: "+5", range: "range 120 ft", damage: "4d6 radiant" },
+          { name: "Mace", toHit: "+1", range: "reach 5 ft", damage: "1d6 bludgeoning" },
+          { name: "Turn Undead", toHit: "WIS save 13", damage: "undead flee 1 min", save: { half: false }, condition: "frightened", aoe: { shape: "circle", sizeFeet: 30 } },
+          { name: "Cure Wounds", toHit: "", range: "reach 5 ft", damage: "heal 1d8+6", heal: true, target: "ally" },
+          { name: "Healing Word", toHit: "", range: "range 60 ft", damage: "heal 1d4+6", heal: true, target: "ally" }
         ] } },
     { id: "telstar", name: "Telstar", tokenImage: "assets/tokens/heroes/telstar.jpg", ringColor: "#2f6b43", face: "50% 18%",
       stats: { name: "Telstar", subtitle: "Kenku Druid", ac: 14, hp: 21, speed: "30 ft",
         abilities: { str: -1, dex: 2, con: 1, int: 1, wis: 3, cha: 0 },
         attacks: [
-          { name: "Shillelagh", toHit: "+5", damage: "1d8+3 bludgeoning" },
-          { name: "Thorn Whip", toHit: "+5", damage: "1d6 piercing" },
-          { name: "Entangle", toHit: "STR save 13", damage: "restrained" }
+          { name: "Shillelagh", toHit: "+5", range: "reach 5 ft", damage: "1d8+3 bludgeoning" },
+          { name: "Thorn Whip", toHit: "+5", range: "range 30 ft", damage: "1d6 piercing" },
+          { name: "Entangle", toHit: "STR save 13", damage: "restrained", save: { half: false }, condition: "restrained", zone: { shape: "square", sizeFeet: 20, concentration: true } },
+          { name: "Spike Growth", toHit: "", damage: "2d4 per 5 ft", zone: { shape: "circle", sizeFeet: 20, concentration: true, onMove: { dice: "2d4", per: 5 } } },
+          { name: "Cure Wounds", toHit: "", range: "reach 5 ft", damage: "heal 1d8+3", heal: true, target: "ally" }
         ] } },
     { id: "thraka", name: "Thraka", tokenImage: "assets/tokens/heroes/thraka.jpg", ringColor: "#2f6b43", face: "50% 18%",
       stats: { name: "Thraka", subtitle: "Orc Barbarian", ac: 14, hp: 35, speed: "30 ft",
@@ -66,9 +82,10 @@ export const CAST = {
       stats: { name: "Khaleesi", subtitle: "Dragonborn Fighter", ac: 18, hp: 28, speed: "30 ft",
         abilities: { str: 3, dex: 1, con: 2, int: -1, wis: 1, cha: 0 },
         attacks: [
-          { name: "Longsword", toHit: "+5", damage: "1d8+5 slashing" },
-          { name: "Breath Weapon", toHit: "DEX save 12", damage: "2d6 fire (1/rest)" },
-          { name: "Javelin", toHit: "+5", range: "thrown 30/120 ft", damage: "1d6+3 piercing" }
+          { name: "Longsword", toHit: "+5", range: "reach 5 ft", damage: "1d8+5 slashing" },
+          { name: "Breath Weapon", toHit: "DEX save 12", damage: "2d6 fire (1/rest)", save: { half: true }, aoe: { shape: "cone", sizeFeet: 15 } },
+          { name: "Javelin", toHit: "+5", range: "thrown 30/120 ft", damage: "1d6+3 piercing" },
+          { name: "Second Wind", toHit: "", damage: "heal 1d10+3", heal: true, target: "self" }
         ] } },
     { id: "sai", name: "Sai", tokenImage: "assets/tokens/heroes/sai.jpg", ringColor: "#2f6b43", face: "50% 18%",
       stats: { name: "Sai", subtitle: "Loxodon Monk", ac: 15, hp: 21, speed: "40 ft",
@@ -82,9 +99,10 @@ export const CAST = {
       stats: { name: "Samsara", subtitle: "Gnome Wizard", ac: 12, hp: 17, speed: "25 ft",
         abilities: { str: -1, dex: 2, con: 1, int: 3, wis: 1, cha: 0 },
         attacks: [
-          { name: "Fire Bolt", toHit: "+5", damage: "1d10 fire" },
-          { name: "Magic Missile", toHit: "auto", damage: "3 x 1d4+1 force" },
-          { name: "Dagger", toHit: "+4", damage: "1d4+2 piercing" }
+          { name: "Fire Bolt", toHit: "+5", range: "range 120 ft", damage: "1d10 fire" },
+          { name: "Magic Missile", toHit: "auto", range: "range 120 ft", damage: "1d4+1 force", multi: { darts: 3 } },
+          { name: "Dagger", toHit: "+4", range: "reach 5 ft", damage: "1d4+2 piercing" },
+          { name: "Web", toHit: "DEX save 13", damage: "restrained", save: { half: false }, condition: "restrained", zone: { shape: "cube", sizeFeet: 20, concentration: true } }
         ] } },
     { id: "truf", name: "Truf", tokenImage: "assets/tokens/heroes/truf.jpg", ringColor: "#2f6b43", face: "50% 18%",
       stats: { name: "Truf", subtitle: "Tiefling Rogue", ac: 15, hp: 21, speed: "30 ft",
@@ -92,7 +110,7 @@ export const CAST = {
         attacks: [
           { name: "Dagger", toHit: "+5", range: "thrown 20/60 ft", damage: "1d4+3 piercing" },
           { name: "Sneak Attack", toHit: "once/turn", damage: "+2d6" },
-          { name: "Hellish Rebuke", toHit: "DEX save 12", damage: "2d10 fire (reaction)" }
+          { name: "Hellish Rebuke", toHit: "DEX save 12", damage: "2d10 fire (reaction)", save: { half: true } }
         ] } }
   ],
 

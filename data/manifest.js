@@ -25,6 +25,7 @@ export const BACKGROUNDS = [
   { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map", type: "image" },
   { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/maps/A1 S2 Tent Camp -- Day.png", kind: "map", type: "image" },
   { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/maps/A1 S2 Tent Camp -- Night.png", kind: "map", type: "image" },
+  { id: "A1 S2 Tent Camp -- Nightnogrid", name: "A1 S2 Tent Camp Nightnogrid", src: "assets/maps/A1 S2 Tent Camp -- Nightnogrid.png", kind: "map", type: "image" },
   { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png", kind: "map", type: "image" },
   { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png", kind: "map", type: "image" },
   { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png", kind: "map", type: "image" },

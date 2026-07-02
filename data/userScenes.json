@@ -1,5 +1,28 @@
 [
   {
+    "id": "introduction",
+    "name": "Introduction",
+    "maps": {
+      "hidden": ""
+    },
+    "variantModes": {
+      "hidden": {
+        "scene": true,
+        "map": false
+      }
+    },
+    "defaultMapState": "hidden",
+    "tokens": null,
+    "music": null,
+    "ambience": [],
+    "audio": null,
+    "gmNotes": "",
+    "defaults": {
+      "visible": true
+    },
+    "titleHeader": "The Shadow Over Aldermere"
+  },
+  {
     "id": "the-city-gate",
     "name": "The City Gate",
     "maps": {
@@ -264,11 +287,11 @@
             "sfx": []
           }
         },
-        "notes": "Pushing through the crowd, you see a small, eager herald with a lute slung across his back, dressed as purple as a plumb.\n\n\"Make way, make way, MAKE WAY! I have a very important announcement.\"\n\n\"Presenting the one, the only, the absolutely unrivaled... Sir Cassian Goldmark! The Lion of the West! Breaker of Sieges, Bane of Bandits, Beloved of no fewer than four duchesses (and he has the letters to prove it)! Knight of seven realms, champion of the meek, the bold, and the suspiciously handsome! When the histories of this age are sung, and they will be sung, friends, for I am writing them as we speak, they shall open upon this very man! So take heart, good people: you are not merely meeting a legend. You are stepping, humbly and gratefully, into his story! I give you... SIR CASSIAN GOLDMARK!\"",
+        "notes": "Pushing through the crowd, you see a small, eager herald with a lute slung across his back, dressed as purple as a plumb.\n\n\"Make way, make way, MAKE WAY! I have a very important announcement.\"\n\n\"Presenting none other than the Breaker of Sieges, Bane of Bandits, Beloved of no fewer than four duchesses (and he has the letters to prove it)! Knight of seven realms, champion of the meek, the bold, and the suspiciously handsome, the one, the only, the absolutely unrivaled... Sir Cassian Goldmark! The Lion of the West! \n\nWhen the histories of this age are sung, and they will be sung, friends, for I am writing them as we speak, they shall open upon this very man! So take heart, good people: you are not merely meeting a legend. You are stepping, humbly and gratefully, into his story! I give you... SIR CASSIAN GOLDMARK!\"",
         "timeline": {
           "characters": {
-            "at": 2000,
-            "ramp": 500
+            "at": 4000,
+            "ramp": 800
           }
         }
       },
@@ -300,10 +323,10 @@
             "sfx": []
           }
         },
-        "notes": "A dashing, handsome hero in gleaming ornate armor with a flowing cloak and perfect golden hair, striking a confident heroic pose at a city gate, chin high and smile dazzling, utterly pleased with himself\n\n\"Stand easy, friends. The Lion of the West has arrived. I assume my reputation precedes me?\"\n\nHe looks the party over, \"Excuse us, I believe this is the heroes entrance, you might want to stand over there with the rest of the riff raff.\"\n\nCassian on Cassian:\n\"Modesty is a virtue I simply cannot afford. It would be dishonest, given the circumstances.\"\nPip: \"He once charmed a blizzard into an early spring, simply by smiling at it.\"\n\n\"I don't chase glory. Glory chases me, and I am gracious enough to slow down and let it catch up.\"\nPip: \"He once caught an arrow midflight, signed it, and handed it back to the archer as a keepsake.\"\n\n\"They say a hero is only as good as his last deed. By that measure I am, regrettably, insufferable.\"\nPip: \"He has never once been lost. The roads simply rearrange themselves to lead wherever he is already going.\"\n\n\"You'll want to stand a touch to my left. The light has always favored my left.\"\nPip: \"He out-sang a siren, out-drank a dwarf, and out-shone the moon, and that was all on a Tuesday.\"\n\n\nCassian sizing up the party:\nKenku: \"A talking bird! Marvelous. Repeat after me, friend: 'Cassian Goldmark, finest blade in seven realms.' ... You'll get there. Pip took weeks.\"\nLoxodon: \"Magnificent specimen. Tell me, big fellow, do you fight, or are you here to carry the trophies? Either way, invaluable.\"\nGnome wizard: \"And a little one, a wizard no less. Precious. Do keep your spells handy, in case I require a light to read my fan mail by.\"\nTiefling rogue: \"Horns, a tail, and fingers already drifting toward my purse. I like you. A good rogue makes the hero look honest by comparison. Keep up, and out of my pockets.\"\nOrc barbarian: \"Now you have the look of a proper brawler. Splendid. You'll make excellent cover when the arrows start flying. Stand just there, in front of me.\"\nDragonborn fighter: \"A dragonborn! How dramatic. Give us a little puff of flame, would you? A crowd loves a warm-up act before the main event arrives. The main event being me.\"\nHalfling cleric: \"A little cleric, wonderful. Stay close and keep me healthy; a hero of my caliber must be preserved for posterity. The rest of you are surely also worth saving. Probably.\"",
+        "notes": "Before you stands a dashing, handsome hero in gleaming ornate armor with a flowing cloak and perfect golden hair, striking a confident heroic pose at a city gate, chin high and smile dazzling, utterly pleased with himself\n\n\"Stand easy, friends. The Lion of the West has arrived. I assume my reputation precedes me?\"\n\nHe looks the party over, \"Excuse us, I believe this is the heroes entrance, you might want to stand over there with the rest of the riff raff.\"\n\nCassian on Cassian:\n\"Modesty is a virtue I simply cannot afford. It would be dishonest, given the circumstances.\"\nPip: \"He once charmed a blizzard into an early spring, simply by smiling at it.\"\n\n\"I don't chase glory. Glory chases me, and I am gracious enough to slow down and let it catch up.\"\nPip: \"He once caught an arrow midflight, signed it, and handed it back to the archer as a keepsake.\"\n\n\"They say a hero is only as good as his last deed. By that measure I am, regrettably, insufferable.\"\nPip: \"He has never once been lost. The roads simply rearrange themselves to lead wherever he is already going.\"\n\n\"You'll want to stand a touch to my left. The light has always favored my left.\"\nPip: \"He out-sang a siren, out-drank a dwarf, and out-shone the moon, and that was all on a Tuesday.\"\n\n\nCassian sizing up the party:\nKenku: \"A talking bird! Marvelous. Repeat after me, friend: 'Cassian Goldmark, finest blade in seven realms.' ... You'll get there. Pip took weeks.\"\n\nLoxodon: \"Magnificent specimen. Tell me, big fellow, do you fight, or are you here to carry the trophies? Either way, invaluable.\"\n\nGnome wizard: \"And a little one, a wizard no less. Precious. Do keep your spells handy, in case I require a light to read my fan mail by.\"\n\nTiefling rogue: \"Horns, a tail, and fingers already drifting toward my purse. I like you. A good rogue makes the hero look honest by comparison. Keep up, and out of my pockets.\"\n\nOrc barbarian: \"Now you have the look of a proper brawler. Splendid. You'll make excellent cover when the arrows start flying. Stand just there, in front of me.\"\n\nDragonborn fighter: \"A dragonborn! How dramatic. Give us a little puff of flame, would you? A crowd loves a warm-up act before the main event arrives. The main event being me.\"\n\nHalfling cleric: \"A little cleric, wonderful. Stay close and keep me healthy; a hero of my caliber must be preserved for posterity. The rest of you are surely also worth saving. Probably.\"",
         "timeline": {
           "characters": {
-            "at": 2000,
+            "at": 3000,
             "ramp": 500
           }
         }
@@ -470,29 +493,6 @@
         }
       ]
     },
-    "defaults": {
-      "visible": true
-    },
-    "titleHeader": "The Shadow Over Aldermere"
-  },
-  {
-    "id": "introduction",
-    "name": "Introduction",
-    "maps": {
-      "hidden": ""
-    },
-    "variantModes": {
-      "hidden": {
-        "scene": true,
-        "map": false
-      }
-    },
-    "defaultMapState": "hidden",
-    "tokens": null,
-    "music": null,
-    "ambience": [],
-    "audio": null,
-    "gmNotes": "",
     "defaults": {
       "visible": true
     },
@@ -945,7 +945,19 @@
     "defaults": {
       "visible": true
     },
-    "titleHeader": "The Shadow Over Aldermere"
+    "titleHeader": "The Shadow Over Aldermere",
+    "grids": {
+      "the-battle": {
+        "enabled": true,
+        "cellSize": 0.03225806451612903,
+        "offsetX": 0.28,
+        "offsetY": 0.16,
+        "feetPerCell": 5,
+        "color": "#ffffff",
+        "opacity": 0.5,
+        "lineWidth": 1
+      }
+    }
   },
   {
     "id": "the-refugee-encampment",
@@ -1197,6 +1209,18 @@
     "defaults": {
       "visible": true
     },
-    "titleHeader": "The Shadow Over Aldermere"
+    "titleHeader": "The Shadow Over Aldermere",
+    "grids": {
+      "map-night": {
+        "enabled": true,
+        "cellSize": 0.03333333333333333,
+        "offsetX": 0,
+        "offsetY": 0,
+        "feetPerCell": 5,
+        "color": "#ffffff",
+        "opacity": 0.4,
+        "lineWidth": 1
+      }
+    }
   }
 ]

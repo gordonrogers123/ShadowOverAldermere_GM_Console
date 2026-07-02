@@ -212,6 +212,25 @@
    opacity are set inline by layoutGrid from the per-scene grid config. */
 .stage .grid-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .stage .grid-overlay path { fill: none; stroke: var(--grid-color, rgba(255, 255, 255, 0.4)); stroke-width: var(--grid-width, 1px); shape-rendering: crispEdges; }
+/* Instant AoE template (PR 6D): a cone / radius the GM aims on the board, drawn on BOTH
+   screens between the grid and the targeting arrow. `--aoe-color` is set inline on the stage
+   per spell; a dashed low-fill preview while aiming becomes a solid-edged fill once placed. */
+.stage .aoe-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.stage .aoe-fx .aoe-shape {
+  fill: var(--aoe-color, #e5533a); fill-opacity: 0.17;
+  stroke: var(--aoe-color, #e5533a); stroke-width: 2px; stroke-opacity: 0.85;
+  stroke-dasharray: 7 5; animation: aoe-march 0.6s linear infinite;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
+}
+.stage .aoe-fx.is-committed .aoe-shape { fill-opacity: 0.26; stroke-dasharray: none; animation: none; }
+@keyframes aoe-march { to { stroke-dashoffset: -24; } }
+/* A creature caught inside the placed template pulses in the template colour (both screens). */
+.stage .token.is-aoe-hit { animation: aoe-hit-glow 1s ease-in-out infinite; }
+@keyframes aoe-hit-glow {
+  0%, 100% { box-shadow: 0 0 0 0.06em var(--aoe-color, #e5533a), 0 0 0.28em 0.05em color-mix(in srgb, var(--aoe-color, #e5533a) 55%, transparent), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
+  50%      { box-shadow: 0 0 0 0.06em var(--aoe-color, #e5533a), 0 0 0.55em 0.12em color-mix(in srgb, var(--aoe-color, #e5533a) 95%, transparent), 0 0.04em 0.18em rgba(0, 0, 0, 0.6); }
+}
+@media (prefers-reduced-motion: reduce) { .stage .token.is-aoe-hit, .stage .aoe-fx .aoe-shape { animation: none !important; } }
 .stage .target-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .stage .target-line { fill: none; stroke: #e5342f; stroke-linecap: round; stroke-dasharray: 11 7; animation: target-march 0.5s linear infinite; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
 .stage .target-arrowhead { fill: #e5342f; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
@@ -227,6 +246,14 @@
 @media (prefers-reduced-motion: reduce) {
   .stage .token.is-targeted { animation: none !important; }
   .stage .target-line { animation: none !important; }
+}
+/* Round clip for the portrait + initials so a zoomed image (faceZoom) can't spill past
+   the ring; the token itself stays overflow:visible so the condition arc rides above it. */
+.stage .token-crop {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
 }
 .stage .token-portrait,
 .stage .token-fallback {
@@ -300,7 +327,7 @@
   fill: var(--token-cond-color, #fff); stroke: var(--token-cond-outline, rgba(0, 0, 0, 0.85)); stroke-width: 3.4px; paint-order: stroke;
   /* Base 23px (in the 100x100 token viewBox), scaled by the builder's cond-size;
      letter-spacing (in viewBox units) is a slider that un-squishes the curved word. */
-  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1)); letter-spacing: var(--token-cond-spacing, 0.8px);
+  font-family: var(--font-display); font-weight: 700; font-size: calc(23px * var(--token-cond-scale, 1) * var(--token-cond-fit, 1)); letter-spacing: var(--token-cond-spacing, 0.8px);
 }
 
 /* ---------- Player view: fullscreen letterbox ---------- */
@@ -374,3 +401,16 @@ body.view-player {
 .view-player .room-dice-sum { display: flex; flex-direction: column; align-items: center; padding-left: 1.4rem; border-left: 1px solid #6f5a33; }
 .view-player .room-dice-eq { font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a884; }
 .view-player .room-dice-total { font-family: var(--font-display); font-weight: 700; font-size: 2.8rem; line-height: 1; color: #caa64f; }
+/* PR 6C.1: a card roll (Hit/Save/Dmg/Heal mirrored from the GM) leads with a who/what
+   label and closes with a tone-coloured verdict; stack the pop-up into a column. */
+.view-player .room-dice:has(.room-dice-label) { flex-direction: column; gap: 0.55rem; min-width: 15rem; text-align: center; }
+.view-player .room-dice-label { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.02em; color: #e6d8b8; }
+.view-player .room-dice-outcome { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; line-height: 1.05; letter-spacing: 0.03em; color: #caa64f; }
+.view-player .room-dice.tone-good { border-color: #4f8a5c; }
+.view-player .room-dice.tone-good .room-dice-outcome { color: #8ee0a0; }
+.view-player .room-dice.tone-heal { border-color: #4f8a5c; }
+.view-player .room-dice.tone-heal .room-dice-outcome { color: #9be3b0; }
+.view-player .room-dice.tone-bad { border-color: #9a4a4a; }
+.view-player .room-dice.tone-bad .room-dice-outcome { color: #f0a3a3; }
+.view-player .room-dice.tone-crit { border-color: #caa64f; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55), 0 0 26px rgba(202, 166, 79, 0.55); }
+.view-player .room-dice.tone-crit .room-dice-outcome { color: #f2d789; }
