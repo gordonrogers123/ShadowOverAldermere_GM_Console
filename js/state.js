@@ -76,6 +76,18 @@ function normHp(h) {
   if (max != null && current != null && current > max) current = max;
   return { current, max };
 }
+// Limited-use pools (spell slots, ki, rage...): a map of resource id -> charges LEFT.
+// Only ids the GM has actually spent/overridden are stored (absent = still at the
+// cast's max). GM-only + additive like hp/conditions -- no STATE_VERSION bump.
+function normRes(r) {
+  if (!r || typeof r !== 'object') return null;
+  const out = {};
+  for (const k of Object.keys(r)) {
+    const v = +r[k];
+    if (typeof k === 'string' && k.trim() && isFinite(v)) out[k] = Math.max(0, Math.min(99, Math.round(v)));
+  }
+  return Object.keys(out).length ? out : null;
+}
 function normalizeToken(t, i) {
   if (!t || typeof t !== 'object') return null;
   const castId = typeof t.castId === 'string' ? t.castId.trim() : '';
@@ -87,7 +99,7 @@ function normalizeToken(t, i) {
   const conditions = Array.isArray(t.conditions) ? t.conditions.filter((c) => typeof c === 'string' && c.trim()).map((c) => String(c).trim()) : [];
   // `manual` (PR 6C.1): this combatant's dice are entered by the GM (the player rolled
   // physically) rather than auto-rolled. GM-only; the Player ignores it. Optional/default off.
-  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false, hp: normHp(t.hp), conditions, manual: !!t.manual };
+  return { instId, castId, kind, label, x: clamp01(t.x), y: clamp01(t.y), visible: t.visible !== false, hp: normHp(t.hp), conditions, manual: !!t.manual, res: normRes(t.res) };
 }
 
 // Fill any missing piece of the nested stage block from defaults, so a
