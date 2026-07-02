@@ -223,13 +223,14 @@
 }
 /* Aiming: a dashed, lighter, marching preview until the click locks it. */
 .stage .aoe-fx .aoe-shape.is-preview { fill-opacity: 0.17; stroke-dasharray: 7 5; animation: aoe-march 0.6s linear infinite; }
-/* Movement range (turn engine): the active mover's reachable square -- a cool dashed
-   outline, quieter than any spell template. GM board shows every mover; the TV shows
-   heroes only (the compositor filters by kind). */
+/* Movement range (turn engine): the active mover's reachable ground -- a NEUTRAL
+   translucent white wash with a faint hairline, deliberately colorless so it reads
+   as terrain the mover can cover, not a spell (those are colored, animated fills).
+   GM board shows every mover; the TV shows heroes only (the compositor filters). */
 .stage .aoe-fx .aoe-shape.move-range {
-  fill: none; stroke: #8fd0ff; stroke-opacity: 0.95; stroke-width: 3px;
-  stroke-linecap: round; stroke-dasharray: 0.1 11;   /* a dotted walking-path outline -- nothing like a filled spell template */
-  animation: none; filter: drop-shadow(0 0 3px rgba(20, 60, 100, 0.8));
+  fill: #6f6f6f; fill-opacity: 0.24;
+  stroke: #ffffff; stroke-opacity: 0.6; stroke-width: 1.5px;
+  stroke-dasharray: none; animation: none;
 }
 /* A persistent zone (PR 6E) reads as terrain: a touch quieter than a fresh template. */
 .stage .aoe-fx .aoe-shape.is-zone { fill-opacity: 0.2; }

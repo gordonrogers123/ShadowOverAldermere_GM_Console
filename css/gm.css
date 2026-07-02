@@ -1046,8 +1046,17 @@ body.view-gm {
    and the action dot + +1 right-align; otherwise the classic "Speed 30 ft" line. */
 .view-gm .stat-line.stat-speed { justify-content: flex-start; align-items: center; }
 .view-gm .stat-speed .stat-v { margin-left: 0.45rem; }
-.view-gm .stat-speed .turn-move { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0.35rem; }
-.view-gm .turn-move .turn-action { margin-left: auto; }
+.view-gm .stat-speed .turn-move { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: nowrap; align-items: center; gap: 0.3rem; }
+.view-gm .turn-move .gm-button { padding: 0.18rem 0.5rem; }
+.view-gm .turn-move .turn-move-cap, .view-gm .turn-move .turn-move-pending { white-space: nowrap; }
+/* The action pip gets a small label ("Action ●") and hugs the right edge with +1.
+   While pending feet + Apply are showing (the row's widest state) the label yields. */
+.view-gm .turn-move .turn-action-label { margin-left: auto; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral); }
+.view-gm .turn-move.has-pending .turn-action-label { display: none; }
+.view-gm .turn-move.has-pending .turn-action { margin-left: auto; }
+/* Hit Points + AC share one line: two label/value pairs at either end. */
+.view-gm .stat-line.stat-hpac { justify-content: space-between; }
+.view-gm .stat-hpac .stat-hpac-col { display: inline-flex; gap: 0.45rem; align-items: baseline; min-width: 0; }
 .view-gm .stat-line .stat-k { color: var(--neutral); }
 .view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
 .view-gm .stat-hpbar { height: 6px; border-radius: 3px; background: #e7ddc7; overflow: hidden; margin: 0.15rem 0 0.3rem; }

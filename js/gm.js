@@ -467,6 +467,8 @@ export function mountGm(root) {
   boardView.el.addEventListener('pointermove', onBoardPointerMove);
   boardView.el.addEventListener('pointerup', onBoardPointerUp);
   boardView.el.addEventListener('pointercancel', onBoardPointerUp);
+  // Esc bails out of a mid-flight dart volley (the spent action stays spent).
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && dartMode) endDarts('Volley stopped — ' + dartMode.fired + ' of ' + dartMode.total + ' darts fired'); });
 
   // ---- Map grid (PR 6A): a board-toolbar Grid toggle (on/off for the CURRENT map)
   //      plus an "Align" button that opens a collapsible calibration panel -- it's
@@ -2128,8 +2130,10 @@ export function mountGm(root) {
   //      link rides state.stage.targetLink so it broadcasts. Future: AoE/cones. ----
   let attackRoll = null;   // { instId, kind:'hit'|'dmg', ... } the last roll on the active card
   let targeting = false;   // armed: the next board-token click sets the target
+  let dartMode = null;     // { token, atk, total, fired } while a multi-dart volley targets PER DART (Magic Missile)
   let aoePlacing = null;   // PR 6D/6E: { token, atk, shape, zone?, committed, hits[], results } while aiming/resolving an area
-  let spikePrompt = null;  // PR 6E: { instId, label, zone, dice, per, feet, times } after a drag through an on-move zone
+  let spikePrompts = [];   // PR 6E: [{ id, instId, label, zone, dice, per, feet, times }] queued drag-through-zone prompts
+  let spikeSeq = 0;
   let concWarn = null;     // PR 6E: { instId, dmg } when a concentrating caster takes damage
   const rollN = (count, sides) => { let s = 0; for (let k = 0; k < count; k++) s += Math.floor(Math.random() * sides) + 1; return s; };
   const parseHitMod = (toHit) => { const m = /^\s*([+-]?\d+)\s*$/.exec(String(toHit || '')); return m ? parseInt(m[1], 10) : null; };
@@ -2140,7 +2144,7 @@ export function mountGm(root) {
   const parseSave = (toHit) => { const m = /(STR|DEX|CON|INT|WIS|CHA)\s+save\s+(\d+)/i.exec(String(toHit || '')); return m ? { ability: m[1].toUpperCase(), dc: +m[2] } : null; };
   const sceneHasSfx = (id) => { const sc = sceneById(state.sceneId); return !!(sc && sc.audio && (sc.audio.sfx || []).some((s) => s.id === id)); };
   function fireAttackSfx(id) { if (!id || !sceneHasSfx(id)) return; ensureAudio(); state.audio.sfxTrigger[id] = (state.audio.sfxTrigger[id] || 0) + 1; commitAudio(); }
-  function renderBoardTargeting() { if (boardView && boardView.el) boardView.el.classList.toggle('is-targeting', !!targeting); }
+  function renderBoardTargeting() { if (boardView && boardView.el) boardView.el.classList.toggle('is-targeting', !!targeting || !!dartMode); }
   function currentTarget() {
     const link = state.stage && state.stage.targetLink;
     return (link && link.from === state.stage.activeTokenId) ? findToken(link.to) : null;
@@ -2191,7 +2195,7 @@ export function mountGm(root) {
     }
     if (best) link.status = best; else delete link.status;
   }
-  function armTargeting() { if (aoePlacing) { aoePlacing = null; if (state.stage) state.stage.aoeTemplate = null; renderBoardAoe(); } targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
+  function armTargeting() { if (aoePlacing) { aoePlacing = null; if (state.stage) state.stage.aoeTemplate = null; renderBoardAoe(); } dartMode = null; targeting = true; renderBoardTargeting(); renderStatSheet(); setStatus('Click the target token on the board', false); }
   // Range gate (defense in depth behind the disabled buttons): true when the current
   // target sits beyond this attack's parsed range at the measured grid distance.
   function atkOutOfRange(atk) {
@@ -2211,7 +2215,7 @@ export function mountGm(root) {
     commit();   // broadcasts the arrow + target glow, re-renders the card
   }
   function clearTarget() { if (state.stage) state.stage.targetLink = null; attackRoll = null; targeting = false; renderBoardTargeting(); commit(); }
-  function clearAttackState() { attackRoll = null; targeting = false; aoePlacing = null; if (state.stage) { state.stage.targetLink = null; state.stage.aoeTemplate = null; } renderBoardTargeting(); renderBoardAoe(); }
+  function clearAttackState() { attackRoll = null; targeting = false; dartMode = null; aoePlacing = null; if (state.stage) { state.stage.targetLink = null; state.stage.aoeTemplate = null; } renderBoardTargeting(); renderBoardAoe(); }
   // ---- PR 6C.1: mirror a resolved card roll onto the Player TV when "Rolls on TV" is
   //      on, as a plain-language three-line pop-up: who did what ("Telstar used Thorn
   //      Whip Attack"), the dice math ("D20 (1) + 5 = 6 vs AC 11"), and the verdict
@@ -2268,6 +2272,15 @@ export function mountGm(root) {
       { detail: total + (ac != null ? ' vs AC ' + ac : ' (entered)') });
   }
   function rollDmg(token, atk) {
+    // Magic Missile & friends target PER DART: [Dmg] arms a volley and each board click
+    // fires one dart at the clicked token (repeats fine -- 2 into one brigand, 1 into
+    // the next). A MANUAL caster keeps the type-the-total path against the strip target.
+    if (atk.multi && atk.multi.darts > 1 && !token.manual) {
+      if (dartMode && dartMode.atk === atk) { endDarts('Volley stopped — ' + dartMode.fired + ' of ' + dartMode.total + ' darts fired'); return; }
+      if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
+      armDarts(token, atk);
+      return;
+    }
     const target = currentTarget();
     if (!target) { armTargeting(); return; }
     if (atkOutOfRange(atk)) { setStatus(target.label + ' is out of range for ' + atk.name, false); return; }
@@ -2277,10 +2290,7 @@ export function mountGm(root) {
     } else if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
     const p = parseDamage(atk.damage); if (!p) return;
     if (token.manual) { attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, manualPending: 'dmg', atk, dtype: p.type, targetLabel: target.label }; renderStatSheet(); return; }
-    // Magic Missile & friends: multi.darts rolls the die that many times (was a
-    // single-die under-roll before). One die otherwise. Faces are kept individually
-    // so the TV can spell the math out ("D4 (3, 2, 4) + 3").
-    const darts = (atk.multi && atk.multi.darts > 1) ? atk.multi.darts : 1;
+    const darts = (atk.multi && atk.multi.darts > 1) ? atk.multi.darts : 1;   // manual multi-dart total, rolled at once
     const faces = rollFaces(darts * p.count, p.sides);
     const mod = darts * p.mod;
     const total = Math.max(0, faces.reduce((a, b) => a + b, 0) + mod);
@@ -2297,6 +2307,49 @@ export function mountGm(root) {
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     tvRoll(token.label + ' hit ' + target.label, total + (dtype ? ' ' + dtype : '') + ' dmg', 'bad', { detail });
     applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
+  }
+  // ---- Multi-dart volley (Magic Missile): each dart picks its own target. [Dmg] arms
+  //      the volley; every board-token click rolls ONE dart (its own 1d4+1) and applies
+  //      it to the clicked token -- click the same token again to stack darts on it.
+  //      The FIRST dart spends the action (auto-hit: the volley IS the action); the
+  //      volley ends after the last dart, on Esc, or by clicking [Dmg] again. GM-local
+  //      aiming state like `targeting` -- each dart's damage broadcasts normally. ----
+  function armDarts(token, atk) {
+    clearAttackState();                                 // darts re-aim click by click
+    dartMode = { token, atk, total: atk.multi.darts, fired: 0 };
+    renderBoardTargeting();
+    renderStatSheet();
+    setStatus(atk.name + ' — click a token for dart 1 of ' + dartMode.total + ' (same token stacks; Esc stops early)', false);
+  }
+  function endDarts(msg) {
+    dartMode = null;
+    renderBoardTargeting();
+    renderStatSheet();
+    if (msg) setStatus(msg, false);
+  }
+  function fireDart(toInstId) {
+    const dm = dartMode; if (!dm) return;
+    const caster = findToken(dm.token.instId), target = findToken(toInstId);
+    if (!caster || !target) return;
+    if (target.instId === caster.instId) { setStatus('Not at the caster — pick a target for dart ' + (dm.fired + 1) + ' of ' + dm.total, false); return; }
+    const pr = parseAtkRange(dm.atk.range);
+    const d = boardView.gridDistance({ x: caster.x, y: caster.y }, { x: target.x, y: target.y });
+    if (pr && d && rangeVerdict(pr, d.feet).status === 'out') { setStatus(target.label + ' is out of range at ' + d.feet + ' ft', false); return; }
+    const p = parseDamage(dm.atk.damage); if (!p) { endDarts(''); return; }
+    if (dm.fired === 0) spendAction(dm.token);          // the volley is the action -- stopping early doesn't refund it
+    const faces = rollFaces(p.count, p.sides);
+    const total = Math.max(0, faces.reduce((a, b) => a + b, 0) + p.mod);
+    dm.fired++;
+    const nth = 'dart ' + dm.fired + ' of ' + dm.total;
+    ensureTokens();
+    state.stage.targetLink = { from: caster.instId, to: target.instId };   // the arrow hops along with the darts
+    computeTargetRange();
+    attackRoll = { instId: dm.token.instId, kind: 'dmg', name: dm.atk.name, total, notation: p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : '') + ' · ' + nth, dtype: p.type, targetLabel: target.label };
+    if (dm.atk.sfxId) fireAttackSfx(dm.atk.sfxId);
+    tvRoll(dm.token.label + ' hit ' + target.label, total + (p.type ? ' ' + p.type : '') + ' dmg', 'bad', { detail: diceMath(p.sides, faces, p.mod) + ' · ' + nth });
+    applyHp(target.instId, -total);                     // clamps + commits + re-renders
+    if (dm.fired >= dm.total) endDarts(dm.atk.name + ' — all ' + dm.total + ' darts delivered');
+    else setStatus(dm.atk.name + ' — click a token for dart ' + (dm.fired + 1) + ' of ' + dm.total, false);
   }
   // ---- PR 6C: saving throws. A save action (toHit like "DEX save 13") resolves in one
   //      click: auto-roll the target's d20 + its ability modifier vs the DC when the
@@ -2612,8 +2665,13 @@ export function mountGm(root) {
     } else {
       if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(gate(hb, spent || outOfRange, spent ? SPENT_WHY : 'Target is out of range')); }
       if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); { const hasHit = parseHitMod(atk.toHit) != null;
-        const dmgBlocked = outOfRange || (hasHit ? !dmgEntitled(atk) : spent);
-        const dmgWhy = outOfRange ? 'Target is out of range' : hasHit ? 'Roll to Hit first — one damage roll per landed hit' : SPENT_WHY;
+        const darts = !!(atk.multi && atk.multi.darts > 1) && !token.manual;
+        const inFlight = !!(dartMode && dartMode.atk === atk);
+        if (darts) db.title = 'Fire ' + atk.multi.darts + ' darts — click a board token per dart (repeats stack)';
+        if (inFlight) { db.classList.add('is-armed'); db.title = 'Firing — click board tokens, one dart per click; click here to stop'; }
+        // A dart volley does its own aiming (the strip target + its range don't gate it).
+        const dmgBlocked = darts ? (spent && !inFlight) : (outOfRange || (hasHit ? !dmgEntitled(atk) : spent));
+        const dmgWhy = darts ? SPENT_WHY : outOfRange ? 'Target is out of range' : hasHit ? 'Roll to Hit first — one damage roll per landed hit' : SPENT_WHY;
         btns.append(gate(db, dmgBlocked, dmgWhy)); } }
     }
     if (atk.sfxId && sceneHasSfx(atk.sfxId)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'gm-button btn--quiet atk-sfx'; sb.textContent = '▶'; sb.title = 'Play attack SFX'; sb.addEventListener('click', () => fireAttackSfx(atk.sfxId)); btns.append(sb); }
@@ -2629,15 +2687,15 @@ export function mountGm(root) {
   function renderNotices() {
     if (!els.notices) return;
     const host = els.notices; host.innerHTML = '';
-    if (spikePrompt) {
-      const sp = spikePrompt;
+    spikePrompts = spikePrompts.filter((sp) => findToken(sp.instId));   // a removed token takes its prompt along
+    for (const sp of spikePrompts) {
       const box = document.createElement('div'); box.className = 'gm-notice stat-spike';
       const q = document.createElement('span'); q.className = 'gm-notice-txt';
       q.textContent = '⚠ ' + sp.label + ' moved ' + sp.feet + ' ft through ' + sp.zone + ' — ' + sp.dice + ' × ' + sp.times + '?';
       const roll = document.createElement('button'); roll.type = 'button'; roll.className = 'gm-button atk-dmg'; roll.textContent = 'Roll'; roll.title = 'Roll the movement damage and apply it';
-      roll.addEventListener('click', applySpikeDamage);
+      roll.addEventListener('click', () => applySpikeDamage(sp.id));
       const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'gm-button btn--quiet'; skip.textContent = 'Skip';
-      skip.addEventListener('click', () => { spikePrompt = null; renderNotices(); });
+      skip.addEventListener('click', () => { spikePrompts = spikePrompts.filter((x) => x.id !== sp.id); renderNotices(); });
       box.append(q, roll, skip); host.append(box);
     }
     if (concWarn) {
@@ -2660,6 +2718,8 @@ export function mountGm(root) {
   }
   function renderStatSheet() {
     if (!els.statsheet) return;
+    // A dart volley belongs to the ACTIVE combatant -- if the turn moved on, drop it.
+    if (dartMode && (!state.stage || state.stage.activeTokenId !== dartMode.token.instId)) { dartMode = null; renderBoardTargeting(); }
     const host = els.statsheet; host.innerHTML = '';
     const ctx = activeStatContext();
     host.classList.toggle('is-hero', !!ctx && ctx.token.kind === 'hero');
@@ -2686,9 +2746,9 @@ export function mountGm(root) {
     const kindLabel = token.kind === 'hero' ? 'Hero' : token.kind === 'npc' ? 'NPC' : 'Enemy';
     const tag = document.createElement('span'); tag.className = 'stat-tag ' + kindTag;
     tag.textContent = 'Active · ' + kindLabel;
-    // The Active tag and the (icon-only) Auto/Manual toggle right-align on the name line,
-    // so the head stays a single tidy row.
-    nameRow.append(nm, tag, manualToggleBtn(token, false)); idBox.append(nameRow);
+    // The Active tag right-aligns on the name line. (The Auto/Manual roll toggle lives
+    // ONLY in the roster's Roll column now -- the card head stays clean.)
+    nameRow.append(nm, tag); idBox.append(nameRow);
     // Subtitle: the class line if present, else the stat block's flavour name when the
     // label doesn't already carry it (so "Brigand 1" shows "Roadside Raider", but
     // "Pale Husk 1" doesn't repeat "Pale Husk").
@@ -2713,15 +2773,25 @@ export function mountGm(root) {
     const hp = token.hp || {};
     const max = hp.max != null ? hp.max : (stats && stats.hp != null ? stats.hp : null);
     const cur = hp.current != null ? hp.current : max;
-    if (max != null) {
+    const acVal = stats && stats.ac != null ? stats.ac : null;
+    if (max != null && acVal != null) {
+      // The vitals share ONE line, two columns: Hit Points left, AC right.
+      const row = document.createElement('div'); row.className = 'stat-line stat-hpac';
+      const col = (k, v) => { const g = document.createElement('span'); g.className = 'stat-hpac-col'; const ks = document.createElement('span'); ks.className = 'stat-k'; ks.textContent = k; const vs = document.createElement('span'); vs.className = 'stat-v'; vs.textContent = v; g.append(ks, vs); return g; };
+      row.append(col('Hit Points', (cur != null ? cur : '?') + ' / ' + max), col('AC', acVal));
+      lines.append(row);
+    } else if (max != null) {
       lines.append(line('Hit Points', (cur != null ? cur : '?') + ' / ' + max));
+    } else if (acVal != null) {
+      lines.append(line('Armor Class', acVal));
+    }
+    if (max != null) {
       const bar = document.createElement('div'); bar.className = 'stat-hpbar';
       const fill = document.createElement('i');
       fill.style.width = Math.max(0, Math.min(100, max ? Math.round(((cur != null ? cur : max) / max) * 100) : 0)) + '%';
       if (cur != null && max && cur / max <= 0.34) fill.classList.add('is-low');
       bar.append(fill); lines.append(bar);
     }
-    if (stats && stats.ac != null) lines.append(line('Armor Class', stats.ac));
     if (stats && stats.speed) {
       // The Speed line IS the movement row while a turn runs: the Move toggle takes the
       // label's place ("30 / 30" already says the speed) so the row breathes. With no
@@ -2730,6 +2800,9 @@ export function mountGm(root) {
       const sp = document.createElement('div'); sp.className = 'stat-line stat-speed';
       if (!turn) { const k = document.createElement('span'); k.className = 'stat-k'; k.textContent = 'Speed'; const v = document.createElement('span'); v.className = 'stat-v'; v.textContent = stats.speed; sp.append(k, v); }
       const tc = document.createElement('div'); tc.className = 'turn-move';
+      // While dragged feet await Apply the row is at its widest -- the Action label
+      // yields (its pip + tooltip stay) so everything holds one line.
+      if (turn && turn.movePending > 0) tc.classList.add('has-pending');
       if (turn) {
         // [Move] toggles the reachable-range square; the numerator is the feet still
         // banked (typing it IS the override); pending drag feet await [Apply]; the
@@ -2742,20 +2815,26 @@ export function mountGm(root) {
         left.value = String(turn.moveLeft); left.min = '0'; left.title = 'Feet of movement left — type to override (spells, dashes)';
         left.addEventListener('change', () => setMoveLeft(left.value));
         const cap = document.createElement('span'); cap.className = 'turn-move-cap'; cap.textContent = '/ ' + turn.moveMax;
-        const pend = document.createElement('span'); pend.className = 'turn-move-pending';
-        pend.textContent = turn.movePending ? '−' + turn.movePending : '';
-        pend.title = 'Feet dragged since the last Apply';
-        const ap = document.createElement('button'); ap.type = 'button'; ap.className = 'gm-button btn--quiet turn-move-apply';
-        ap.textContent = 'Apply'; ap.title = 'Deduct the dragged feet from the movement left';
-        if (!turn.movePending) { ap.disabled = true; ap.classList.add('is-blocked'); }
-        ap.addEventListener('click', applyMove);
+        tc.append(mv, left, cap);
+        if (turn.movePending > 0) {
+          // The deduction pair only exists while feet are pending -- idle rows stay slim.
+          const pend = document.createElement('span'); pend.className = 'turn-move-pending';
+          pend.textContent = '−' + turn.movePending;
+          pend.title = 'Feet dragged since the last Apply';
+          const ap = document.createElement('button'); ap.type = 'button'; ap.className = 'gm-button btn--quiet turn-move-apply';
+          ap.textContent = 'Apply'; ap.title = 'Deduct the dragged feet from the movement left';
+          ap.addEventListener('click', applyMove);
+          tc.append(pend, ap);
+        }
+        // Labelled action pip: ● = the turn's action is still available, ○ = spent.
+        const actLab = document.createElement('span'); actLab.className = 'turn-action-label'; actLab.textContent = 'Action';
         const act = document.createElement('span'); act.className = 'turn-action' + (turn.actionsUsed >= turn.actionsMax ? ' is-spent' : '');
         act.textContent = turn.actionsUsed >= turn.actionsMax ? '○' : '●';
-        act.title = 'Action: ' + turn.actionsUsed + ' of ' + turn.actionsMax + ' used';
+        actLab.title = act.title = 'The turn\'s action: ' + turn.actionsUsed + ' of ' + turn.actionsMax + ' used — ● available, ○ spent';
         const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'gm-button btn--quiet turn-action-plus';
-        plus.textContent = '+1'; plus.title = 'Grant an extra action (Action Surge / special cases)';
+        plus.textContent = '+1'; plus.title = 'Grant an extra action (Action Surge / GM call) — re-enables the attack buttons';
         plus.addEventListener('click', grantAction);
-        tc.append(mv, left, cap, pend, ap, act, plus);
+        tc.append(actLab, act, plus);
       }
       sp.append(tc); lines.append(sp);
     }
@@ -2961,6 +3040,7 @@ export function mountGm(root) {
     const tokens = (state.stage && state.stage.tokens) || [];
     const tok = tokens.find((t) => t.instId === instId);
     if (!tok) return;
+    if (dartMode) { fireDart(instId); e.preventDefault(); return; }     // dart volley: each token click fires one dart
     if (targeting) { setTarget(instId); e.preventDefault(); return; }   // targeting mode: aim the active attacker at this token
     // Turn engine: the ACTIVE combatant with no movement left can't be dragged (other
     // tokens stay free -- GM fiat). Type a bigger number in the Speed row to override.
@@ -3016,30 +3096,43 @@ export function mountGm(root) {
     if (dist && dist.feet > 0) turn.movePending += dist.feet;
     refreshMoveRange();                // the square follows the token + shrinks by the pending feet
   }
-  // PR 6E: after a drag, if the token started or ended inside an on-move zone (Spike
-  // Growth) and actually covered ground, queue the "2d4 per 5 ft" prompt on the GM card.
+  // PR 6E: after a drag, SAMPLE the straight drag line (about every foot) so a token
+  // dragged clean ACROSS an on-move zone (Spike Growth) still prompts, and so only the
+  // feet actually INSIDE each zone count -- a 30-ft drag that clips 5 ft of spikes is
+  // one 2d4 increment, not six. One prompt per zone crossed; prompts QUEUE (each drag
+  // adds its own card) rather than overwriting an unresolved one.
   function checkZoneMove(moved) {
     const t = findToken(moved.instId);
     if (!t || (t.x === moved.x0 && t.y === moved.y0)) return;
-    const zs = new Map();
-    for (const z of boardView.zonesAtFraction({ x: moved.x0, y: moved.y0 })) if (z.onMove) zs.set(z.id, z);
-    for (const z of boardView.zonesAtFraction({ x: t.x, y: t.y })) if (z.onMove) zs.set(z.id, z);
-    const z = zs.values().next().value;
-    if (!z) return;
     const dist = boardView.gridDistance({ x: moved.x0, y: moved.y0 }, { x: t.x, y: t.y });
-    const feet = dist ? dist.feet : z.onMove.per;      // no grid -> assume one increment
-    if (!(feet > 0)) return;
-    spikePrompt = { instId: t.instId, label: t.label, zone: z.name, dice: z.onMove.dice, per: z.onMove.per, feet, times: Math.max(1, Math.ceil(feet / z.onMove.per)) };
+    const steps = Math.max(8, Math.min(160, dist ? Math.ceil(dist.feet) : 8));
+    const inside = new Map();          // zoneId -> { zone, n samples inside }
+    for (let k = 0; k <= steps; k++) {
+      const f = k / steps;
+      const p = { x: moved.x0 + (t.x - moved.x0) * f, y: moved.y0 + (t.y - moved.y0) * f };
+      for (const z of boardView.zonesAtFraction(p)) {
+        if (!z.onMove) continue;
+        const e = inside.get(z.id) || { zone: z, n: 0 };
+        e.n++; inside.set(z.id, e);
+      }
+    }
+    for (const { zone, n } of inside.values()) {
+      // Chebyshev feet scale linearly along a straight segment, so the inside share of
+      // the samples IS the inside share of the feet. No grid -> assume one increment.
+      const feet = dist ? Math.round(dist.feet * (n / (steps + 1))) : zone.onMove.per;
+      if (!(feet > 0)) continue;
+      spikePrompts.push({ id: 'sp' + (++spikeSeq), instId: t.instId, label: t.label, zone: zone.name, dice: zone.onMove.dice, per: zone.onMove.per, feet, times: Math.max(1, Math.ceil(feet / zone.onMove.per)) });
+    }
   }
-  function applySpikeDamage() {
-    const sp = spikePrompt; if (!sp) return;
-    spikePrompt = null;
+  function applySpikeDamage(id) {
+    const i = spikePrompts.findIndex((x) => x.id === id); if (i < 0) return;
+    const sp = spikePrompts.splice(i, 1)[0];
     const p = parseDamage(sp.dice);
-    if (!p) { renderStatSheet(); return; }
+    if (!p) { renderNotices(); return; }
     const faces = rollFaces(p.count * sp.times, p.sides);
     const total = Math.max(0, faces.reduce((a, b) => a + b, 0) + p.mod * sp.times);
     tvRoll(sp.label + ' moved through ' + sp.zone, total + ' dmg', 'bad', { detail: diceMath(p.sides, faces, p.mod * sp.times) });
-    applyHp(sp.instId, -total);        // commits + re-renders (clears the prompt from the card)
+    applyHp(sp.instId, -total);        // commits + re-renders (the queue re-renders too)
   }
   // PR 6E: the zone chip's controls -- − ticks a round off (0 ends it), ✕ ends it now.
   function onZoneChipPress(e) {
