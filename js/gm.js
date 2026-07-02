@@ -1769,8 +1769,9 @@ export function mountGm(root) {
   // ---- Per-token combat controls in the roster (map mode) ----
   // HP: cur/max + a typed amount with Damage(-) / Heal(+) -- the quick
   // D&D-Beyond style. Max seeds from the cast stat block; applyHp clamps [0,max].
+  // Returns the two labelled columns' contents: the cur/max readout ("HP") and the
+  // − [amount] + cluster ("dmg / heal"), with the sign buttons EITHER SIDE of the box.
   function tokenHpControl(t) {
-    const wrap = document.createElement('div'); wrap.className = 'mmr-hp';
     const cast = castEntry(t.castId, t.kind);
     const hp = t.hp || {};
     const max = hp.max != null ? hp.max : ((cast && cast.stats && cast.stats.hp != null) ? Math.round(+cast.stats.hp) : null);
@@ -1787,8 +1788,9 @@ export function mountGm(root) {
       b.addEventListener('click', () => { const v = parseInt(amt.value, 10); if (isFinite(v) && v > 0) applyHp(t.instId, sign * v); });
       return b;
     };
-    wrap.append(num, amt, mk('is-dmg', -1, '−', 'Damage'), mk('is-heal', 1, '+', 'Heal'));
-    return wrap;
+    const ctrl = document.createElement('div'); ctrl.className = 'mmr-hp';
+    ctrl.append(mk('is-dmg', -1, '−', 'Damage'), amt, mk('is-heal', 1, '+', 'Heal'));
+    return { num, ctrl };
   }
   // Conditions: removable chips + an add control (5e presets + a custom entry).
   function tokenConditionsControl(t) {
@@ -1836,7 +1838,7 @@ export function mountGm(root) {
     }
     const table = document.createElement('table'); table.className = 'mmr-table';
     const thead = document.createElement('thead'); const htr = document.createElement('tr');
-    for (const [txt, cls] of [['Name', ''], ['Init', 'c'], ['HP · dmg / heal', ''], ['Condition', ''], ['Vis', 'c'], ['', 'c']]) {
+    for (const [txt, cls] of [['Name', ''], ['Init', 'c'], ['Roll', 'c'], ['HP', 'c'], ['− dmg · heal +', 'c'], ['Condition', ''], ['Vis', 'c'], ['', 'c']]) {
       const th = document.createElement('th'); if (cls) th.className = cls; th.textContent = txt; htr.append(th);
     }
     thead.append(htr);
@@ -1862,13 +1864,16 @@ export function mountGm(root) {
     tr.className = 'mmr-row is-placed' + (rowClass ? ' ' + rowClass : '') + (state.stage && t.instId === state.stage.activeTokenId ? ' is-active' : '');
     tr.dataset.instId = t.instId;
     const nameTd = document.createElement('td'); nameTd.className = 'mmr-namecell';
-    nameTd.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(t.label, t.visible === false), manualToggleBtn(t, false));
+    nameTd.append(rosterSwatch(c ? c.ringColor : '#888'), rosterName(t.label, t.visible === false));
     const initTd = document.createElement('td'); initTd.className = 'c'; initTd.append(tokenRollInput(t));
-    const hpTd = document.createElement('td'); hpTd.append(tokenHpControl(t));
+    const rollTd = document.createElement('td'); rollTd.className = 'c'; rollTd.append(manualToggleBtn(t, false));   // its own labelled "Roll" column
+    const hpParts = tokenHpControl(t);
+    const hpTd = document.createElement('td'); hpTd.className = 'c'; hpTd.append(hpParts.num);
+    const dmgTd = document.createElement('td'); dmgTd.className = 'c'; dmgTd.append(hpParts.ctrl);
     const condTd = document.createElement('td'); condTd.append(tokenConditionsControl(t));
     const visTd = document.createElement('td'); visTd.className = 'c'; visTd.append(rosterVisBtn(t));
     const delTd = document.createElement('td'); delTd.className = 'c'; delTd.append(rosterDelBtn(t));
-    tr.append(nameTd, initTd, hpTd, condTd, visTd, delTd);
+    tr.append(nameTd, initTd, rollTd, hpTd, dmgTd, condTd, visTd, delTd);
     return tr;
   }
 
@@ -1896,17 +1901,17 @@ export function mountGm(root) {
         const c = castEntry(id, 'hero'); if (!c) continue;
         const inst = placed.find((t) => t.kind === 'hero' && t.castId === id);
         if (inst) tbody.append(placedRow(inst, c));
-        else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'hero')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 4), addTd]); }
+        else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'hero')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 6), addTd]); }
       }
       // Allied NPCs live under the Heroes column, in their own labelled sub-section.
       if (npcs.length) {
         const sub = document.createElement('tr'); sub.className = 'mmr-subhead';
-        const sc = document.createElement('td'); sc.colSpan = 6; sc.textContent = 'NPCs'; sub.append(sc); tbody.append(sub);
+        const sc = document.createElement('td'); sc.colSpan = 8; sc.textContent = 'NPCs'; sub.append(sc); tbody.append(sub);
         for (const id of npcs) {
           const c = castEntry(id, 'npc'); if (!c) continue;
           const inst = placed.find((t) => t.kind === 'npc' && t.castId === id);
           if (inst) tbody.append(placedRow(inst, c));
-          else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'npc')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 4), addTd]); }
+          else { const addTd = cell('c'); addTd.append(rosterAddBtn(id, 'npc')); addRow(tbody, [nameCell(c, c.name, false), cell('mmr-spacer', 6), addTd]); }
         }
       }
       els.mapRoster.append(col);
@@ -1920,7 +1925,7 @@ export function mountGm(root) {
         const c = castEntry(id, 'enemy'); if (!c) continue;
         const modTd = cell('c'); modTd.append(enemyModInput(id));
         const addTd = cell('c', 2); addTd.append(rosterAddBtn(id, 'enemy'));
-        addRow(tbody, [nameCell(c, c.name, false), modTd, cell('mmr-spacer', 2), addTd], 'mmr-type');
+        addRow(tbody, [nameCell(c, c.name, false), modTd, cell('mmr-spacer', 4), addTd], 'mmr-type');
         for (const t of placed.filter((p) => p.kind === 'enemy' && p.castId === id)) tbody.append(placedRow(t, c, 'mmr-copy'));
       }
       els.mapRoster.append(col);
