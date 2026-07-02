@@ -112,7 +112,10 @@ function normRoomDice(rd) {
   const tone = /^(good|bad|crit|heal)$/.test(rd.tone) ? rd.tone : '';
   return {
     flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0,
-    label, outcome: rd.outcome != null ? String(rd.outcome).slice(0, 40) : '', tone
+    label, outcome: rd.outcome != null ? String(rd.outcome).slice(0, 48) : '', tone,
+    // PR: a plain-language card roll spells the math out on a middle line
+    // ("D20 (1) + 5 = 6 vs AC 11"), between the who-did-what label and the verdict.
+    detail: rd.detail != null ? String(rd.detail).slice(0, 80) : ''
   };
 }
 // The map grid config (PR 6A), PER MAP VARIANT. cellSize / offsetX / offsetY are

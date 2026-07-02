@@ -2096,19 +2096,23 @@ export function mountGm(root) {
   function clearTarget() { if (state.stage) state.stage.targetLink = null; attackRoll = null; targeting = false; renderBoardTargeting(); commit(); }
   function clearAttackState() { attackRoll = null; targeting = false; aoePlacing = null; if (state.stage) { state.stage.targetLink = null; state.stage.aoeTemplate = null; } renderBoardTargeting(); renderBoardAoe(); }
   // ---- PR 6C.1: mirror a resolved card roll onto the Player TV when "Rolls on TV" is
-  //      on, as a labelled, verdict-tagged pop-up. Rides state.stage.roomDice (the same
-  //      channel the dice tray uses); bump n so a repeat re-triggers it. `flat` carries
-  //      the d20 for an auto roll (a real die face on the TV), empty for a manual total.
-  //      Commits so the Player updates; a no-op when the toggle is off. ----
+  //      on, as a plain-language three-line pop-up: who did what ("Telstar used Thorn
+  //      Whip Attack"), the dice math ("D20 (1) + 5 = 6 vs AC 11"), and the verdict
+  //      ("MISS"). Rides state.stage.roomDice (the dice tray's channel); bump n so a
+  //      repeat re-triggers it. Commits so the Player updates; no-op when off. ----
   function tvRoll(label, outcome, tone, opts) {
     if (!(state.stage && state.stage.rollsOnTv)) return;
     opts = opts || {};
     const n = ((state.stage.roomDice && state.stage.roomDice.n) || 0) + 1;
-    state.stage.roomDice = { flat: opts.flat || [], total: opts.total || 0, notation: opts.notation || '', label: label || '', outcome: outcome || '', tone: tone || '', n };
+    state.stage.roomDice = { flat: opts.flat || [], total: opts.total || 0, notation: opts.notation || '', label: label || '', detail: opts.detail || '', outcome: outcome || '', tone: tone || '', n };
     commit();
   }
   const HIT_TONE = { crit: 'crit', hit: 'good', miss: 'bad' };
   const HIT_WORD = { crit: 'CRIT', hit: 'HIT', miss: 'MISS' };
+  // Spell dice math out for the TV's middle line: faces in parens, then the modifier —
+  // "D20 (17) + 5", "D6 (4, 2)", "D4 (3, 2, 4) + 3". Callers append "= total vs AC/DC".
+  const rollFaces = (count, sides) => { const f = []; for (let k = 0; k < count; k++) f.push(Math.floor(Math.random() * sides) + 1); return f; };
+  const diceMath = (sides, faces, mod) => 'D' + sides + ' (' + faces.join(', ') + ')' + (mod > 0 ? ' + ' + mod : mod < 0 ? ' − ' + Math.abs(mod) : '');
   function targetAc(target) { const tc = castEntry(target.castId, target.kind); return (tc && tc.stats && tc.stats.ac != null) ? +tc.stats.ac : null; }
 
   function rollHit(token, atk) {
@@ -2127,7 +2131,8 @@ export function mountGm(root) {
     attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, d, mod, total, ac, outcome, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     renderStatSheet();
-    if (outcome) tvRoll(token.label + ' · ' + atk.name + ' — Attack', HIT_WORD[outcome] + (ac != null ? ' · ' + total + ' vs AC ' + ac : ''), HIT_TONE[outcome], { flat: [{ d: 20, r: d }], total, notation: 'd20' });
+    if (outcome) tvRoll(token.label + ' used ' + atk.name + ' Attack', HIT_WORD[outcome], HIT_TONE[outcome],
+      { detail: diceMath(20, [d], mod) + ' = ' + total + (ac != null ? ' vs AC ' + ac : '') });
   }
   // Manual attack: the GM types the finished total; the app only compares to AC. A Crit
   // checkbox flags a natural 20 (the raw die is hidden when only a total is entered).
@@ -2138,7 +2143,8 @@ export function mountGm(root) {
     attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, manual: true, total, ac, outcome, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     renderStatSheet();
-    if (outcome) tvRoll(token.label + ' · ' + atk.name + ' — Attack', HIT_WORD[outcome] + (ac != null ? ' · ' + total + ' vs AC ' + ac : ''), HIT_TONE[outcome], { total });
+    if (outcome) tvRoll(token.label + ' used ' + atk.name + ' Attack', HIT_WORD[outcome], HIT_TONE[outcome],
+      { detail: total + (ac != null ? ' vs AC ' + ac : ' (entered)') });
   }
   function rollDmg(token, atk) {
     const target = currentTarget();
@@ -2146,21 +2152,23 @@ export function mountGm(root) {
     const p = parseDamage(atk.damage); if (!p) return;
     if (token.manual) { attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, manualPending: 'dmg', atk, dtype: p.type, targetLabel: target.label }; renderStatSheet(); return; }
     // Magic Missile & friends: multi.darts rolls the die that many times (was a
-    // single-die under-roll before). One die otherwise.
+    // single-die under-roll before). One die otherwise. Faces are kept individually
+    // so the TV can spell the math out ("D4 (3, 2, 4) + 3").
     const darts = (atk.multi && atk.multi.darts > 1) ? atk.multi.darts : 1;
-    let total = 0; for (let k = 0; k < darts; k++) total += rollN(p.count, p.sides) + p.mod;
-    total = Math.max(0, total);
-    finishDmg(token, atk, target, total, (darts > 1 ? darts + '× ' : '') + p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), p.type);
+    const faces = rollFaces(darts * p.count, p.sides);
+    const mod = darts * p.mod;
+    const total = Math.max(0, faces.reduce((a, b) => a + b, 0) + mod);
+    finishDmg(token, atk, target, total, (darts > 1 ? darts + '× ' : '') + p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), p.type, diceMath(p.sides, faces, mod));
   }
   function applyManualDmg(token, atk, total) {
     const target = currentTarget(); if (!target) return;
     const p = parseDamage(atk.damage);
-    finishDmg(token, atk, target, Math.max(0, total), 'entered', p ? p.type : '');
+    finishDmg(token, atk, target, Math.max(0, total), 'entered', p ? p.type : '', '');
   }
-  function finishDmg(token, atk, target, total, notation, dtype) {
+  function finishDmg(token, atk, target, total, notation, dtype, detail) {
     attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation, dtype, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
-    tvRoll(token.label + ' · ' + atk.name + ' — Damage', total + (dtype ? ' ' + dtype : '') + ' dmg', 'bad', { total, notation });
+    tvRoll(token.label + ' hit ' + target.label, total + (dtype ? ' ' + dtype : '') + ' dmg', 'bad', { detail });
     applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
   }
   // ---- PR 6C: saving throws. A save action (toHit like "DEX save 13") resolves in one
@@ -2184,8 +2192,12 @@ export function mountGm(root) {
     const hasDie = !!(roll && roll.d != null);   // auto roll shows the d20 breakdown; manual/✓✗ don't
     attackRoll = { instId: token.instId, kind: 'save', name: atk.name, outcome, ability: (roll && roll.ability) || ps.ability, dc: (roll && roll.dc) || ps.dc, d: hasDie ? roll.d : null, mod: hasDie ? roll.mod : null, total: roll ? roll.total : null, manual: !hasDie, dmg, dtype: p ? p.type : '', condition: cond, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
-    const dmgTxt = dmg > 0 ? ' · ' + dmg + (p && p.type ? ' ' + p.type : '') : '';
-    tvRoll(target.label + ' · ' + atk.name + ' — ' + (ps.ability || '') + ' Save', (outcome === 'fail' ? 'FAILED' : 'SAVED') + dmgTxt + (cond ? ' · ' + cond : ''), outcome === 'save' ? 'good' : 'bad', hasDie ? { flat: [{ d: 20, r: roll.d }], total: roll.total, notation: 'd20' } : (roll && roll.total != null ? { total: roll.total } : {}));
+    const dmgTxt = dmg > 0 ? ' · ' + dmg + (p && p.type ? ' ' + p.type : '') + ' dmg' : '';
+    const dc = (roll && roll.dc) || ps.dc;
+    const saveDetail = hasDie ? diceMath(20, [roll.d], roll.mod) + ' = ' + roll.total + (dc ? ' vs DC ' + dc : '')
+      : (roll && roll.total != null) ? roll.total + (dc ? ' vs DC ' + dc : '')
+      : ((ps.ability || '') + ' save' + (dc ? ' vs DC ' + dc : '')).trim();
+    tvRoll(target.label + ' saves vs ' + atk.name, (outcome === 'fail' ? 'FAILED' : 'SAVED') + dmgTxt + (cond ? ' · ' + cond : ''), outcome === 'save' ? 'good' : 'bad', { detail: saveDetail });
     if (cond) addCondition(target.instId, cond);   // commits + re-renders
     if (dmg > 0) applyHp(target.instId, -dmg);      // commits + re-renders
     if (!cond && dmg === 0) renderStatSheet();       // a clean save with no damage: just show the verdict
@@ -2222,16 +2234,17 @@ export function mountGm(root) {
     if (!target) { armTargeting(); return; }
     const p = parseDamage(String(atk.damage).replace(/^\s*heal\s+/i, '')); if (!p) return;
     if (token.manual) { attackRoll = { instId: token.instId, kind: 'heal', name: atk.name, manualPending: 'heal', atk, targetLabel: target.label }; renderStatSheet(); return; }
-    finishHeal(token, atk, target, Math.max(0, rollN(p.count, p.sides) + p.mod), p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''));
+    const faces = rollFaces(p.count, p.sides);
+    finishHeal(token, atk, target, Math.max(0, faces.reduce((a, b) => a + b, 0) + p.mod), p.count + 'd' + p.sides + (p.mod ? (p.mod > 0 ? '+' : '') + p.mod : ''), diceMath(p.sides, faces, p.mod));
   }
   function applyManualHeal(token, atk, total) {
     const target = atk.target === 'self' ? token : currentTarget(); if (!target) return;
-    finishHeal(token, atk, target, Math.max(0, total), 'entered');
+    finishHeal(token, atk, target, Math.max(0, total), 'entered', '');
   }
-  function finishHeal(token, atk, target, total, notation) {
+  function finishHeal(token, atk, target, total, notation, detail) {
     attackRoll = { instId: token.instId, kind: 'heal', name: atk.name, total, notation, targetLabel: target.label };
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
-    tvRoll(target.label + ' · ' + atk.name + ' — Heal', '+' + total + ' HP', 'heal', { total, notation });
+    tvRoll(target.instId === token.instId ? token.label + ' used ' + atk.name : token.label + ' healed ' + target.label, '+' + total + ' HP', 'heal', { detail });
     applyHp(target.instId, +total);
   }
   // ---- PR 6D: instant AoE templates (Breath Weapon cone, Turn Undead radius). [Area] enters
@@ -2311,7 +2324,8 @@ export function mountGm(root) {
     }
     const nFail = pl.results.filter((r) => r.outcome === 'fail').length;
     const nSave = pl.results.filter((r) => r.outcome === 'save').length;
-    tvRoll(token.label + ' · ' + atk.name + ' — Area', pl.hits.length + ' caught · ' + nFail + ' failed / ' + nSave + ' saved', 'bad', {});
+    tvRoll(token.label + ' used ' + atk.name, pl.hits.length + ' caught · ' + nFail + ' failed / ' + nSave + ' saved', 'bad',
+      { detail: ps ? ps.ability + ' save vs DC ' + ps.dc + (fullDmg ? ' · ' + fullDmg + (p.type ? ' ' + p.type : '') + ' dmg on a fail' : '') : '' });
     renderStatSheet();
     commit();
   }

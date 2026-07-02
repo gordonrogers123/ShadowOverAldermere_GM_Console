@@ -405,6 +405,8 @@ body.view-player {
    label and closes with a tone-coloured verdict; stack the pop-up into a column. */
 .view-player .room-dice:has(.room-dice-label) { flex-direction: column; gap: 0.55rem; min-width: 15rem; text-align: center; }
 .view-player .room-dice-label { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.02em; color: #e6d8b8; }
+/* The dice-math middle line ("D20 (1) + 5 = 6 vs AC 11") -- quieter than the verdict. */
+.view-player .room-dice-detail { font-family: var(--font-display); font-size: 1.35rem; letter-spacing: 0.03em; color: #cbb98f; }
 .view-player .room-dice-outcome { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; line-height: 1.05; letter-spacing: 0.03em; color: #caa64f; }
 .view-player .room-dice.tone-good { border-color: #4f8a5c; }
 .view-player .room-dice.tone-good .room-dice-outcome { color: #8ee0a0; }
