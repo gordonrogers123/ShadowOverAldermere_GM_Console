@@ -1548,6 +1548,7 @@ export function mountGm(root) {
     if (next < 0) next = 0;
     if (t.hp.max != null && next > t.hp.max) next = t.hp.max;
     t.hp.current = next;
+    handleZeroHp(t, base, next);   // death saves / defeated transitions (rides this commit)
     // PR 6E: a damaged caster who is CONCENTRATING on a zone gets a reminder banner on
     // the GM card (drop it -> the caster's zones clear). Damage only, never heals.
     if (delta < 0 && state.stage && Array.isArray(state.stage.zones) &&
@@ -1555,6 +1556,40 @@ export function mountGm(root) {
       concWarn = { instId, dmg: Math.round(-delta) };
     }
     commit();
+  }
+  // ---- Dropping to 0 HP. A hero/NPC enters DEATH-SAVE mode: the 'Death Saves' condition
+  //      is pushed straight onto the token (addCondition would commit recursively) so the
+  //      arc, roster chip, and card all follow; healing above 0 clears it. An ENEMY at 0
+  //      is DEFEATED: a table-moment pop on the TV (unconditional, not gated on rollsOnTv)
+  //      and automatic removal from the initiative order. Both visuals derive from
+  //      hp.current === 0 in the shared compositor -- no extra broadcast state. ----
+  function handleZeroHp(t, before, after) {
+    if (t.hp.max == null) return;                       // no known pool -> no transitions
+    if (before > 0 && after === 0) {
+      if (t.kind === 'enemy') {
+        const n = ((state.stage.roomDice && state.stage.roomDice.n) || 0) + 1;
+        state.stage.roomDice = { flat: [], total: 0, notation: '', label: t.label, detail: '', outcome: 'DEFEATED', tone: 'bad', n };
+        removeFromInitiative(t.instId);
+      } else if (!(t.conditions || []).includes('Death Saves')) {
+        t.conditions = [...(t.conditions || []), 'Death Saves'];
+      }
+    } else if (before === 0 && after > 0 && t.kind !== 'enemy') {
+      t.conditions = (t.conditions || []).filter((c) => c !== 'Death Saves');
+    }
+  }
+  // Splice a combatant out of the running order WITHOUT re-sorting (rebuildInitOrder
+  // would lose the stays-active property): entries before the pointer shift it down;
+  // if the dying combatant WAS active, the next one up inherits the turn (wrapping).
+  function removeFromInitiative(instId) {
+    const i = ensureInit();
+    delete i.rolls[instId];                             // Apply won't resurrect it
+    const pos = i.order.indexOf(instId);
+    if (pos < 0) return;
+    i.order.splice(pos, 1);
+    if (!i.order.length) i.idx = 0;
+    else if (pos < i.idx) i.idx--;
+    else if (pos === i.idx) i.idx %= i.order.length;
+    syncActiveToken();                                  // reseeds the turn iff the active changed
   }
   function setHpMax(instId, max) {
     const t = findToken(instId); if (!t) return;
@@ -1646,7 +1681,8 @@ export function mountGm(root) {
   function rebuildInitOrder() {
     const i = ensureInit();
     const placed = (state.stage && state.stage.tokens) || [];
-    const have = placed.filter((t) => i.rolls[t.instId] != null);
+    // Defeated enemies (0 HP) never re-enter the order on Apply.
+    const have = placed.filter((t) => i.rolls[t.instId] != null && !(t.kind === 'enemy' && t.hp && t.hp.max != null && t.hp.current === 0));
     have.sort((a, b) => (i.rolls[b.instId] - i.rolls[a.instId]));
     i.order = have.map((t) => t.instId);
     if (i.idx >= i.order.length) i.idx = 0;

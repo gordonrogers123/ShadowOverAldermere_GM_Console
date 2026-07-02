@@ -983,6 +983,11 @@ export function createStageView(root) {
       el.dataset.y = inst.y;
       el.classList.toggle('is-hidden', inst.visible === false);
       el.classList.toggle('is-active', !!activeId && inst.instId === activeId);
+      // 0 HP (both screens, derived -- no extra state): a hero/NPC is DOWN (death saves),
+      // an enemy is DEFEATED (translucent + red X).
+      const downHp = !!(inst.hp && inst.hp.max != null && inst.hp.current === 0);
+      el.classList.toggle('is-down', downHp && inst.kind !== 'enemy');
+      el.classList.toggle('is-defeated', downHp && inst.kind === 'enemy');
       el.classList.toggle('is-targeted', !!(link && inst.instId === link.to));
       updateTokenOverlays(el, inst, state);
     }

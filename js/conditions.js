@@ -12,6 +12,8 @@ export const CONDITIONS = [
 // (typed) conditions simply have no entry and show as a bare label.
 export const CONDITION_INFO = {
   Blinded: "Can't see; auto-fails checks needing sight. Attack rolls against it have advantage; its attack rolls have disadvantage.",
+  // Auto-managed by the app when a hero/NPC drops to 0 HP (cleared on healing above 0).
+  'Death Saves': "At 0 HP and dying: each turn roll a d20 — 10+ is a success, three successes stabilize, three failures mean death. A nat 20 regains 1 HP; damage while dying = one failure (a crit = two).",
   Charmed: "Can't attack the charmer or target them with harmful abilities. The charmer has advantage on social checks with it.",
   Deafened: "Can't hear; auto-fails checks needing hearing.",
   Exhaustion: "Cumulative levels: 1 disadvantage on checks; 2 speed halved; 3 disadvantage on attacks & saves; 4 HP max halved; 5 speed 0; 6 death.",

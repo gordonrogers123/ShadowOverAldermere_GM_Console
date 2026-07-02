@@ -437,3 +437,21 @@ body.view-player {
 .view-player .room-dice.tone-bad .room-dice-outcome { color: #f0a3a3; }
 .view-player .room-dice.tone-crit { border-color: #caa64f; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55), 0 0 26px rgba(202, 166, 79, 0.55); }
 .view-player .room-dice.tone-crit .room-dice-outcome { color: #f2d789; }
+/* 0 HP (both screens, derived from token HP). A DOWN hero/NPC: desaturated portrait +
+   a skull badge; the 'Death Saves' condition arc rides the normal condition overlay.
+   A DEFEATED enemy: translucent with a red X (single pseudo, two crossed gradients --
+   ::after is shared with the transient is-hit flash, which a corpse no longer needs). */
+.stage .token.is-down .token-crop { filter: grayscale(1) brightness(0.72); }
+.stage .token.is-down::before {
+  content: '\2620'; position: absolute; top: -12%; right: -10%; z-index: 7; pointer-events: none;
+  font-size: 0.42em; line-height: 1; color: #f3e9d2;
+  text-shadow: 0 0 0.08em #000, 0 0.02em 0.12em rgba(0, 0, 0, 0.9);
+}
+.stage .token.is-defeated { opacity: 0.45; }
+.stage .token.is-defeated::after {
+  content: ''; position: absolute; inset: 6%; border-radius: 50%; z-index: 7; pointer-events: none;
+  background:
+    linear-gradient(45deg, transparent 45%, #d42a2a 45%, #d42a2a 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 45%, #d42a2a 45%, #d42a2a 55%, transparent 55%);
+  animation: none;
+}
