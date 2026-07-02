@@ -554,7 +554,16 @@ export function mountGm(root) {
     if (msg && msg.type === 'hello') broadcast();
   });
   function broadcast() { sync.post({ type: 'state', state }); }
-  function commit() { saveState(state); broadcast(); renderUI(); }
+  function commit() { pruneZones(); saveState(state); broadcast(); renderUI(); }
+  // PR 6E: zones die with their caster -- when the caster's token leaves the board (or the
+  // scene changes and the tokens reset), its zones clear on the next commit.
+  function pruneZones() {
+    const st = state.stage;
+    if (!st || !Array.isArray(st.zones) || !st.zones.length) return;
+    const ids = new Set((st.tokens || []).map((t) => t.instId));
+    const kept = st.zones.filter((z) => !z.casterId || ids.has(z.casterId));
+    if (kept.length !== st.zones.length) st.zones = kept;
+  }
 
   // ---- Small helpers ----
   function humanize(s) {
@@ -1534,6 +1543,12 @@ export function mountGm(root) {
     if (next < 0) next = 0;
     if (t.hp.max != null && next > t.hp.max) next = t.hp.max;
     t.hp.current = next;
+    // PR 6E: a damaged caster who is CONCENTRATING on a zone gets a reminder banner on
+    // the GM card (drop it -> the caster's zones clear). Damage only, never heals.
+    if (delta < 0 && state.stage && Array.isArray(state.stage.zones) &&
+        state.stage.zones.some((z) => z.concentration && z.casterId === instId)) {
+      concWarn = { instId, dmg: Math.round(-delta) };
+    }
     commit();
   }
   function setHpMax(instId, max) {
@@ -2021,7 +2036,9 @@ export function mountGm(root) {
   //      link rides state.stage.targetLink so it broadcasts. Future: AoE/cones. ----
   let attackRoll = null;   // { instId, kind:'hit'|'dmg', ... } the last roll on the active card
   let targeting = false;   // armed: the next board-token click sets the target
-  let aoePlacing = null;   // PR 6D: { token, atk, shape, committed, hits[], results } while aiming/resolving an area
+  let aoePlacing = null;   // PR 6D/6E: { token, atk, shape, zone?, committed, hits[], results } while aiming/resolving an area
+  let spikePrompt = null;  // PR 6E: { instId, label, zone, dice, per, feet, times } after a drag through an on-move zone
+  let concWarn = null;     // PR 6E: { instId, dmg } when a concentrating caster takes damage
   const rollN = (count, sides) => { let s = 0; for (let k = 0; k < count; k++) s += Math.floor(Math.random() * sides) + 1; return s; };
   const parseHitMod = (toHit) => { const m = /^\s*([+-]?\d+)\s*$/.exec(String(toHit || '')); return m ? parseInt(m[1], 10) : null; };
   const parseDamage = (dmg) => { const m = /(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i.exec(String(dmg || '')); if (!m) return null; return { count: +m[1], sides: +m[2], mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0, type: String(dmg).replace(m[0], '').replace(/\(.*?\)/g, '').trim() }; };   // strip a "(1/rest)"-style note from the damage TYPE (it stays on the card's attack line)
@@ -2259,14 +2276,15 @@ export function mountGm(root) {
   // Template tint: a heal is green, a control-only save (Turn Undead) violet, damage red.
   function aoeColorFor(atk) { return atk.heal ? '#4c9f70' : (atk.condition && !parseDamage(atk.damage) ? '#7d5bd0' : '#e5533a'); }
   function beginAoe(token, atk) {
-    if (!atk.aoe) return;
+    const spec = atk.aoe || atk.zone;                    // a zone (PR 6E) places through the same flow
+    if (!spec) return;
     clearAttackState();                                  // drop any in-progress target / roll / area
     ensureTokens();
-    const shape = atk.aoe.shape === 'cone' ? 'cone' : 'circle';
-    aoePlacing = { token, atk, shape, committed: false, hits: [], results: null };
-    state.stage.aoeTemplate = { shape, originX: token.x, originY: token.y, angleDeg: 0, sizeFeet: atk.aoe.sizeFeet, color: aoeColorFor(atk), committed: false, casterId: token.instId };
+    const shape = spec.shape === 'cone' ? 'cone' : (spec.shape === 'square' || spec.shape === 'cube') ? 'square' : 'circle';
+    aoePlacing = { token, atk, shape, zone: !!atk.zone, committed: false, hits: [], results: null };
+    state.stage.aoeTemplate = { shape, originX: token.x, originY: token.y, angleDeg: 0, sizeFeet: spec.sizeFeet, color: aoeColorFor(atk), committed: false, casterId: token.instId };
     renderBoardAoe();
-    setStatus(shape === 'cone' ? 'Aim the cone from ' + token.label + ' — move over the board, click to place' : 'Move the ' + atk.aoe.sizeFeet + '-ft area — click the board to place', false);
+    setStatus(shape === 'cone' ? 'Aim the cone from ' + token.label + ' — move over the board, click to place' : 'Move the ' + spec.sizeFeet + '-ft area — click the board to place', false);
     commit();
   }
   function updateAoeFromPointer(e) {
@@ -2285,13 +2303,48 @@ export function mountGm(root) {
   function commitAoePlacement() {
     if (!aoePlacing || aoePlacing.committed) return;
     aoePlacing.committed = true;
+    if (aoeRAF) { cancelAnimationFrame(aoeRAF); aoeRAF = 0; aoePending = false; }
+    if (aoePlacing.zone) { commitZonePlacement(); return; }
     if (state.stage.aoeTemplate) state.stage.aoeTemplate.committed = true;
     aoePlacing.hits = (boardView.aoeHits() || []).filter((id) => id !== aoePlacing.token.instId);   // the caster isn't in its own blast
-    if (aoeRAF) { cancelAnimationFrame(aoeRAF); aoeRAF = 0; aoePending = false; }
     renderBoardAoe();
     setStatus(aoePlacing.hits.length + ' caught in the area — Resolve to roll their saves', false);
     commit();
   }
+  // A zone attack's click-to-place: the transient template becomes a PERSISTENT zone
+  // (state.stage.zones, drawn + chipped on both screens), then the entry save resolves
+  // immediately (Entangle STR / Web DEX -> restrained on a fail). Spike Growth has no
+  // entry save -- its onMove damage is prompted when a token is dragged through it.
+  function commitZonePlacement() {
+    const pl = aoePlacing, t = state.stage.aoeTemplate;
+    if (!pl || !t) return;
+    const z = pl.atk.zone || {};
+    const zone = {
+      id: 'z' + Date.now().toString(36) + Math.floor(Math.random() * 1000),
+      name: pl.atk.name, shape: t.shape === 'square' ? 'square' : 'circle',
+      originX: t.originX, originY: t.originY, sizeFeet: t.sizeFeet, color: t.color,
+      casterId: pl.token.instId, condition: pl.atk.condition || null,
+      concentration: !!z.concentration, rounds: 10,
+      onMove: z.onMove && z.onMove.dice ? { dice: z.onMove.dice, per: z.onMove.per || 5 } : null
+    };
+    if (!Array.isArray(state.stage.zones)) state.stage.zones = [];
+    state.stage.zones.push(zone);
+    state.stage.aoeTemplate = null;                      // the zone drawing takes over from the preview
+    pl.zoneId = zone.id;
+    renderBoardAoe();
+    commit();                                            // broadcast the zone so hit-testing sees it
+    pl.hits = boardView.zoneHits(zone.id) || [];
+    if (pl.atk.save) {
+      resolveAoe();                                      // entry saves resolve right away (condition-only)
+      setStatus(pl.atk.name + ' placed — ' + pl.hits.length + ' inside rolled their entry save', false);
+    } else {
+      pl.results = [];                                   // Spike Growth: no entry save; damage rides movement
+      setStatus(pl.atk.name + ' placed — it damages creatures that MOVE through it (drag prompts the roll)', false);
+      renderStatSheet();
+    }
+  }
+  // Dismiss the zone panel WITHOUT touching the placed zone (its chip manages its life).
+  function dismissAoePanel() { aoePlacing = null; renderBoardAoe(); renderStatSheet(); }
   // Apply one creature's save outcome: 5e rolls the area's damage ONCE (fullDmg) and each
   // creature takes full on a fail, half on a save (save.half), or none; a failed save also
   // takes the condition (Turn Undead -> frightened). Reuses applyHp / addCondition.
@@ -2369,9 +2422,12 @@ export function mountGm(root) {
     // Buttons depend on the action's shape: an AoE (cone/radius) provides its OWN targeting via
     // an [Area] placement; otherwise arm Target, then Heal / Save (resolves roll-or-manual +
     // damage + condition) / the attack-roll Hit + Dmg. (Placed zones' [Area] arrives in 6E.)
-    if (atk.aoe) {
+    if (atk.aoe || atk.zone) {
+      const spec = atk.aoe || atk.zone;
       const ab = document.createElement('button'); ab.type = 'button'; ab.className = 'gm-button atk-area' + (aoePlacing && aoePlacing.atk === atk ? ' is-armed' : '');
-      ab.textContent = 'Area'; ab.title = 'Place the ' + atk.aoe.sizeFeet + '-ft ' + atk.aoe.shape + ' on the board, then resolve saves for everyone inside';
+      ab.textContent = 'Area';
+      ab.title = atk.zone ? 'Place the persistent ' + spec.sizeFeet + '-ft ' + spec.shape + ' zone on the board (entry saves resolve on placement)'
+                          : 'Place the ' + spec.sizeFeet + '-ft ' + spec.shape + ' on the board, then resolve saves for everyone inside';
       ab.addEventListener('click', () => beginAoe(token, atk)); btns.append(ab);
     } else {
       const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'gm-button btn--quiet atk-target' + (targeting ? ' is-armed' : ''); tb.textContent = 'Target'; tb.title = 'Pick this attack’s target on the board'; tb.addEventListener('click', () => armTargeting()); btns.append(tb);
@@ -2398,6 +2454,36 @@ export function mountGm(root) {
     const ctx = activeStatContext();
     host.classList.toggle('is-hero', !!ctx && ctx.token.kind === 'hero');
     host.classList.toggle('is-npc', !!ctx && ctx.token.kind === 'npc');
+    // ---- PR 6E banners (any combatant, so they sit above the active card) ----
+    // A drag through Spike Growth: roll (or waive) its movement damage.
+    if (spikePrompt) {
+      const sp = spikePrompt;
+      const box = document.createElement('div'); box.className = 'stat-roll is-pending stat-spike';
+      const q = document.createElement('span'); q.className = 'stat-roll-q';
+      q.textContent = '⚠ ' + sp.label + ' moved ' + sp.feet + ' ft through ' + sp.zone + ' — ' + sp.dice + ' × ' + sp.times + '?';
+      const roll = document.createElement('button'); roll.type = 'button'; roll.className = 'gm-button atk-dmg'; roll.textContent = 'Roll'; roll.title = 'Roll the movement damage and apply it';
+      roll.addEventListener('click', applySpikeDamage);
+      const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'gm-button btn--quiet'; skip.textContent = 'Skip';
+      skip.addEventListener('click', () => { spikePrompt = null; renderStatSheet(); });
+      box.append(q, roll, skip); host.append(box);
+    }
+    // A concentrating caster took damage: remind the table, offer to drop their zones.
+    if (concWarn) {
+      const ct = findToken(concWarn.instId);
+      const zs = (state.stage && state.stage.zones) || [];
+      if (!ct || !zs.some((z) => z.concentration && z.casterId === ct.instId)) { concWarn = null; }
+      else {
+        const dc = Math.max(10, Math.ceil(concWarn.dmg / 2));
+        const box = document.createElement('div'); box.className = 'stat-roll is-pending stat-conc';
+        const q = document.createElement('span'); q.className = 'stat-roll-q';
+        q.textContent = '⚠ ' + ct.label + ' took ' + concWarn.dmg + ' damage while concentrating — CON save DC ' + dc + ' or the spell drops';
+        const drop = document.createElement('button'); drop.type = 'button'; drop.className = 'gm-button atk-save-no'; drop.textContent = 'Drop it';
+        drop.addEventListener('click', () => { state.stage.zones = zs.filter((z) => !(z.concentration && z.casterId === ct.instId)); concWarn = null; commit(); });
+        const keep = document.createElement('button'); keep.type = 'button'; keep.className = 'gm-button btn--quiet atk-save-yes'; keep.textContent = 'Kept it';
+        keep.addEventListener('click', () => { concWarn = null; renderStatSheet(); });
+        box.append(q, drop, keep); host.append(box);
+      }
+    }
     if (!ctx) {
       const p = document.createElement('p'); p.className = 'stat-empty';
       p.textContent = 'Place a combatant and apply initiative to see its card.';
@@ -2525,7 +2611,8 @@ export function mountGm(root) {
           if (pl.hits.length) { const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'gm-button atk-save'; rb.textContent = 'Resolve'; rb.title = 'Roll each caught creature’s save and apply it'; rb.addEventListener('click', resolveAoe); row.append(rb); }
           row.append(clearBtn('Clear')); box.append(row);
         } else {
-          box.append(hint('◎ ' + pl.atk.name + (pl.ps ? ' — ' + pl.ps.ability + ' save vs ' + pl.ps.dc : '') + (pl.fullDmg ? ' · ' + pl.fullDmg + (pl.dtype ? ' ' + pl.dtype : '') + ' on a fail' : '')));
+          const spike = pl.zone && !pl.atk.save;
+          box.append(hint('◎ ' + pl.atk.name + (pl.ps ? ' — ' + pl.ps.ability + ' save vs ' + pl.ps.dc : spike ? ' — damages creatures that move through it' : '') + (pl.fullDmg ? ' · ' + pl.fullDmg + (pl.dtype ? ' ' + pl.dtype : '') + ' on a fail' : '')));
           for (const res of pl.results) {
             const lineEl = document.createElement('div'); lineEl.className = 'stat-aoe-res';
             if (res.mode === 'pending') {
@@ -2543,7 +2630,14 @@ export function mountGm(root) {
             }
             box.append(lineEl);
           }
-          box.append(clearBtn('Clear area'));
+          if (pl.zone) {
+            // The zone lives on -- its board chip carries the round counter + Clear. Done
+            // just dismisses this panel.
+            const done = document.createElement('button'); done.type = 'button'; done.className = 'gm-button btn--quiet stat-aoe-cancel'; done.textContent = 'Done'; done.addEventListener('click', dismissAoePanel);
+            box.append(done);
+          } else {
+            box.append(clearBtn('Clear area'));
+          }
         }
         host.append(box);
       }
@@ -2676,6 +2770,8 @@ export function mountGm(root) {
     return bestEl;
   }
   function onBoardPointerDown(e) {
+    // PR 6E: a zone chip's − / ✕ buttons act on their zone; never treat that as a board click.
+    if (e.target.closest && e.target.closest('.zone-chip')) { onZoneChipPress(e); return; }
     // PR 6D: while aiming an area, a board click LOCKS it at the pointer (empty map or token alike).
     if (aoePlacing && !aoePlacing.committed) { updateAoeFromPointer(e); commitAoePlacement(); e.preventDefault(); return; }
     let tokenEl = e.target.closest && e.target.closest('.token');
@@ -2683,9 +2779,10 @@ export function mountGm(root) {
     tokenEl = tokenElAtPoint(e.clientX, e.clientY) || tokenEl;   // prefer the circle under the pointer
     const instId = tokenEl.dataset.instId;
     const tokens = (state.stage && state.stage.tokens) || [];
-    if (!tokens.some((t) => t.instId === instId)) return;
+    const tok = tokens.find((t) => t.instId === instId);
+    if (!tok) return;
     if (targeting) { setTarget(instId); e.preventDefault(); return; }   // targeting mode: aim the active attacker at this token
-    drag = { instId, el: tokenEl };
+    drag = { instId, el: tokenEl, x0: tok.x, y0: tok.y };   // start point feeds the on-move zone check (6E)
     tokenEl.classList.add('dragging');
     if (tokenEl.setPointerCapture) { try { tokenEl.setPointerCapture(e.pointerId); } catch (_) {} }
     e.preventDefault();
@@ -2711,11 +2808,50 @@ export function mountGm(root) {
     const el = drag.el;
     el.classList.remove('dragging');
     if (el.releasePointerCapture && e.pointerId != null) { try { el.releasePointerCapture(e.pointerId); } catch (_) {} }
+    const moved = drag;
     drag = null;
     if (dragRAF) cancelAnimationFrame(dragRAF);
     dragPending = false;
+    checkZoneMove(moved);              // PR 6E: dragging through Spike Growth prompts its damage
     computeTargetRange();              // a moved token changes the range verdict
     commit();                          // final save + broadcast + refreshed lists
+  }
+  // PR 6E: after a drag, if the token started or ended inside an on-move zone (Spike
+  // Growth) and actually covered ground, queue the "2d4 per 5 ft" prompt on the GM card.
+  function checkZoneMove(moved) {
+    const t = findToken(moved.instId);
+    if (!t || (t.x === moved.x0 && t.y === moved.y0)) return;
+    const zs = new Map();
+    for (const z of boardView.zonesAtFraction({ x: moved.x0, y: moved.y0 })) if (z.onMove) zs.set(z.id, z);
+    for (const z of boardView.zonesAtFraction({ x: t.x, y: t.y })) if (z.onMove) zs.set(z.id, z);
+    const z = zs.values().next().value;
+    if (!z) return;
+    const dist = boardView.gridDistance({ x: moved.x0, y: moved.y0 }, { x: t.x, y: t.y });
+    const feet = dist ? dist.feet : z.onMove.per;      // no grid -> assume one increment
+    if (!(feet > 0)) return;
+    spikePrompt = { instId: t.instId, label: t.label, zone: z.name, dice: z.onMove.dice, per: z.onMove.per, feet, times: Math.max(1, Math.ceil(feet / z.onMove.per)) };
+  }
+  function applySpikeDamage() {
+    const sp = spikePrompt; if (!sp) return;
+    spikePrompt = null;
+    const p = parseDamage(sp.dice);
+    if (!p) { renderStatSheet(); return; }
+    const faces = rollFaces(p.count * sp.times, p.sides);
+    const total = Math.max(0, faces.reduce((a, b) => a + b, 0) + p.mod * sp.times);
+    tvRoll(sp.label + ' moved through ' + sp.zone, total + ' dmg', 'bad', { detail: diceMath(p.sides, faces, p.mod * sp.times) });
+    applyHp(sp.instId, -total);        // commits + re-renders (clears the prompt from the card)
+  }
+  // PR 6E: the zone chip's controls -- − ticks a round off (0 ends it), ✕ ends it now.
+  function onZoneChipPress(e) {
+    const chip = e.target.closest('.zone-chip');
+    const zones = (state.stage && state.stage.zones) || [];
+    const z = chip && zones.find((x) => x.id === chip.dataset.zoneId);
+    if (!z) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.target.closest('.zone-clear')) state.stage.zones = zones.filter((x) => x !== z);
+    else if (e.target.closest('.zone-tick')) { z.rounds = Math.max(0, (z.rounds || 0) - 1); if (z.rounds === 0) state.stage.zones = zones.filter((x) => x !== z); }
+    else return;
+    commit();
   }
 
   // ---- Map grid helpers (PR 6A). The grid is PER MAP VARIANT: the live geometry

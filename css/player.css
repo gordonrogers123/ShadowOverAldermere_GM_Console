@@ -217,13 +217,30 @@
    per spell; a dashed low-fill preview while aiming becomes a solid-edged fill once placed. */
 .stage .aoe-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .stage .aoe-fx .aoe-shape {
-  fill: var(--aoe-color, #e5533a); fill-opacity: 0.17;
+  fill: var(--aoe-color, #e5533a); fill-opacity: 0.26;
   stroke: var(--aoe-color, #e5533a); stroke-width: 2px; stroke-opacity: 0.85;
-  stroke-dasharray: 7 5; animation: aoe-march 0.6s linear infinite;
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
 }
-.stage .aoe-fx.is-committed .aoe-shape { fill-opacity: 0.26; stroke-dasharray: none; animation: none; }
+/* Aiming: a dashed, lighter, marching preview until the click locks it. */
+.stage .aoe-fx .aoe-shape.is-preview { fill-opacity: 0.17; stroke-dasharray: 7 5; animation: aoe-march 0.6s linear infinite; }
+/* A persistent zone (PR 6E) reads as terrain: a touch quieter than a fresh template. */
+.stage .aoe-fx .aoe-shape.is-zone { fill-opacity: 0.2; }
 @keyframes aoe-march { to { stroke-dashoffset: -24; } }
+/* Zone chips (PR 6E): the spell's name + remaining rounds pinned above each zone on BOTH
+   screens; the − / ✕ controls only come alive on the GM board (gm.css re-enables them). */
+.stage .zone-chips { position: absolute; inset: 0; pointer-events: none; }
+.stage .zone-chip {
+  position: absolute; transform: translate(-50%, -110%);
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.12rem 0.5rem; border-radius: 999px;
+  background: rgba(12, 12, 16, 0.82); border: 1px solid var(--zone-color, #7d5bd0);
+  color: #efe6cf; font-family: var(--font-display); font-size: 0.72rem; letter-spacing: 0.04em;
+  white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.stage .zone-chip-name { font-weight: 700; }
+.stage .zone-chip-rounds { color: var(--zone-color, #b9a884); font-weight: 700; }
+.stage .zone-chip-rounds:empty { display: none; }
+.stage .zone-chip button { display: none; }
 /* A creature caught inside the placed template pulses in the template colour (both screens). */
 .stage .token.is-aoe-hit { animation: aoe-hit-glow 1s ease-in-out infinite; }
 @keyframes aoe-hit-glow {

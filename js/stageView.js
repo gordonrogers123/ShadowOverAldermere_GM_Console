@@ -99,6 +99,7 @@ export function createStageView(root) {
       <svg class="aoe-fx" aria-hidden="true"></svg>
       <svg class="target-fx" aria-hidden="true"><line class="target-line" x1="0" y1="0" x2="0" y2="0"></line><polygon class="target-arrowhead" points=""></polygon><text class="target-dist" text-anchor="middle" dominant-baseline="middle"></text></svg>
       <div class="token-layer"></div>
+      <div class="zone-chips"></div>
       <div class="curtain"></div>
       <div class="idle"><div class="idle-title">The Shadow Over Aldermere</div></div>
     </div>
@@ -115,6 +116,7 @@ export function createStageView(root) {
   const tokenLayer = root.querySelector('.token-layer');
   const targetFx = root.querySelector('.target-fx');
   const aoeFx = root.querySelector('.aoe-fx');
+  const chipsLayer = root.querySelector('.zone-chips');
   const gridOverlay = root.querySelector('.grid-overlay');
   let lastState = null;      // last painted state, so a resize can re-lay-out the arrow + grid
 
@@ -522,7 +524,7 @@ export function createStageView(root) {
   function layoutTokens() {
     layoutGrid();   // self-manages its own visibility; shares the resize/render triggers
     const img = activeMapImg();
-    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; if (aoeFx) aoeFx.style.display = 'none'; return; }
+    if (!img || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; if (aoeFx) aoeFx.style.display = 'none'; if (chipsLayer) chipsLayer.innerHTML = ''; return; }
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return;
     tokenLayer.style.display = '';
@@ -597,65 +599,145 @@ export function createStageView(root) {
   //      use. Size is FEET -> cells via the current grid (falls back to a 16-cell / 5-ft default
   //      when no grid, so it still draws). Half-angle 26.565° makes a 5e cone as wide as long. ----
   const AOE_HALF_ANGLE = 26.565;
-  function aoeGeom() {
-    const t = lastState && lastState.stage && lastState.stage.aoeTemplate;
+  // Shared displayed-px geometry for templates + zones: the contain rect plus the
+  // px-per-foot scale from the current grid (16-cell / 5-ft default when no grid).
+  function stageGeom() {
     const img = activeMapImg();
-    if (!t || !img || !tokensShown) return null;
+    if (!img || !tokensShown) return null;
     const r = stage.getBoundingClientRect();
     if (!r.width || !r.height) return null;
     const cr = computeContainRect(r.width, r.height, mediaAspect(img));
     const grid = currentGrid();
     const cellFrac = (grid && grid.enabled ? Number(grid.cellSize) : (1 / 16)) || (1 / 16);
     const feetPerCell = (grid && grid.enabled ? Number(grid.feetPerCell) : 5) || 5;
-    const radiusPx = (Number(t.sizeFeet) / feetPerCell) * cellFrac * cr.w;
-    return { t, cr, r, ox: cr.left + t.originX * cr.w, oy: cr.top + t.originY * cr.h, radiusPx };
+    return { r, cr, pxPerFoot: (cellFrac * cr.w) / feetPerCell };
   }
-  function aoeContainsPx(g, px, py) {
-    const dx = px - g.ox, dy = py - g.oy, dist = Math.hypot(dx, dy);
-    if (dist > g.radiusPx) return false;
-    if (g.t.shape !== 'cone') return true;                     // circle: anything inside the radius
+  // A shape (template OR zone) in px: origin + extent. Cone/circle extent = sizeFeet
+  // (length/radius); square extent = HALF the sizeFeet side (a 20-ft square spans 20 ft).
+  function shapeGeom(g, t) {
+    return {
+      ox: g.cr.left + t.originX * g.cr.w,
+      oy: g.cr.top + t.originY * g.cr.h,
+      extentPx: (t.shape === 'square' ? Number(t.sizeFeet) / 2 : Number(t.sizeFeet)) * g.pxPerFoot
+    };
+  }
+  function shapeContainsPx(t, s, px, py) {
+    const dx = px - s.ox, dy = py - s.oy;
+    if (t.shape === 'square') return Math.abs(dx) <= s.extentPx && Math.abs(dy) <= s.extentPx;
+    const dist = Math.hypot(dx, dy);
+    if (dist > s.extentPx) return false;
+    if (t.shape !== 'cone') return true;                       // circle: anything inside the radius
     if (dist < 1e-6) return true;                              // the cone's own origin cell
     const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-    const diff = Math.abs(((ang - g.t.angleDeg + 540) % 360) - 180);
+    const diff = Math.abs(((ang - t.angleDeg + 540) % 360) - 180);
     return diff <= AOE_HALF_ANGLE;
   }
+  function shapePath(t, s) {
+    const e = s.extentPx;
+    if (t.shape === 'cone') {
+      const dir = (t.angleDeg || 0) * Math.PI / 180, ha = AOE_HALF_ANGLE * Math.PI / 180;
+      const a1 = dir - ha, a2 = dir + ha;
+      const p1x = s.ox + Math.cos(a1) * e, p1y = s.oy + Math.sin(a1) * e;
+      const p2x = s.ox + Math.cos(a2) * e, p2y = s.oy + Math.sin(a2) * e;
+      return 'M' + s.ox.toFixed(1) + ' ' + s.oy.toFixed(1) + ' L' + p1x.toFixed(1) + ' ' + p1y.toFixed(1) +
+             ' A' + e.toFixed(1) + ' ' + e.toFixed(1) + ' 0 0 1 ' + p2x.toFixed(1) + ' ' + p2y.toFixed(1) + ' Z';
+    }
+    if (t.shape === 'square') {
+      return 'M' + (s.ox - e).toFixed(1) + ' ' + (s.oy - e).toFixed(1) +
+             ' h' + (e * 2).toFixed(1) + ' v' + (e * 2).toFixed(1) + ' h' + (-e * 2).toFixed(1) + ' Z';
+    }
+    const R = e.toFixed(1);                                    // circle drawn as two half-arcs
+    return 'M' + (s.ox - e).toFixed(1) + ' ' + s.oy.toFixed(1) +
+           ' a' + R + ' ' + R + ' 0 1 0 ' + (e * 2).toFixed(1) + ' 0' +
+           ' a' + R + ' ' + R + ' 0 1 0 ' + (-e * 2).toFixed(1) + ' 0 Z';
+  }
+  // Draw the instant template (dashed preview / solid once committed) AND every persistent
+  // zone (PR 6E) into the one .aoe-fx layer, then chip + highlight bookkeeping.
   function drawAoe() {
     if (!aoeFx) return;
-    const g = aoeGeom();
-    if (!g) { aoeFx.style.display = 'none'; tokenLayer.querySelectorAll('.is-aoe-hit').forEach((el) => el.classList.remove('is-aoe-hit')); return; }
+    const g = stageGeom();
+    const t = lastState && lastState.stage && lastState.stage.aoeTemplate;
+    const zones = (lastState && lastState.stage && lastState.stage.zones) || [];
+    if (!g || (!t && !zones.length)) {
+      aoeFx.style.display = 'none';
+      if (chipsLayer) chipsLayer.innerHTML = '';
+      tokenLayer.querySelectorAll('.is-aoe-hit').forEach((el) => el.classList.remove('is-aoe-hit'));
+      return;
+    }
     aoeFx.style.display = '';
     aoeFx.setAttribute('width', g.r.width); aoeFx.setAttribute('height', g.r.height);
     aoeFx.setAttribute('viewBox', '0 0 ' + g.r.width + ' ' + g.r.height);
-    stage.style.setProperty('--aoe-color', g.t.color || '#e5533a');   // on the stage so caught tokens inherit it too
-    aoeFx.classList.toggle('is-committed', !!g.t.committed);
-    let d;
-    if (g.t.shape === 'cone') {
-      const dir = g.t.angleDeg * Math.PI / 180, ha = AOE_HALF_ANGLE * Math.PI / 180;
-      const a1 = dir - ha, a2 = dir + ha;
-      const p1x = g.ox + Math.cos(a1) * g.radiusPx, p1y = g.oy + Math.sin(a1) * g.radiusPx;
-      const p2x = g.ox + Math.cos(a2) * g.radiusPx, p2y = g.oy + Math.sin(a2) * g.radiusPx;
-      d = 'M' + g.ox.toFixed(1) + ' ' + g.oy.toFixed(1) + ' L' + p1x.toFixed(1) + ' ' + p1y.toFixed(1) +
-          ' A' + g.radiusPx.toFixed(1) + ' ' + g.radiusPx.toFixed(1) + ' 0 0 1 ' + p2x.toFixed(1) + ' ' + p2y.toFixed(1) + ' Z';
-    } else {                                                   // circle drawn as two half-arcs
-      const R = g.radiusPx.toFixed(1);
-      d = 'M' + (g.ox - g.radiusPx).toFixed(1) + ' ' + g.oy.toFixed(1) +
-          ' a' + R + ' ' + R + ' 0 1 0 ' + (g.radiusPx * 2).toFixed(1) + ' 0' +
-          ' a' + R + ' ' + R + ' 0 1 0 ' + (-g.radiusPx * 2).toFixed(1) + ' 0 Z';
+    let html = '';
+    for (const z of zones) html += '<path class="aoe-shape is-zone" style="--aoe-color:' + z.color + '" d="' + shapePath(z, shapeGeom(g, z)) + '"></path>';
+    if (t) {
+      stage.style.setProperty('--aoe-color', t.color || '#e5533a');   // caught tokens inherit the template colour
+      html += '<path class="aoe-shape' + (t.committed ? '' : ' is-preview') + '" style="--aoe-color:' + (t.color || '#e5533a') + '" d="' + shapePath(t, shapeGeom(g, t)) + '"></path>';
     }
-    aoeFx.innerHTML = '<path class="aoe-shape" d="' + d + '"></path>';
+    aoeFx.innerHTML = html;
+    const ts = t ? shapeGeom(g, t) : null;
     tokenLayer.querySelectorAll('.token').forEach((el) => {
       const px = g.cr.left + (parseFloat(el.dataset.x) || 0) * g.cr.w;
       const py = g.cr.top + (parseFloat(el.dataset.y) || 0) * g.cr.h;
-      el.classList.toggle('is-aoe-hit', el.dataset.instId !== g.t.casterId && aoeContainsPx(g, px, py));
+      el.classList.toggle('is-aoe-hit', !!t && el.dataset.instId !== t.casterId && shapeContainsPx(t, ts, px, py));
     });
+    drawZoneChips(g, zones);
+  }
+  // One chip per zone, pinned above its top edge: spell name + round counter + (GM board
+  // only, via CSS) a −tick and a ✕clear button. gm.js handles the clicks by delegation.
+  function drawZoneChips(g, zones) {
+    if (!chipsLayer) return;
+    const seen = new Set();
+    for (const z of zones) {
+      seen.add(z.id);
+      let chip = chipsLayer.querySelector('.zone-chip[data-zone-id="' + z.id + '"]');
+      if (!chip) {
+        chip = document.createElement('div');
+        chip.className = 'zone-chip'; chip.dataset.zoneId = z.id;
+        const nm = document.createElement('span'); nm.className = 'zone-chip-name';
+        const rd = document.createElement('span'); rd.className = 'zone-chip-rounds';
+        const tick = document.createElement('button'); tick.type = 'button'; tick.className = 'zone-tick'; tick.textContent = '−'; tick.title = 'Tick a round off (0 ends the zone)';
+        const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'zone-clear'; clr.textContent = '✕'; clr.title = 'End the zone';
+        chip.append(nm, rd, tick, clr);
+        chipsLayer.appendChild(chip);
+      }
+      chip.querySelector('.zone-chip-name').textContent = z.name;
+      chip.querySelector('.zone-chip-rounds').textContent = z.rounds > 0 ? String(z.rounds) : '';
+      chip.style.setProperty('--zone-color', z.color);
+      const s = shapeGeom(g, z);
+      chip.style.left = s.ox + 'px';
+      chip.style.top = (s.oy - s.extentPx) + 'px';
+    }
+    chipsLayer.querySelectorAll('.zone-chip').forEach((el) => { if (!seen.has(el.dataset.zoneId)) el.remove(); });
   }
   // Who's inside the current template (instIds) -- for gm.js resolve-all. Skips the caster
   // (no self-blast) and hidden tokens.
   function aoeHits() {
-    const g = aoeGeom(); if (!g) return [];
+    const g = stageGeom();
+    const t = lastState && lastState.stage && lastState.stage.aoeTemplate;
+    if (!g || !t) return [];
+    const s = shapeGeom(g, t);
     const list = (lastState && lastState.stage && lastState.stage.tokens) || [];
-    return list.filter((t) => t.visible !== false && t.instId !== g.t.casterId &&
-      aoeContainsPx(g, g.cr.left + t.x * g.cr.w, g.cr.top + t.y * g.cr.h)).map((t) => t.instId);
+    return list.filter((tok) => tok.visible !== false && tok.instId !== t.casterId &&
+      shapeContainsPx(t, s, g.cr.left + tok.x * g.cr.w, g.cr.top + tok.y * g.cr.h)).map((tok) => tok.instId);
+  }
+  // Who's inside a placed ZONE (entry saves) -- same rules as aoeHits.
+  function zoneHits(zoneId) {
+    const g = stageGeom();
+    const zones = (lastState && lastState.stage && lastState.stage.zones) || [];
+    const z = zones.find((x) => x.id === zoneId);
+    if (!g || !z) return [];
+    const s = shapeGeom(g, z);
+    const list = (lastState && lastState.stage && lastState.stage.tokens) || [];
+    return list.filter((tok) => tok.visible !== false && tok.instId !== z.casterId &&
+      shapeContainsPx(z, s, g.cr.left + tok.x * g.cr.w, g.cr.top + tok.y * g.cr.h)).map((tok) => tok.instId);
+  }
+  // Zones containing a map fraction -- the Spike-Growth on-move check (drag start/end).
+  function zonesAtFraction(frac) {
+    const g = stageGeom();
+    if (!g || !frac) return [];
+    const zones = (lastState && lastState.stage && lastState.stage.zones) || [];
+    const px = g.cr.left + frac.x * g.cr.w, py = g.cr.top + frac.y * g.cr.h;
+    return zones.filter((z) => shapeContainsPx(z, shapeGeom(g, z), px, py));
   }
   // Pointer angle (deg) from a map-fraction origin to a client point, in DISPLAYED px space so
   // the cone aims where the GM's cursor visually is, undistorted by the map's aspect ratio.
@@ -888,7 +970,7 @@ export function createStageView(root) {
     // Leaving map mode (or showing a non-map scene) must clear the grid too, not just the
     // tokens -- otherwise a grid drawn in map mode lingers over the next scene. layoutTokens
     // (which calls layoutGrid) is skipped on this early return, so hide the overlay here.
-    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; gridOverlay.style.display = 'none'; if (aoeFx) aoeFx.style.display = 'none'; return; }
+    if (!haveMap || !tokensShown) { tokenLayer.style.display = 'none'; targetFx.style.display = 'none'; gridOverlay.style.display = 'none'; if (aoeFx) aoeFx.style.display = 'none'; if (chipsLayer) chipsLayer.innerHTML = ''; return; }
     layoutTokens();
   }
 
@@ -953,5 +1035,5 @@ export function createStageView(root) {
     }
   }
 
-  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell, gridDistance, aoeHits, aoePointerAngle };
+  return { render, el: stage, tokenLayer, layoutTokens, pointToFraction, snapFractionToCell, gridDistance, aoeHits, aoePointerAngle, zoneHits, zonesAtFraction };
 }

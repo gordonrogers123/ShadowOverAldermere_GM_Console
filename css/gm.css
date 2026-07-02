@@ -1109,6 +1109,17 @@ body.view-gm {
 .view-gm .stat-aoe-res.is-fail { color: #b3352f; font-weight: 700; }
 .view-gm .stat-aoe-res.is-save { color: #3f8f4f; }
 .view-gm .stat-aoe-name { flex: 1 1 auto; color: var(--ink); }
+/* PR 6E: zone chips come alive on the GM board only (− ticks a round, ✕ ends the zone),
+   and the Spike-Growth / concentration banners ride the pending-roll styling. */
+.view-gm .board-interactive .zone-chip { pointer-events: auto; }
+.view-gm .board-interactive .zone-chip button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.05rem; height: 1.05rem; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(239, 230, 207, 0.4); background: transparent; color: #efe6cf;
+  font-size: 0.7rem; line-height: 1; cursor: pointer;
+}
+.view-gm .board-interactive .zone-chip button:hover { background: rgba(239, 230, 207, 0.18); }
+.view-gm .stat-spike, .view-gm .stat-conc { border-color: #b07d2b; background: #fbeecb; color: #7a5312; }
 .view-gm .stat-empty { font-size: 0.9rem; color: var(--neutral); opacity: 0.8; margin: 0.2rem 0; }
 /* Condition chip (shared by the stat card + the roster) -- conditions read as afflictions. */
 .view-gm .cond-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.72rem; border-radius: 999px; padding: 0.06rem 0.5rem; background: #f0dada; color: #7a2626; border: 1px solid #d9b3b3; }
