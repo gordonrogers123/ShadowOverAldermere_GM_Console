@@ -1042,10 +1042,12 @@ body.view-gm {
 .view-gm .stat-cond-label { font-family: var(--font-display); text-transform: uppercase; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--neutral); }
 .view-gm .stat-lines { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
 .view-gm .stat-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-200); }
-/* Speed row = two columns: the stat on the left, the per-turn movement controls on the right. */
+/* The Speed/Move row: while a turn runs the Move toggle takes the label's place (left)
+   and the action dot + +1 right-align; otherwise the classic "Speed 30 ft" line. */
 .view-gm .stat-line.stat-speed { justify-content: flex-start; align-items: center; }
 .view-gm .stat-speed .stat-v { margin-left: 0.45rem; }
-.view-gm .stat-speed .turn-move { margin-left: auto; display: flex; align-items: center; gap: 0.3rem; }
+.view-gm .stat-speed .turn-move { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0.35rem; }
+.view-gm .turn-move .turn-action { margin-left: auto; }
 .view-gm .stat-line .stat-k { color: var(--neutral); }
 .view-gm .stat-line .stat-v { font-family: var(--font-display); font-weight: 700; }
 .view-gm .stat-hpbar { height: 6px; border-radius: 3px; background: #e7ddc7; overflow: hidden; margin: 0.15rem 0 0.3rem; }

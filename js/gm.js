@@ -2723,11 +2723,13 @@ export function mountGm(root) {
     }
     if (stats && stats.ac != null) lines.append(line('Armor Class', stats.ac));
     if (stats && stats.speed) {
-      // Two-column speed row: the stat on the left, the per-turn movement controls
-      // (Move toggle · feet-left numerator · Apply — PR "turn engine") on the right.
-      const sp = line('Speed', stats.speed); sp.classList.add('stat-speed');
-      const tc = document.createElement('div'); tc.className = 'turn-move';
+      // The Speed line IS the movement row while a turn runs: the Move toggle takes the
+      // label's place ("30 / 30" already says the speed) so the row breathes. With no
+      // running turn it stays the classic "Speed 30 ft" info line.
       const turn = activeTurnFor(token.instId);
+      const sp = document.createElement('div'); sp.className = 'stat-line stat-speed';
+      if (!turn) { const k = document.createElement('span'); k.className = 'stat-k'; k.textContent = 'Speed'; const v = document.createElement('span'); v.className = 'stat-v'; v.textContent = stats.speed; sp.append(k, v); }
+      const tc = document.createElement('div'); tc.className = 'turn-move';
       if (turn) {
         // [Move] toggles the reachable-range square; the numerator is the feet still
         // banked (typing it IS the override); pending drag feet await [Apply]; the
