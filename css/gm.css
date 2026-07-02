@@ -1054,6 +1054,15 @@ body.view-gm {
 .view-gm .turn-move .turn-action-label { margin-left: auto; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral); }
 .view-gm .turn-move.has-pending .turn-action-label { display: none; }
 .view-gm .turn-move.has-pending .turn-action { margin-left: auto; }
+/* Limited-use pools: label + spend/restore dot buttons + refill, one row per pool. */
+.view-gm .stat-res { display: flex; flex-direction: column; gap: 0.05rem; margin: 0.1rem 0 0.15rem; }
+.view-gm .stat-res-row { display: flex; align-items: center; gap: 0.3rem; font-size: var(--fs-100); }
+.view-gm .stat-res-k { color: var(--neutral); flex: 0 0 auto; min-width: 7.6em; }
+.view-gm .stat-res-dots { display: inline-flex; gap: 0.1rem; }
+.view-gm .stat-res-dot { border: 0; background: none; padding: 0 0.06rem; cursor: pointer; font-size: 0.85rem; line-height: 1; color: var(--neutral); }
+.view-gm .stat-res-dot.is-full { color: #2a4d7a; }
+.view-gm .stat-res-use { padding: 0.05rem 0.5rem; font-size: var(--fs-100); }
+.view-gm .stat-res-refill { margin-left: auto; padding: 0.05rem 0.4rem; font-size: 0.85rem; }
 /* Hit Points + AC share one line: two label/value pairs at either end. */
 .view-gm .stat-line.stat-hpac { justify-content: space-between; }
 .view-gm .stat-hpac .stat-hpac-col { display: inline-flex; gap: 0.45rem; align-items: baseline; min-width: 0; }
