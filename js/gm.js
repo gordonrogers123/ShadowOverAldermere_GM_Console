@@ -1594,8 +1594,54 @@ export function mountGm(root) {
   function syncActiveToken() {
     const i = ensureInit();
     if (!state.stage) return;
-    state.stage.activeTokenId = i.order.length ? i.order[Math.min(i.idx, i.order.length - 1)] : null;
+    const next = i.order.length ? i.order[Math.min(i.idx, i.order.length - 1)] : null;
+    state.stage.activeTokenId = next;
+    // Turn engine: a NEW active combatant gets a fresh movement/action budget. The
+    // change-only guard matters -- removing a bystander rebuilds the order mid-round
+    // and must not reset the current combatant's spent movement.
+    if (!next) { state.stage.turn = null; state.stage.moveRange = null; }
+    else if (!state.stage.turn || state.stage.turn.instId !== next) seedTurn(next);
   }
+  // ---- Turn engine: the active combatant's per-turn budget. Movement is seeded from
+  //      the cast's speed ("30 ft" -> 30), drags of the active token accrue PENDING feet
+  //      (Chebyshev, via the grid), Apply deducts them, and the numerator input is the
+  //      manual override (spells & modifiers). One action per turn by default; +1 buys
+  //      another (Action Surge / GM fiat). ----
+  function parseSpeedFeet(str) { const m = /(\d+)\s*ft/i.exec(String(str || '')); return m ? +m[1] : 30; }
+  function seedTurn(instId) {
+    const t = findToken(instId);
+    const cast = t && castEntry(t.castId, t.kind);
+    const feet = parseSpeedFeet(cast && cast.stats && cast.stats.speed);
+    state.stage.turn = { instId, moveMax: feet, moveLeft: feet, movePending: 0, actionsMax: 1, actionsUsed: 0, moveShow: false };
+    refreshMoveRange();
+  }
+  function moveLeftFeet(turn) { return Math.max(0, turn.moveLeft - turn.movePending); }
+  // The broadcast movement-range square: centered on the active token, radius = feet
+  // still available. GM board draws it for everyone; the Player TV only for heroes.
+  function refreshMoveRange() {
+    const turn = state.stage && state.stage.turn;
+    const t = turn && findToken(turn.instId);
+    const grid = curGrid();
+    state.stage.moveRange = (turn && turn.moveShow && t && grid && grid.enabled && moveLeftFeet(turn) > 0)
+      ? { instId: t.instId, originX: t.x, originY: t.y, feet: moveLeftFeet(turn) }
+      : null;
+  }
+  function activeTurnFor(instId) { const turn = state.stage && state.stage.turn; return (turn && turn.instId === instId) ? turn : null; }
+  // A resolved action (hit roll, save, heal, area) spends the ACTIVE combatant's action.
+  function spendAction(token) {
+    const turn = token && activeTurnFor(token.instId);
+    if (!turn) return;
+    turn.actionsUsed = Math.min(turn.actionsMax, turn.actionsUsed + 1);
+    commit();   // the budget rides broadcast state -- persist the spend (hit rolls don't otherwise commit)
+  }
+  function actionSpent(token) { const turn = token && activeTurnFor(token.instId); return !!turn && turn.actionsUsed >= turn.actionsMax; }
+  function applyMove() { const turn = state.stage && state.stage.turn; if (!turn || !turn.movePending) return; turn.moveLeft = Math.max(0, turn.moveLeft - turn.movePending); turn.movePending = 0; refreshMoveRange(); commit(); }
+  function setMoveLeft(v) { const turn = state.stage && state.stage.turn; if (!turn || !isFinite(+v)) return; turn.moveLeft = Math.max(0, Math.min(999, Math.floor(+v))); turn.movePending = 0; refreshMoveRange(); commit(); }
+  function toggleMoveView() { const turn = state.stage && state.stage.turn; if (!turn) return; turn.moveShow = !turn.moveShow; refreshMoveRange(); commit(); }
+  function grantAction() { const turn = state.stage && state.stage.turn; if (!turn) return; turn.actionsMax += 1; commit(); }
+  // Dmg entitlement: damage follows a LANDED hit of the same attack (one Dmg per hit --
+  // finishDmg overwrites the hit record, so a second roll needs a fresh Hit).
+  function dmgEntitled(atk) { return !!(attackRoll && attackRoll.kind === 'hit' && (attackRoll.outcome === 'hit' || attackRoll.outcome === 'crit') && attackRoll.name === atk.name); }
   // Rebuild the order from placed tokens that have a roll, high-to-low.
   function rebuildInitOrder() {
     const i = ensureInit();
@@ -1653,7 +1699,7 @@ export function mountGm(root) {
   function clearInitiative() {
     const mods = (state.initiative && state.initiative.mods) || {};
     state.initiative = { mods, rolls: {}, order: [], idx: 0 };   // keep the type modifiers
-    if (state.stage) state.stage.activeTokenId = null;
+    if (state.stage) { state.stage.activeTokenId = null; state.stage.turn = null; state.stage.moveRange = null; }
     clearAttackState();
     commit();
   }
@@ -2154,6 +2200,7 @@ export function mountGm(root) {
     const target = currentTarget();
     if (!target) { armTargeting(); return; }   // enforce: target first
     if (atkOutOfRange(atk)) { setStatus(target.label + ' is out of range for ' + atk.name, false); return; }
+    if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
     const mod = parseHitMod(atk.toHit);
     if (mod == null) { setStatus(atk.name + ' is a save (' + atk.toHit + '), not an attack roll', false); return; }
     if (token.manual) {   // PR 6C.1: the player rolled physically -> the GM types the total
@@ -2165,6 +2212,7 @@ export function mountGm(root) {
     const ac = targetAc(target);
     const outcome = d === 20 ? 'crit' : d === 1 ? 'miss' : (ac != null ? (total >= ac ? 'hit' : 'miss') : null);
     attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, d, mod, total, ac, outcome, targetLabel: target.label };
+    spendAction(token);   // the attack roll IS the action (hit or miss)
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     renderStatSheet();
     if (outcome) tvRoll(token.label + ' used ' + atk.name + ' Attack', HIT_WORD[outcome], HIT_TONE[outcome],
@@ -2177,6 +2225,7 @@ export function mountGm(root) {
     const ac = targetAc(target);
     const outcome = crit ? 'crit' : (ac != null ? (total >= ac ? 'hit' : 'miss') : null);
     attackRoll = { instId: token.instId, kind: 'hit', name: atk.name, manual: true, total, ac, outcome, targetLabel: target.label };
+    spendAction(token);
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     renderStatSheet();
     if (outcome) tvRoll(token.label + ' used ' + atk.name + ' Attack', HIT_WORD[outcome], HIT_TONE[outcome],
@@ -2186,6 +2235,10 @@ export function mountGm(root) {
     const target = currentTarget();
     if (!target) { armTargeting(); return; }
     if (atkOutOfRange(atk)) { setStatus(target.label + ' is out of range for ' + atk.name, false); return; }
+    if (parseHitMod(atk.toHit) != null) {
+      // Damage follows a LANDED hit -- one Dmg per hit (finishDmg consumes the record).
+      if (!dmgEntitled(atk)) { setStatus('Roll to Hit first — one damage roll per landed hit', false); return; }
+    } else if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
     const p = parseDamage(atk.damage); if (!p) return;
     if (token.manual) { attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, manualPending: 'dmg', atk, dtype: p.type, targetLabel: target.label }; renderStatSheet(); return; }
     // Magic Missile & friends: multi.darts rolls the die that many times (was a
@@ -2204,6 +2257,7 @@ export function mountGm(root) {
   }
   function finishDmg(token, atk, target, total, notation, dtype, detail) {
     attackRoll = { instId: token.instId, kind: 'dmg', name: atk.name, total, notation, dtype, targetLabel: target.label };
+    if (parseHitMod(atk.toHit) == null) spendAction(token);   // auto-hit (Magic Missile): the damage IS the action
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     tvRoll(token.label + ' hit ' + target.label, total + (dtype ? ' ' + dtype : '') + ' dmg', 'bad', { detail });
     applyHp(target.instId, -total);   // clamps + commits -> HP drop + hit flash + card re-render
@@ -2221,6 +2275,7 @@ export function mountGm(root) {
     return (v == null || !isFinite(+v)) ? null : +v;
   }
   function applySaveOutcome(token, atk, target, outcome, roll) {
+    spendAction(token);   // the spell resolved -- that was the action
     const ps = parseSave(atk.toHit) || {};
     const p = parseDamage(atk.damage);   // null for a condition-only save (Entangle/Turn Undead)
     let dmg = 0;
@@ -2243,6 +2298,7 @@ export function mountGm(root) {
     const target = currentTarget();
     if (!target) { armTargeting(); return; }   // enforce: target first
     if (atkOutOfRange(atk)) { setStatus(target.label + ' is out of range for ' + atk.name, false); return; }
+    if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
     const ps = parseSave(atk.toHit);
     if (!ps) { setStatus(atk.name + ' has no save to roll', false); return; }
     const mod = abilityMod(target, ps.ability);
@@ -2271,6 +2327,7 @@ export function mountGm(root) {
     const target = atk.target === 'self' ? token : currentTarget();
     if (!target) { armTargeting(); return; }
     if (atkOutOfRange(atk)) { setStatus(target.label + ' is out of range for ' + atk.name, false); return; }
+    if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
     const p = parseDamage(String(atk.damage).replace(/^\s*heal\s+/i, '')); if (!p) return;
     if (token.manual) { attackRoll = { instId: token.instId, kind: 'heal', name: atk.name, manualPending: 'heal', atk, targetLabel: target.label }; renderStatSheet(); return; }
     const faces = rollFaces(p.count, p.sides);
@@ -2282,6 +2339,7 @@ export function mountGm(root) {
   }
   function finishHeal(token, atk, target, total, notation, detail) {
     attackRoll = { instId: token.instId, kind: 'heal', name: atk.name, total, notation, targetLabel: target.label };
+    spendAction(token);
     if (atk.sfxId) fireAttackSfx(atk.sfxId);
     tvRoll(target.instId === token.instId ? token.label + ' used ' + atk.name : token.label + ' healed ' + target.label, '+' + total + ' HP', 'heal', { detail });
     applyHp(target.instId, +total);
@@ -2300,6 +2358,7 @@ export function mountGm(root) {
   function beginAoe(token, atk) {
     const spec = atk.aoe || atk.zone;                    // a zone (PR 6E) places through the same flow
     if (!spec) return;
+    if (actionSpent(token)) { setStatus('Action already used this turn — +1 in the turn row grants another', false); return; }
     clearAttackState();                                  // drop any in-progress target / roll / area
     ensureTokens();
     const shape = spec.shape === 'cone' ? 'cone' : (spec.shape === 'square' || spec.shape === 'cube') ? 'square' : 'circle';
@@ -2362,6 +2421,7 @@ export function mountGm(root) {
       setStatus(pl.atk.name + ' placed — ' + pl.hits.length + ' inside rolled their entry save', false);
     } else {
       pl.results = [];                                   // Spike Growth: no entry save; damage rides movement
+      spendAction(pl.token);                             // placing the zone was the action
       setStatus(pl.atk.name + ' placed — it damages creatures that MOVE through it (drag prompts the roll)', false);
       renderStatSheet();
     }
@@ -2382,6 +2442,7 @@ export function mountGm(root) {
   function resolveAoe() {
     const pl = aoePlacing; if (!pl || !pl.committed) return;
     const { token, atk } = pl;
+    spendAction(token);   // resolving the area is the action
     const ps = parseSave(atk.toHit);
     const p = parseDamage(atk.damage);
     const fullDmg = p ? Math.max(0, rollN(p.count, p.sides) + p.mod) : null;   // one damage roll for the whole area
@@ -2474,7 +2535,7 @@ export function mountGm(root) {
     // on the name line (no extra rows), and the gate for the buttons below.
     const pr = dist ? parseAtkRange(atk.range) : null;
     const v = pr ? rangeVerdict(pr, dist.feet) : null;
-    const badge = v ? (() => { const rb = document.createElement('span'); rb.className = 'atk-range atk-range-' + v.status; rb.textContent = dist.feet + ' ft · ' + v.label; return rb; })() : null;
+    const badge = v ? (() => { const rb = document.createElement('span'); rb.className = 'atk-range atk-range-' + v.status; rb.textContent = v.label; return rb; })() : null;   // verdict only; the distance lives in the target strip
     if (!compact) {
       const nm = document.createElement('div'); nm.className = 'stat-attack-name';
       const nt = document.createElement('span'); nt.textContent = atk.name; nm.append(nt);
@@ -2489,6 +2550,8 @@ export function mountGm(root) {
     if (compact && badge) line.append(badge);   // the picker's detail row has no name line
     a.append(line);
     const outOfRange = !!(v && v.status === 'out');
+    const spent = actionSpent(token);
+    const SPENT_WHY = 'Action already used this turn — +1 in the turn row grants another';
     const gate = (b, blocked, why) => { if (blocked) { b.disabled = true; b.classList.add('is-blocked'); b.title = why; } return b; };
     const btns = document.createElement('div'); btns.className = 'stat-atk-btns';
     // Buttons depend on the action's shape: an AoE/zone provides its OWN targeting via
@@ -2499,20 +2562,23 @@ export function mountGm(root) {
       ab.textContent = 'Area';
       ab.title = atk.zone ? 'Place the persistent ' + spec.sizeFeet + '-ft ' + spec.shape + ' zone on the board (entry saves resolve on placement)'
                           : 'Place the ' + spec.sizeFeet + '-ft ' + spec.shape + ' on the board, then resolve saves for everyone inside';
-      ab.addEventListener('click', () => beginAoe(token, atk)); btns.append(ab);
+      ab.addEventListener('click', () => beginAoe(token, atk)); btns.append(gate(ab, spent && !(aoePlacing && aoePlacing.atk === atk), SPENT_WHY));
     } else if (atk.heal) {
       const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button atk-heal'; hb.textContent = 'Heal';
       hb.title = atk.target === 'self' ? 'Heal the caster (' + String(atk.damage).replace(/^\s*heal\s+/i, '') + ')' : 'Heal the targeted ally';
       hb.addEventListener('click', () => rollHeal(token, atk));
-      btns.append(gate(hb, outOfRange && atk.target !== 'self', 'Target is out of range'));
+      btns.append(gate(hb, spent || (outOfRange && atk.target !== 'self'), spent ? SPENT_WHY : 'Target is out of range'));
     } else if (atk.save) {
       const ps = parseSave(atk.toHit); const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'gm-button atk-save'; sv.textContent = 'Save';
       sv.title = 'Resolve the ' + (ps ? ps.ability + ' save vs ' + ps.dc : 'saving throw') + ' on the target';
       sv.addEventListener('click', () => rollSave(token, atk));
-      btns.append(gate(sv, outOfRange, 'Target is out of range'));
+      btns.append(gate(sv, spent || outOfRange, spent ? SPENT_WHY : 'Target is out of range'));
     } else {
-      if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(gate(hb, outOfRange, 'Target is out of range')); }
-      if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); btns.append(gate(db, outOfRange, 'Target is out of range')); }
+      if (parseHitMod(atk.toHit) != null) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'gm-button btn--quiet atk-hit'; hb.textContent = 'Hit'; hb.title = 'Roll d20 ' + atk.toHit + ' vs the target’s AC'; hb.addEventListener('click', () => rollHit(token, atk)); btns.append(gate(hb, spent || outOfRange, spent ? SPENT_WHY : 'Target is out of range')); }
+      if (parseDamage(atk.damage)) { const db = document.createElement('button'); db.type = 'button'; db.className = 'gm-button atk-dmg'; db.textContent = 'Dmg'; db.title = 'Roll ' + atk.damage + ' and apply it to the target'; db.addEventListener('click', () => rollDmg(token, atk)); { const hasHit = parseHitMod(atk.toHit) != null;
+        const dmgBlocked = outOfRange || (hasHit ? !dmgEntitled(atk) : spent);
+        const dmgWhy = outOfRange ? 'Target is out of range' : hasHit ? 'Roll to Hit first — one damage roll per landed hit' : SPENT_WHY;
+        btns.append(gate(db, dmgBlocked, dmgWhy)); } }
     }
     if (atk.sfxId && sceneHasSfx(atk.sfxId)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'gm-button btn--quiet atk-sfx'; sb.textContent = '▶'; sb.title = 'Play attack SFX'; sb.addEventListener('click', () => fireAttackSfx(atk.sfxId)); btns.append(sb); }
     a.append(btns);
@@ -2625,6 +2691,34 @@ export function mountGm(root) {
       // (Move toggle · feet-left numerator · Apply — PR "turn engine") on the right.
       const sp = line('Speed', stats.speed); sp.classList.add('stat-speed');
       const tc = document.createElement('div'); tc.className = 'turn-move';
+      const turn = activeTurnFor(token.instId);
+      if (turn) {
+        // [Move] toggles the reachable-range square; the numerator is the feet still
+        // banked (typing it IS the override); pending drag feet await [Apply]; the
+        // action dot + [+1] round out the turn budget.
+        const mv = document.createElement('button'); mv.type = 'button';
+        mv.className = 'gm-button btn--quiet turn-move-toggle' + (turn.moveShow ? ' is-on' : '');
+        mv.textContent = 'Move'; mv.title = 'Show the reachable-range square on the board';
+        mv.addEventListener('click', toggleMoveView);
+        const left = document.createElement('input'); left.type = 'number'; left.className = 'turn-move-left';
+        left.value = String(turn.moveLeft); left.min = '0'; left.title = 'Feet of movement left — type to override (spells, dashes)';
+        left.addEventListener('change', () => setMoveLeft(left.value));
+        const cap = document.createElement('span'); cap.className = 'turn-move-cap'; cap.textContent = '/ ' + turn.moveMax;
+        const pend = document.createElement('span'); pend.className = 'turn-move-pending';
+        pend.textContent = turn.movePending ? '−' + turn.movePending : '';
+        pend.title = 'Feet dragged since the last Apply';
+        const ap = document.createElement('button'); ap.type = 'button'; ap.className = 'gm-button btn--quiet turn-move-apply';
+        ap.textContent = 'Apply'; ap.title = 'Deduct the dragged feet from the movement left';
+        if (!turn.movePending) { ap.disabled = true; ap.classList.add('is-blocked'); }
+        ap.addEventListener('click', applyMove);
+        const act = document.createElement('span'); act.className = 'turn-action' + (turn.actionsUsed >= turn.actionsMax ? ' is-spent' : '');
+        act.textContent = turn.actionsUsed >= turn.actionsMax ? '○' : '●';
+        act.title = 'Action: ' + turn.actionsUsed + ' of ' + turn.actionsMax + ' used';
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'gm-button btn--quiet turn-action-plus';
+        plus.textContent = '+1'; plus.title = 'Grant an extra action (Action Surge / special cases)';
+        plus.addEventListener('click', grantAction);
+        tc.append(mv, left, cap, pend, ap, act, plus);
+      }
       sp.append(tc); lines.append(sp);
     }
     if (lines.children.length) host.append(lines);
@@ -2830,6 +2924,13 @@ export function mountGm(root) {
     const tok = tokens.find((t) => t.instId === instId);
     if (!tok) return;
     if (targeting) { setTarget(instId); e.preventDefault(); return; }   // targeting mode: aim the active attacker at this token
+    // Turn engine: the ACTIVE combatant with no movement left can't be dragged (other
+    // tokens stay free -- GM fiat). Type a bigger number in the Speed row to override.
+    const turn = activeTurnFor(instId);
+    if (turn && curGrid() && curGrid().enabled && moveLeftFeet(turn) <= 0) {
+      setStatus(tok.label + ' has no movement left this turn — raise the number in the Speed row to override', false);
+      e.preventDefault(); return;
+    }
     drag = { instId, el: tokenEl, x0: tok.x, y0: tok.y };   // start point feeds the on-move zone check (6E)
     tokenEl.classList.add('dragging');
     if (tokenEl.setPointerCapture) { try { tokenEl.setPointerCapture(e.pointerId); } catch (_) {} }
@@ -2861,8 +2962,21 @@ export function mountGm(root) {
     if (dragRAF) cancelAnimationFrame(dragRAF);
     dragPending = false;
     checkZoneMove(moved);              // PR 6E: dragging through Spike Growth prompts its damage
+    accrueMove(moved);                 // turn engine: the active token's drag adds PENDING feet
     computeTargetRange();              // a moved token changes the range verdict
     commit();                          // final save + broadcast + refreshed lists
+  }
+  // Meter the active combatant's drag: straight-line Chebyshev feet (grid) accrue as
+  // movePending until the GM hits Apply. Split moves are just several drags. No grid ->
+  // no metering (advisory mode, like range checks).
+  function accrueMove(moved) {
+    const turn = activeTurnFor(moved.instId);
+    if (!turn) return;
+    const t = findToken(moved.instId);
+    if (!t || (t.x === moved.x0 && t.y === moved.y0)) return;
+    const dist = boardView.gridDistance({ x: moved.x0, y: moved.y0 }, { x: t.x, y: t.y });
+    if (dist && dist.feet > 0) turn.movePending += dist.feet;
+    refreshMoveRange();                // the square follows the token + shrinks by the pending feet
   }
   // PR 6E: after a drag, if the token started or ended inside an on-move zone (Spike
   // Growth) and actually covered ground, queue the "2d4 per 5 ft" prompt on the GM card.

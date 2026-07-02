@@ -196,6 +196,32 @@ function normZones(zs) {
   if (!Array.isArray(zs)) return [];
   return zs.map(normZone).filter(Boolean).slice(0, 12);
 }
+// The ACTIVE combatant's turn budget (turn engine): movement in feet (seeded from the
+// cast's speed, GM-overridable), pending drag distance awaiting Apply, and the action
+// count. One object, not per-token -- only the active mover is enforced. Broadcast so a
+// mid-fight reload recovers it; the Player only reads it for the movement-range view.
+function normTurn(t) {
+  if (!t || typeof t !== 'object' || t.instId == null) return null;
+  const int = (v, d) => { v = Math.floor(+v); return isFinite(v) && v >= 0 ? Math.min(v, 999) : d; };
+  return {
+    instId: String(t.instId),
+    moveMax: int(t.moveMax, 30),        // the speed, for the "/ 30 ft" label
+    moveLeft: int(t.moveLeft, 30),      // banked feet -- typing here IS the override (up or down)
+    movePending: int(t.movePending, 0), // dragged-but-not-Applied feet
+    actionsMax: Math.max(1, int(t.actionsMax, 1)),
+    actionsUsed: int(t.actionsUsed, 0),
+    moveShow: !!t.moveShow
+  };
+}
+// The movement-range overlay (a Chebyshev square around the active token): broadcast so
+// the Player TV can draw it -- the TV only shows it for HEROES; the GM board shows all.
+function normMoveRange(m) {
+  if (!m || typeof m !== 'object' || m.instId == null) return null;
+  const num = (v, d, lo, hi) => { v = +v; if (!isFinite(v)) return d; return v < lo ? lo : v > hi ? hi : v; };
+  const feet = num(m.feet, 0, 0, 1000);
+  if (!(feet > 0)) return null;
+  return { instId: String(m.instId), originX: num(m.originX, 0.5, -1, 2), originY: num(m.originY, 0.5, -1, 2), feet };
+}
 function normalizeStage(s) {
   s = s || {};
   const side = (x) => ({
@@ -247,7 +273,10 @@ function normalizeStage(s) {
     aoeTemplate: normAoe(s.aoeTemplate),
     // Persistent placed zones (PR 6E) — Entangle / Web / Spike Growth, surviving turns
     // until their round counter runs out or the GM clears them.
-    zones: normZones(s.zones)
+    zones: normZones(s.zones),
+    // Turn engine: the active combatant's movement/action budget + the movement-range view.
+    turn: normTurn(s.turn),
+    moveRange: normMoveRange(s.moveRange)
   };
 }
 

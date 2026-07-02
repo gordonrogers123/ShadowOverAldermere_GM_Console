@@ -1508,3 +1508,12 @@ body.view-gm {
 .view-gm .gm-notice { display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--radius-sm); background: #fbeecb; border: 1px solid #b07d2b; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); font-size: var(--fs-100); }
 .view-gm .gm-notice-txt { flex: 1 1 auto; font-weight: 700; color: #7a5312; }
 .view-gm .gm-notice .gm-button { flex: 0 0 auto; font-size: var(--fs-100); padding: 0.18rem 0.5rem; }
+/* Turn engine: the Speed row's right-hand controls -- Move toggle, feet-left numerator
+   (typing = override), pending feet, Apply, and the action dot + the +1 grant. */
+.view-gm .turn-move .gm-button { font-size: var(--fs-100); padding: 0.12rem 0.4rem; }
+.view-gm .turn-move-toggle.is-on { background: var(--control); color: var(--paper); border-color: var(--control); }
+.view-gm .turn-move-left { width: 3.2rem; padding: 0.08rem 0.3rem; font-family: var(--font-display); font-weight: 700; text-align: right; }
+.view-gm .turn-move-cap { font-size: var(--fs-100); color: var(--neutral); }
+.view-gm .turn-move-pending { min-width: 2rem; text-align: right; font-size: var(--fs-100); font-weight: 700; color: #b3352f; }
+.view-gm .turn-action { font-size: 0.85rem; color: var(--support); }
+.view-gm .turn-action.is-spent { color: var(--neutral); }

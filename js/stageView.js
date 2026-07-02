@@ -669,8 +669,18 @@ export function createStageView(root) {
     const g = stageGeom();
     const t = lastState && lastState.stage && lastState.stage.aoeTemplate;
     const zones = (lastState && lastState.stage && lastState.stage.zones) || [];
-    if (!g || (!t && !zones.length)) {
+    // Movement range (turn engine): a Chebyshev square around the active token. The GM
+    // board draws it for ANY mover; the Player TV only for heroes (the table sees their
+    // own options, not the monsters'). Half-side = feet + half a cell so the outline
+    // lands on cell borders and covers every reachable cell.
+    const list = (lastState && lastState.stage && lastState.stage.tokens) || [];
+    const mrRaw = lastState && lastState.stage && lastState.stage.moveRange;
+    const mover = mrRaw && list.find((tok) => tok.instId === mrRaw.instId);
+    const mr = (mrRaw && mover && mover.visible !== false &&
+                (stage.classList.contains('board-interactive') || mover.kind === 'hero')) ? mrRaw : null;
+    if (!g || (!t && !zones.length && !mr)) {
       aoeFx.style.display = 'none';
+      aoeFx.innerHTML = '';
       if (chipsLayer) chipsLayer.innerHTML = '';
       tokenLayer.querySelectorAll('.is-aoe-hit').forEach((el) => el.classList.remove('is-aoe-hit'));
       return;
@@ -679,6 +689,12 @@ export function createStageView(root) {
     aoeFx.setAttribute('width', g.r.width); aoeFx.setAttribute('height', g.r.height);
     aoeFx.setAttribute('viewBox', '0 0 ' + g.r.width + ' ' + g.r.height);
     let html = '';
+    if (mr) {
+      const grid = currentGrid();
+      const fpc = (grid && grid.enabled ? Number(grid.feetPerCell) : 5) || 5;
+      const sq = { shape: 'square', originX: mr.originX, originY: mr.originY, sizeFeet: mr.feet * 2 + fpc };
+      html += '<path class="aoe-shape move-range" d="' + shapePath(sq, shapeGeom(g, sq)) + '"></path>';
+    }
     for (const z of zones) html += '<path class="aoe-shape is-zone" style="--aoe-color:' + z.color + '" d="' + shapePath(z, shapeGeom(g, z)) + '"></path>';
     if (t) {
       stage.style.setProperty('--aoe-color', t.color || '#e5533a');   // caught tokens inherit the template colour
