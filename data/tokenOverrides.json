@@ -1,1 +1,95 @@
-{}
+{
+  "lysander": {
+    "face": "50% 25%",
+    "faceZoom": 2.5,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/lysander.jpg"
+  },
+  "telstar": {
+    "face": "56% 22%",
+    "faceZoom": 2.4,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/telstar.jpg"
+  },
+  "thraka": {
+    "face": "57% 30%",
+    "faceZoom": 3,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/thraka.jpg"
+  },
+  "khaleesi": {
+    "face": "51% 9%",
+    "faceZoom": 2.8,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/khaleesi.jpg"
+  },
+  "sai": {
+    "face": "46% 14%",
+    "faceZoom": 2.5,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/sai.jpg"
+  },
+  "samsara": {
+    "face": "55% 22%",
+    "faceZoom": 3,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/samsara.jpg"
+  },
+  "truf": {
+    "face": "62% 7%",
+    "faceZoom": 3,
+    "ringColor": "#2f6b43",
+    "tokenImage": "assets/tokens/heroes/truf.jpg"
+  },
+  "cassian": {
+    "face": "71% 4%",
+    "faceZoom": 3,
+    "ringColor": "#6f9bd1",
+    "tokenImage": "assets/tokens/uploads/cassian.png"
+  },
+  "brigands": {
+    "face": "36% 12%",
+    "faceZoom": 3,
+    "ringColor": "#8a2e2e",
+    "tokenImage": "assets/tokens/enemies/brigands.jpg"
+  },
+  "palehusks": {
+    "face": "38% 56%",
+    "faceZoom": 1.85,
+    "ringColor": "#8a2e2e",
+    "tokenImage": "assets/tokens/enemies/palehusk.jpg"
+  },
+  "dorran": {
+    "face": "75% 7%",
+    "faceZoom": 3,
+    "ringColor": "#6f9bd1",
+    "tokenImage": "assets/tokens/uploads/sergeantdorran.png"
+  },
+  "grannyedna": {
+    "face": "77% 0%",
+    "faceZoom": 2.1,
+    "ringColor": "#6f9bd1",
+    "tokenImage": "assets/tokens/uploads/grannyedna.png"
+  },
+  "wick": {
+    "face": "73% 39%",
+    "faceZoom": 3,
+    "ringColor": "#6f9bd1",
+    "tokenImage": "assets/tokens/uploads/privatewick.png"
+  },
+  "wren": {
+    "face": "74% 6%",
+    "faceZoom": 1.8,
+    "ringColor": "#6f9bd1",
+    "tokenImage": "assets/tokens/uploads/wren.png"
+  },
+  "pip": {
+    "face": "78% 24%",
+    "faceZoom": 3,
+    "ringColor": "#6f9bd1",
+    "tokenImage": "assets/tokens/uploads/pip.png"
+  },
+  "_hidden": {
+    "marshfamily": true
+  }
+}

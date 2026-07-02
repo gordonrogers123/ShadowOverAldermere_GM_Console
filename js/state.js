@@ -112,7 +112,10 @@ function normRoomDice(rd) {
   const tone = /^(good|bad|crit|heal)$/.test(rd.tone) ? rd.tone : '';
   return {
     flat, total: Math.floor(+rd.total) || 0, notation: String(rd.notation || ''), n: Math.floor(+rd.n) || 0,
-    label, outcome: rd.outcome != null ? String(rd.outcome).slice(0, 40) : '', tone
+    label, outcome: rd.outcome != null ? String(rd.outcome).slice(0, 48) : '', tone,
+    // PR: a plain-language card roll spells the math out on a middle line
+    // ("D20 (1) + 5 = 6 vs AC 11"), between the who-did-what label and the verdict.
+    detail: rd.detail != null ? String(rd.detail).slice(0, 80) : ''
   };
 }
 // The map grid config (PR 6A), PER MAP VARIANT. cellSize / offsetX / offsetY are
@@ -150,7 +153,7 @@ function normGrids(g) {
 // false→true when the GM clicks to lock it (a dashed preview becomes a solid template).
 function normAoe(a) {
   if (!a || typeof a !== 'object') return null;
-  const shape = /^(cone|circle)$/.test(a.shape) ? a.shape : null;
+  const shape = /^(cone|circle|square)$/.test(a.shape) ? a.shape : null;   // square = a zone's placement preview (6E)
   if (!shape) return null;
   const num = (v, d, lo, hi) => { v = +v; if (!isFinite(v)) return d; return v < lo ? lo : v > hi ? hi : v; };
   return {
@@ -163,6 +166,35 @@ function normAoe(a) {
     committed: !!a.committed,
     casterId: a.casterId != null ? String(a.casterId) : null   // excluded from the caught set (no self-blast)
   };
+}
+// Persistent placed zones (PR 6E): Entangle / Web / Spike Growth areas that OUTLIVE the
+// turn -- drawn on both screens with a chip (spell name + a round counter the GM ticks
+// down). Each remembers its caster (concentration reminders; auto-clear when the caster
+// leaves) and optionally an on-move damage rule (Spike Growth). Broadcast like tokens;
+// absent -> none (no migration). 'cube' is stored as 'square' (top-down view).
+function normZone(z) {
+  if (!z || typeof z !== 'object' || z.id == null) return null;
+  const shape = /^(square|circle)$/.test(z.shape) ? z.shape : null;
+  if (!shape) return null;
+  const num = (v, d, lo, hi) => { v = +v; if (!isFinite(v)) return d; return v < lo ? lo : v > hi ? hi : v; };
+  return {
+    id: String(z.id),
+    name: String(z.name || '').slice(0, 40),
+    shape,
+    originX: num(z.originX, 0.5, -1, 2),
+    originY: num(z.originY, 0.5, -1, 2),
+    sizeFeet: num(z.sizeFeet, 20, 1, 1000),
+    color: /^#[0-9a-fA-F]{6}$/.test(z.color) ? z.color : '#7d5bd0',
+    casterId: z.casterId != null ? String(z.casterId) : null,
+    condition: z.condition ? String(z.condition).slice(0, 30) : null,
+    concentration: !!z.concentration,
+    rounds: Math.max(0, Math.min(99, Math.floor(+z.rounds) || 0)),
+    onMove: (z.onMove && z.onMove.dice) ? { dice: String(z.onMove.dice).slice(0, 12), per: Math.max(1, Math.floor(+z.onMove.per) || 5) } : null
+  };
+}
+function normZones(zs) {
+  if (!Array.isArray(zs)) return [];
+  return zs.map(normZone).filter(Boolean).slice(0, 12);
 }
 function normalizeStage(s) {
   s = s || {};
@@ -212,7 +244,10 @@ function normalizeStage(s) {
     roomDice: normRoomDice(s.roomDice),
     // The live INSTANT area template (PR 6D) — a cone/radius the GM is aiming or has placed,
     // drawn on both screens. Rides the broadcast like targetLink; cleared on turn change.
-    aoeTemplate: normAoe(s.aoeTemplate)
+    aoeTemplate: normAoe(s.aoeTemplate),
+    // Persistent placed zones (PR 6E) — Entangle / Web / Spike Growth, surviving turns
+    // until their round counter runs out or the GM clears them.
+    zones: normZones(s.zones)
   };
 }
 

@@ -25,7 +25,6 @@ export const BACKGROUNDS = [
   { id: "A1 S2 City Gate -- Night", name: "A1 S2 City Gate Night", src: "assets/maps/A1 S2 City Gate -- Night.png", kind: "map", type: "image" },
   { id: "A1 S2 Tent Camp -- Day", name: "A1 S2 Tent Camp Day", src: "assets/maps/A1 S2 Tent Camp -- Day.png", kind: "map", type: "image" },
   { id: "A1 S2 Tent Camp -- Night", name: "A1 S2 Tent Camp Night", src: "assets/maps/A1 S2 Tent Camp -- Night.png", kind: "map", type: "image" },
-  { id: "A1 S2 Tent Camp -- Nightnogrid", name: "A1 S2 Tent Camp Nightnogrid", src: "assets/maps/A1 S2 Tent Camp -- Nightnogrid.png", kind: "map", type: "image" },
   { id: "A1 S3 Inn - first floor", name: "A1 S3 Inn First Floor", src: "assets/maps/A1 S3 Inn - first floor.png", kind: "map", type: "image" },
   { id: "A1 S3 Inn - second floor -- Hidden", name: "A1 S3 Inn Second Floor Hidden", src: "assets/maps/A1 S3 Inn - second floor -- Hidden.png", kind: "map", type: "image" },
   { id: "A1 S3 Inn - second floor -- Revealed", name: "A1 S3 Inn Second Floor Revealed", src: "assets/maps/A1 S3 Inn - second floor -- Revealed.png", kind: "map", type: "image" },
@@ -52,11 +51,11 @@ export const CHARACTERS = [
   { id: "Naia and Theron", name: "Naia And Theron", src: "assets/characters/npcs/Naia and Theron.png", category: "npc" },
   { id: "Pip -- Speaking", name: "Pip Speaking", src: "assets/characters/npcs/Pip -- Speaking.png", category: "npc" },
   { id: "Sgt Dorran", name: "Sgt Dorran", src: "assets/characters/npcs/Sgt Dorran.png", category: "npc" },
+  { id: "Wick", name: "Wick", src: "assets/characters/npcs/Wick.png", category: "npc" },
   { id: "Wren -- Excited", name: "Wren Excited", src: "assets/characters/npcs/Wren -- Excited.png", category: "npc" },
   { id: "Wren -- Upset", name: "Wren Upset", src: "assets/characters/npcs/Wren -- Upset.png", category: "npc" },
   { id: "grannyEdna -- Cooking", name: "GrannyEdna Cooking", src: "assets/characters/npcs/grannyEdna -- Cooking.png", category: "npc" },
   { id: "grannyEdna -- Standing", name: "GrannyEdna Standing", src: "assets/characters/npcs/grannyEdna -- Standing.png", category: "npc" },
-  { id: "wick", name: "Wick", src: "assets/characters/npcs/wick.png", category: "npc" },
   { id: "Brigands", name: "Brigands", src: "assets/characters/enemies/Brigands.png", category: "enemy" },
   { id: "Pale Husk", name: "Pale Husk", src: "assets/characters/enemies/Pale Husk.png", category: "enemy" }
 ];
@@ -85,5 +84,11 @@ export const TOKENART = [
   { id: "samsara", name: "Samsara", src: "assets/tokens/heroes/samsara.jpg", category: "hero" },
   { id: "telstar", name: "Telstar", src: "assets/tokens/heroes/telstar.jpg", category: "hero" },
   { id: "thraka", name: "Thraka", src: "assets/tokens/heroes/thraka.jpg", category: "hero" },
-  { id: "truf", name: "Truf", src: "assets/tokens/heroes/truf.jpg", category: "hero" }
+  { id: "truf", name: "Truf", src: "assets/tokens/heroes/truf.jpg", category: "hero" },
+  { id: "cassian", name: "Cassian", src: "assets/tokens/uploads/cassian.png", category: "upload" },
+  { id: "grannyedna", name: "Grannyedna", src: "assets/tokens/uploads/grannyedna.png", category: "upload" },
+  { id: "pip", name: "Pip", src: "assets/tokens/uploads/pip.png", category: "upload" },
+  { id: "privatewick", name: "Privatewick", src: "assets/tokens/uploads/privatewick.png", category: "upload" },
+  { id: "sergeantdorran", name: "Sergeantdorran", src: "assets/tokens/uploads/sergeantdorran.png", category: "upload" },
+  { id: "wren", name: "Wren", src: "assets/tokens/uploads/wren.png", category: "upload" }
 ];

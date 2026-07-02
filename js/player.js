@@ -53,13 +53,16 @@ export function mountPlayer(root) {
       const cls = (x.d === 20 && x.r === 20) ? ' is-crit' : (x.d === 20 && x.r === 1) ? ' is-fumble' : '';
       return `<span class="room-die${cls}">${dieSvg(x.d)}<span class="room-die-num">${x.r}</span></span>`;
     }).join('');
-    // A card roll (PR 6C.1) leads with who/what and closes with the verdict, tone-coloured.
+    // A card roll (PR 6C.1) is three plain-language lines: who did what ("Telstar used
+    // Thorn Whip Attack"), the dice math ("D20 (1) + 5 = 6 vs AC 11"), and the verdict
+    // ("MISS"), tone-coloured. A tray roll keeps its die faces + Total sum.
     const label = rd.label ? `<div class="room-dice-label">${escHtml(rd.label)}</div>` : '';
+    const detail = rd.detail ? `<div class="room-dice-detail">${escHtml(rd.detail)}</div>` : '';
     const outcome = rd.outcome ? `<div class="room-dice-outcome">${escHtml(rd.outcome)}</div>` : '';
     const diceRow = dice ? `<div class="room-dice-row">${dice}</div>` : '';
-    // A tray roll shows the Total sum; a card roll's total already rides its verdict line.
+    // A tray roll shows the Total sum; a card roll's total already rides its math line.
     const sum = (!rd.label && (dice || rd.total)) ? `<div class="room-dice-sum"><span class="room-dice-eq">Total</span><span class="room-dice-total">${rd.total || ''}</span></div>` : '';
-    roomDice.innerHTML = label + diceRow + sum + outcome;
+    roomDice.innerHTML = label + diceRow + detail + sum + outcome;
     roomDice.className = 'room-dice' + (/^(good|bad|crit|heal)$/.test(rd.tone) ? ' tone-' + rd.tone : '');
     roomDice.hidden = false;
     void roomDice.offsetWidth;   // restart the entrance animation on a repeat roll
